@@ -13,6 +13,8 @@ const REFRESH_COOKIE = "da_refresh";
 const PUBLIC_PATHS = [
   "/",
   "/about",
+  "/privacy",
+  "/terms",
   "/pricing",
   "/contact",
 

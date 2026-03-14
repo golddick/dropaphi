@@ -1,651 +1,391 @@
+
+
+
+
+
+
+
+
 'use client';
 
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { ArrowRight, CheckCircle, Play } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth';
-import { ModeToggle } from '../theme-toggle';
+import Navigation from './Navigation';
+import HeroSection from './HeroSection';
+import ServicesSection from './ServicesSection';
+import DropIdSection from './DropIdSection';
+import AnalyticsSection from './AnalyticsSection';
+import UseCasesSection from './UseCasesSection';
+import WhyDropSection from './WhyDropSection';
+import PricingSection from './PricingSection';
+import TestimonialsSection from './TestimonialsSection';
+import CTASection from './CTASection';
+import Footer from './Footer';
 
-export default function Home() {
+/* ─── Inline SVG Components (unchanged) ─── */
+export const DashboardMockup = () => (
+  <svg viewBox="0 0 760 500" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: 'auto' }}>
+    <defs>
+      <linearGradient id="dg1" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#DC143C"/>
+        <stop offset="100%" stopColor="#ff6b6b"/>
+      </linearGradient>
+      <linearGradient id="dg2" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#DC143C" stopOpacity="0.35"/>
+        <stop offset="100%" stopColor="#DC143C" stopOpacity="0.03"/>
+      </linearGradient>
+      <linearGradient id="dg3" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3"/>
+        <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.03"/>
+      </linearGradient>
+    </defs>
 
-  const { user } = useAuthStore()
+    {/* Window frame */}
+    <rect width="760" height="500" rx="16" fill="#0D0D0D"/>
+
+    {/* Title bar */}
+    <rect width="760" height="46" rx="16" fill="#161616"/>
+    <rect y="30" width="760" height="16" fill="#161616"/>
+    <circle cx="22" cy="23" r="5.5" fill="#FF5F57"/>
+    <circle cx="41" cy="23" r="5.5" fill="#FEBC2E"/>
+    <circle cx="60" cy="23" r="5.5" fill="#28C840"/>
+    {/* URL bar */}
+    <rect x="280" y="13" width="200" height="20" rx="6" fill="#1E1E1E"/>
+    <text x="295" y="27" fontFamily="monospace" fontSize="10" fill="#444">app.dropaphi.com/wsb677755/dashboard</text>
+
+    {/* Sidebar */}
+    <rect x="0" y="46" width="178" height="454" fill="#101010"/>
+
+    {/* Logo */}
+    <rect x="14" y="66" width="150" height="34" rx="8" fill="#181818"/>
+    <rect x="22" y="74" width="18" height="18" rx="4" fill="#DC143C"/>
+    <text x="22" y="86" fontFamily="sans-serif" fontSize="9" fontWeight="800" fill="white">D</text>
+    <text x="46" y="87" fontFamily="sans-serif" fontSize="11" fontWeight="700" fill="white">DropAPHI</text>
+
+    {/* Nav items */}
+    {[
+      { label: 'Overview',  y: 118, active: true  },
+      { label: 'SMS',       y: 154, active: false },
+      { label: 'Email',     y: 190, active: false },
+      { label: 'Storage',   y: 226, active: false },
+      { label: 'OTP', y: 262, active: false },
+      { label: 'API Keys',  y: 298, active: false },
+      { label: 'Settings',  y: 334, active: false },
+    ].map(({ label, y, active }) => (
+      <g key={label}>
+        {active && <rect x="10" y={y - 9} width="158" height="28" rx="6" fill="#1C1C1C"/>}
+        {active && <rect x="10" y={y - 9} width="3" height="28" rx="2" fill="#DC143C"/>}
+        <circle cx="30" cy={y + 5} r="4" fill={active ? '#DC143C' : '#2A2A2A'} opacity={active ? 1 : 0.8}/>
+        <text x="42" y={y + 9} fontFamily="sans-serif" fontSize="10.5" fill={active ? 'white' : '#555'}>{label}</text>
+      </g>
+    ))}
+
+    {/* Usage meter at bottom of sidebar */}
+    <rect x="14" y="400" width="150" height="58" rx="8" fill="#161616" stroke="#1E1E1E" strokeWidth="1"/>
+    <text x="22" y="418" fontFamily="sans-serif" fontSize="9" fill="#555">Monthly Usage</text>
+    <rect x="22" y="426" width="124" height="6" rx="3" fill="#1E1E1E"/>
+    <rect x="22" y="426" width="81" height="6" rx="3" fill="url(#dg1)"/>
+    <text x="22" y="446" fontFamily="sans-serif" fontSize="9" fill="#444">65K / 100K msgs</text>
+    <text x="118" y="446" fontFamily="sans-serif" fontSize="9" fill="#DC143C">65%</text>
+
+    {/* ── MAIN CONTENT ── */}
+    {/* Header row */}
+    <text x="200" y="76" fontFamily="sans-serif" fontSize="16" fontWeight="700" fill="white">Overview</text>
+    <text x="200" y="94" fontFamily="sans-serif" fontSize="10" fill="#444">March 2025  ·  All channels</text>
+
+    {/* Filter pills */}
+    <rect x="570" y="62" width="44" height="20" rx="6" fill="#1E1E1E"/>
+    <text x="580" y="75" fontFamily="sans-serif" fontSize="9" fill="#666">7 days</text>
+    <rect x="620" y="62" width="44" height="20" rx="6" fill="#DC143C" opacity="0.15"/>
+    <text x="629" y="75" fontFamily="sans-serif" fontSize="9" fill="#DC143C">30 days</text>
+    <rect x="670" y="62" width="44" height="20" rx="6" fill="#1E1E1E"/>
+    <text x="678" y="75" fontFamily="sans-serif" fontSize="9" fill="#666">90 days</text>
+
+    {/* ── STAT CARDS ── */}
+    {[
+      { x: 198, label: 'SMS Sent',     val: '284,920', change: '+12.4%', up: true,  color: '#DC143C' },
+      { x: 340, label: 'Emails',       val: '91,203',  change: '+5.2%',  up: true,  color: '#3B82F6' },
+      { x: 482, label: 'OTP Verified', val: '48,291',  change: '+8.1%',  up: true,  color: '#22C55E' },
+      { x: 624, label: 'Files Stored', val: '12.4 GB', change: '+2.1%',  up: true,  color: '#F97316' },
+    ].map(({ x, label, val, change, color }) => (
+      <g key={label}>
+        <rect x={x} y="108" width="134" height="74" rx="9" fill="#151515" stroke="#1E1E1E" strokeWidth="1"/>
+        {/* top color bar */}
+        <rect x={x} y="108" width="134" height="3" rx="2" fill={color} opacity="0.6"/>
+        <text x={x + 12} y="130" fontFamily="sans-serif" fontSize="9.5" fill="#555">{label}</text>
+        <text x={x + 12} y="156" fontFamily="sans-serif" fontSize="19" fontWeight="800" fill="white">{val}</text>
+        <rect x={x + 12} y="166" width="38" height="12" rx="3" fill={color} opacity="0.12"/>
+        <text x={x + 15} y="176" fontFamily="sans-serif" fontSize="8.5" fill={color}>↑ {change}</text>
+      </g>
+    ))}
+
+    {/* ── CHART AREA ── */}
+    <rect x="198" y="196" width="360" height="158" rx="10" fill="#131313" stroke="#1C1C1C" strokeWidth="1"/>
+    <text x="212" y="216" fontFamily="sans-serif" fontSize="10.5" fontWeight="600" fill="#888">Message Volume</text>
+
+    {/* Area fill — SMS */}
+    <path d="M212,326 C228,310 244,298 260,308 C276,318 292,282 308,265 C324,248 340,272 356,255 C372,238 388,262 404,242 C420,222 436,248 452,230 C460,220 468,223 476,218 L476,338 L212,338 Z" fill="url(#dg2)"/>
+    {/* Line — SMS */}
+    <path d="M212,326 C228,310 244,298 260,308 C276,318 292,282 308,265 C324,248 340,272 356,255 C372,238 388,262 404,242 C420,222 436,248 452,230 C460,220 468,223 476,218" stroke="#DC143C" strokeWidth="2" fill="none" strokeLinecap="round"/>
+
+    {/* Area fill — Email */}
+    <path d="M212,338 C228,332 244,320 260,328 C276,336 292,316 308,305 C324,294 340,312 356,300 C372,288 388,304 404,295 C420,286 436,298 452,290 C460,285 468,287 476,284 L476,338 L212,338 Z" fill="url(#dg3)"/>
+    {/* Line — Email */}
+    <path d="M212,338 C228,332 244,320 260,328 C276,336 292,316 308,305 C324,294 340,312 356,300 C372,288 388,304 404,295 C420,286 436,298 452,290 C460,285 468,287 476,284" stroke="#3B82F6" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeDasharray="3 2" opacity="0.7"/>
+
+    {/* Dots on SMS line */}
+    {[[260,308],[308,265],[356,255],[404,242],[452,230]].map(([cx,cy],i) => (
+      <g key={i}>
+        <circle cx={cx} cy={cy} r="3.5" fill="#0D0D0D" stroke="#DC143C" strokeWidth="1.5"/>
+      </g>
+    ))}
+
+    {/* Tooltip */}
+    <rect x="340" y="228" width="72" height="32" rx="5" fill="#DC143C"/>
+    <text x="350" y="242" fontFamily="sans-serif" fontSize="8.5" fontWeight="600" fill="white">Mar 14</text>
+    <text x="350" y="254" fontFamily="sans-serif" fontSize="10" fontWeight="800" fill="white">14,203</text>
+    <line x1="376" y1="260" x2="356" y2="255" stroke="#DC143C" strokeWidth="1"/>
+
+    {/* X-axis labels */}
+    {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map((m,i) => (
+      <text key={m} x={213 + i * 22} y="350" fontFamily="sans-serif" fontSize="7.5" fill="#333">{m}</text>
+    ))}
+
+    {/* Chart legend */}
+    <circle cx="214" cy="362" r="4" fill="#DC143C"/>
+    <text x="222" y="366" fontFamily="sans-serif" fontSize="9" fill="#666">SMS</text>
+    <line x1="244" y1="362" x2="252" y2="362" stroke="#3B82F6" strokeWidth="1.5" strokeDasharray="3 2"/>
+    <text x="256" y="366" fontFamily="sans-serif" fontSize="9" fill="#666">Email</text>
+
+    {/* ── CHANNEL BREAKDOWN (right of chart) ── */}
+    <rect x="566" y="196" width="176" height="158" rx="10" fill="#131313" stroke="#1C1C1C" strokeWidth="1"/>
+    <text x="580" y="216" fontFamily="sans-serif" fontSize="10.5" fontWeight="600" fill="#888">Channel Split</text>
+
+    {/* Donut placeholder */}
+    <circle cx="654" cy="263" r="36" fill="none" stroke="#1E1E1E" strokeWidth="12"/>
+    {/* SMS arc */}
+    <circle cx="654" cy="263" r="36" fill="none" stroke="#DC143C" strokeWidth="12"
+      strokeDasharray="84 142" strokeDashoffset="0" strokeLinecap="round"/>
+    {/* Email arc */}
+    <circle cx="654" cy="263" r="36" fill="none" stroke="#3B82F6" strokeWidth="12"
+      strokeDasharray="43 183" strokeDashoffset="-88" strokeLinecap="round"/>
+    {/* OTP arc */}
+    <circle cx="654" cy="263" r="36" fill="none" stroke="#22C55E" strokeWidth="12"
+      strokeDasharray="27 199" strokeDashoffset="-135" strokeLinecap="round"/>
+    {/* Storage arc */}
+    <circle cx="654" cy="263" r="36" fill="none" stroke="#F97316" strokeWidth="12"
+      strokeDasharray="12 214" strokeDashoffset="-166" strokeLinecap="round"/>
+    {/* Center label */}
+    <text x="654" y="259" fontFamily="sans-serif" fontSize="13" fontWeight="800" fill="white" textAnchor="middle">424K</text>
+    <text x="654" y="272" fontFamily="sans-serif" fontSize="8" fill="#555" textAnchor="middle">total</text>
+
+    {/* Legend */}
+    {[['#DC143C','SMS','59%'],['#3B82F6','Email','31%'],['#22C55E','OTP','7%'],['#F97316','Files','3%']].map(([c,l,pct],i) => (
+      <g key={l}>
+        <rect x="578" y={305 + i * 13} width="8" height="8" rx="2" fill={c}/>
+        <text x="590" y={313 + i * 13} fontFamily="sans-serif" fontSize="9" fill="#666">{l}</text>
+        <text x="718" y={313 + i * 13} fontFamily="sans-serif" fontSize="9" fill="#444" textAnchor="end">{pct}</text>
+      </g>
+    ))}
+
+    {/* ── RECENT ACTIVITY ── */}
+    <rect x="198" y="374" width="348" height="100" rx="10" fill="#131313" stroke="#1C1C1C" strokeWidth="1"/>
+    <text x="212" y="394" fontFamily="sans-serif" fontSize="10.5" fontWeight="600" fill="#888">Recent Activity</text>
+
+    {[
+      { type: 'SMS',   to: '+234 801 234 5678', msg: 'OTP sent',          time: '2m',  ok: true  },
+      { type: 'EMAIL', to: 'user@company.io',   msg: 'Welcome email',     time: '5m',  ok: true  },
+      { type: 'STORE', to: 'invoice_Q3.pdf',    msg: 'File uploaded',     time: '9m',  ok: true  },
+      { type: 'OTP',   to: '+234 706 123 4567', msg: 'Verification sent', time: '14m', ok: false },
+    ].map(({ type, to, msg, time, ok }, i) => {
+     const typeColors: Record<string, string> = { SMS:'#DC143C', EMAIL:'#3B82F6', STORE:'#F97316', OTP:'#22C55E' };
+    const tc = typeColors[type] ?? '#555';
+      return (
+        <g key={i}>
+          <rect x="208" y={402 + i * 17} width="328" height="14" rx="3" fill="#181818" opacity={i % 2 === 0 ? 0 : 0.4}/>
+          {/* type badge */}
+          <rect x="212" y={404 + i * 17} width="32" height="10" rx="2" fill={tc} opacity="0.15"/>
+          <text x="214" y={413 + i * 17} fontFamily="monospace" fontSize="7.5" fontWeight="700" fill={tc}>{type}</text>
+          <text x="250" y={413 + i * 17} fontFamily="sans-serif" fontSize="9" fill="#555">{to}</text>
+          <text x="430" y={413 + i * 17} fontFamily="sans-serif" fontSize="8.5" fill="#333">{msg}</text>
+          <circle cx="524" cy={409 + i * 17} r="3" fill={ok ? '#28C840' : '#FF5F57'}/>
+          <text x="530" y={413 + i * 17} fontFamily="sans-serif" fontSize="8" fill="#333">{time} ago</text>
+        </g>
+      );
+    })}
+
+    {/* ── QUICK STATS (right of activity) ── */}
+    <rect x="554" y="374" width="188" height="100" rx="10" fill="#131313" stroke="#1C1C1C" strokeWidth="1"/>
+    <text x="568" y="394" fontFamily="sans-serif" fontSize="10.5" fontWeight="600" fill="#888">Delivery Rate</text>
+
+    {[
+      { label: 'SMS',   pct: 98, color: '#DC143C' },
+      { label: 'Email', pct: 99, color: '#3B82F6' },
+      { label: 'OTP',   pct: 97, color: '#22C55E' },
+    ].map(({ label, pct, color }, i) => (
+      <g key={label}>
+        <text x="568" y={410 + i * 22} fontFamily="sans-serif" fontSize="8.5" fill="#666">{label}</text>
+        <rect x="596" y={402 + i * 22} width="108" height="7" rx="3" fill="#1E1E1E"/>
+        <rect x="596" y={402 + i * 22} width={108 * pct / 100} height="7" rx="3" fill={color} opacity="0.8"/>
+        <text x="708" y={410 + i * 22} fontFamily="sans-serif" fontSize="8.5" fill={color} textAnchor="end">{pct}%</text>
+      </g>
+    ))}
+  </svg>
+);
+
+export const ApiFlowDiagram = () => (
+  <svg viewBox="0 0 640 360" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+    <rect width="640" height="360" rx="20" fill="#FAFAFA" stroke="#F0F0F0" strokeWidth="1"/>
+    <rect x="30" y="140" width="120" height="80" rx="12" fill="white" stroke="#E0E0E0" strokeWidth="1.5"/>
+    <rect x="46" y="156" width="32" height="32" rx="8" fill="#1A1A1A"/>
+    <text x="54" y="177" fontFamily="sans-serif" fontSize="12" fontWeight="700" fill="white">{'</>'}</text>
+    <text x="38" y="210" fontFamily="sans-serif" fontSize="10" fontWeight="600" fill="#333">Your App</text>
+    {/* <text x="44" y="224" fontFamily="sans-serif" fontSize="8" fill="#999">Node / Python / PHP</text> */}
+    <line x1="152" y1="180" x2="248" y2="180" stroke="#DC143C" strokeWidth="2" strokeDasharray="6 3"/>
+    <polygon points="248,174 260,180 248,186" fill="#DC143C"/>
+    <rect x="172" y="164" width="56" height="16" rx="4" fill="#DC143C"/>
+    <text x="180" y="175" fontFamily="sans-serif" fontSize="8" fontWeight="600" fill="white">API Request</text>
+    <rect x="260" y="110" width="120" height="140" rx="14" fill="#1A1A1A"/>
+    <rect x="268" y="118" width="104" height="24" rx="6" fill="#DC143C"/>
+    <text x="278" y="134" fontFamily="sans-serif" fontSize="10" fontWeight="700" fill="white">DropAPHI Core</text>
+    {['Route', 'Queue', 'Deliver', 'Track'].map((t, i) => (
+      <g key={t}>
+        <rect x="272" y={150 + i * 22} width="96" height="16" rx="4" fill="#222"/>
+        <circle cx="284" cy={158 + i * 22} r="3" fill="#DC143C"/>
+        <text x="292" y={162 + i * 22} fontFamily="sans-serif" fontSize="9" fill="#888">{t}</text>
+      </g>
+    ))}
+    {[
+      { label: 'SMS', y: 60, color: '#F97316' },
+      { label: 'Email', y: 130, color: '#3B82F6' },
+      { label: 'WhatsApp', y: 200, color: '#22C55E' },
+      { label: 'OTP', y: 270, color: '#A855F7' }
+    ].map(({ label, y, color }) => (
+      <g key={label}>
+        <line x1="382" y1={y + 20} x2="458" y2={y + 20} stroke={color} strokeWidth="1.5" strokeDasharray="5 3"/>
+        <polygon points={`458,${y + 14} 470,${y + 20} 458,${y + 26}`} fill={color}/>
+        <rect x="472" y={y} width="90" height="40" rx="8" fill="white" stroke="#F0F0F0" strokeWidth="1"/>
+        <circle cx="490" cy={y + 20} r="8" fill={color} opacity="0.15"/>
+        <text x="487" y={y + 24} fontFamily="sans-serif" fontSize="10" fill={color}>●</text>
+        <text x="504" y={y + 24} fontFamily="sans-serif" fontSize="10" fontWeight="600" fill="#333">{label}</text>
+      </g>
+    ))}
+    <path d="M 262 260 Q 190 310 90 260 Q 70 250 90 220" stroke="#DC143C" strokeWidth="1.5" strokeDasharray="5 3" fill="none"/>
+    <polygon points="84,222 90,208 96,222" fill="#DC143C"/>
+    <rect x="148" y="288" width="70" height="16" rx="4" fill="white" stroke="#EEE" strokeWidth="1"/>
+    <text x="156" y="299" fontFamily="sans-serif" fontSize="8" fill="#888">Webhook / Response</text>
+  </svg>
+);
+
+export const DropIdDemo = () => (
+  <svg viewBox="0 0 600 340" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+    <rect width="600" height="340" rx="16" fill="#0A0A0A"/>
+    <rect width="600" height="44" rx="16" fill="#111"/>
+    <rect y="28" width="600" height="16" fill="#111"/>
+    <circle cx="22" cy="22" r="5" fill="#FF5F57"/>
+    <circle cx="40" cy="22" r="5" fill="#FEBC2E"/>
+    <circle cx="58" cy="22" r="5" fill="#28C840"/>
+    <text x="76" y="27" fontFamily="monospace" fontSize="11" fill="#444">dropid_demo.js</text>
+    <text x="28" y="78" fontFamily="monospace" fontSize="11" fill="#555">// Before — UUID hell</text>
+    <rect x="20" y="88" width="560" height="36" rx="6" fill="#1A1A1A"/>
+    <text x="34" y="108" fontFamily="monospace" fontSize="11" fill="#FF5F57">User 550e8400-e29b-41d4-a916-446655440000 not found</text>
+    <text x="28" y="148" fontFamily="monospace" fontSize="11" fill="#555">// After — Human-readable</text>
+    <rect x="20" y="158" width="560" height="36" rx="6" fill="#162016"/>
+    <text x="34" y="178" fontFamily="monospace" fontSize="11" fill="#4ADE80">User <tspan fill="#FDE68A">user_a3f2b9c1d4e5</tspan> not found</text>
+    <text x="28" y="220" fontFamily="monospace" fontSize="11" fill="#555">$ npm install drop-api-id</text>
+    <rect x="20" y="232" width="560" height="90" rx="8" fill="#141414"/>
+    <text x="34" y="256" fontFamily="monospace" fontSize="11" fill="#C792EA">import <tspan fill="#CDD6F4">{'{ dropid }'}</tspan> <tspan fill="#C792EA">from</tspan> <tspan fill="#A6E3A1">'drop-api-id'</tspan>;</text>
+    <text x="34" y="278" fontFamily="monospace" fontSize="11" fill="#89B4FA">dropid<tspan fill="#CDD6F4">('user')</tspan>         <tspan fill="#444">→ user_a3f2b9c1d4e5</tspan></text>
+    <text x="34" y="298" fontFamily="monospace" fontSize="11" fill="#89B4FA">dropid<tspan fill="#CDD6F4">('order', 'acme')</tspan>  <tspan fill="#444">→ acme_order_x7k9m2n4</tspan></text>
+    <rect x="430" y="56" width="150" height="50" rx="10" fill="#1A1A1A" stroke="#252525" strokeWidth="1"/>
+    <text x="446" y="77" fontFamily="monospace" fontSize="11" fontWeight="700" fill="#DC143C">2–3M IDs/sec</text>
+    <text x="446" y="93" fontFamily="monospace" fontSize="9" fill="#555">Crypto-secure · 2KB</text>
+  </svg>
+);
+
+export const AnalyticsMockup = () => (
+  <svg viewBox="0 0 560 320" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+    <rect width="560" height="320" rx="16" fill="white" stroke="#F0F0F0" strokeWidth="1"/>
+    <text x="24" y="40" fontFamily="sans-serif" fontSize="16" fontWeight="800" fill="#111">Real-time Analytics</text>
+    <text x="24" y="58" fontFamily="sans-serif" fontSize="11" fill="#999">Live delivery dashboard</text>
+    {[['284K', 'SMS', '#DC143C'], ['99.2%', 'Delivered', '#22C55E'], ['48K', 'OTP', '#3B82F6'], ['12K', 'Email', '#F97316']].map(([v, l, c], i) => (
+      <g key={l}>
+        <rect x={24 + i * 132} y="74" width="118" height="54" rx="10" fill="#FAFAFA" stroke="#F0F0F0" strokeWidth="1"/>
+        <text x={34 + i * 132} y="98" fontFamily="sans-serif" fontSize="18" fontWeight="800" fill="#111">{v}</text>
+        <rect x={34 + i * 132} y="106" width="36" height="12" rx="4" fill={c} opacity="0.12"/>
+        <text x={38 + i * 132} y="116" fontFamily="sans-serif" fontSize="8" fontWeight="600" fill={c}>{l}</text>
+      </g>
+    ))}
+    <rect x="16" y="142" width="528" height="130" rx="10" fill="#FAFAFA"/>
+    <defs>
+      <linearGradient id="areaGrad2" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#DC143C" stopOpacity="0.2"/>
+        <stop offset="100%" stopColor="#DC143C" stopOpacity="0"/>
+      </linearGradient>
+    </defs>
+    <path d="M30,250 C60,230 90,210 120,220 C150,230 180,190 210,175 C240,160 270,185 300,165 C330,145 360,170 390,150 C420,130 450,155 480,140 C500,130 520,135 530,130 L530,260 L30,260 Z" fill="url(#areaGrad2)"/>
+    <path d="M30,250 C60,230 90,210 120,220 C150,230 180,190 210,175 C240,160 270,185 300,165 C330,145 360,170 390,150 C420,130 450,155 480,140 C500,130 520,135 530,130" stroke="#DC143C" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+    {[[120,220],[210,175],[300,165],[390,150],[480,140]].map(([cx,cy],i) => (
+      <circle key={i} cx={cx} cy={cy} r="5" fill="white" stroke="#DC143C" strokeWidth="2"/>
+    ))}
+    <rect x="282" y="140" width="76" height="36" rx="6" fill="#DC143C"/>
+    <text x="296" y="156" fontFamily="sans-serif" fontSize="9" fontWeight="700" fill="white">Apr 15</text>
+    <text x="296" y="168" fontFamily="sans-serif" fontSize="11" fontWeight="800" fill="white">12,842</text>
+    {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug'].map((m, i) => (
+      <text key={m} x={32 + i * 68} y="280" fontFamily="sans-serif" fontSize="9" fill="#CCC">{m}</text>
+    ))}
+  </svg>
+);
+
+/* ─── Component Imports ─── */
+
+/* ─── Main Page ─── */
+export default function LandingPage() {
+  const { user } = useAuthStore();
 
   return (
-    <main className="min-h-screen" style={{ backgroundColor: '#FAFAFA' }}>
-      {/* Navigation */}
-      <nav className="border-b" style={{ borderColor: '#E5E5E5' }}>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2">
-              <div
-                className="flex h-8 w-8 items-center justify-center rounded font-bold text-white text-sm"
-                style={{ backgroundColor: '#DC143C' }}
-              >
-                D
-              </div>
-              <span className="hidden sm:inline font-bold text-lg" style={{ color: '#1A1A1A' }}>
-                Drop APHI
-              </span>
-            </Link>
-
-              <div className="flex items-center gap-4">
-              {!user ? (
-          <>
-            <Link
-              href="/signin"
-              className="text-sm font-medium hover:underline"
-            >
-              Sign In
-            </Link>
-
-            <Link
-              href="/signup"
-              className="bg-black text-white px-4 py-2 rounded-md text-sm"
-            >
-              Sign Up
-            </Link>
-          </>
-              ) : (
-                < div className='flex items-center gap-2'>
-                  <Link
-                    href="/dashboard"
-                    className="bg-red-600 text-white px-4 py-2 rounded-md text-sm"
-                  >
-                    Dashboard
-                  </Link>
-                   {/* <ModeToggle /> */}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-        <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-linear-to-br from-gray-50 via-white to-red-50">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 right-0 w-96 h-96 bg-red-100 rounded-full blur-3xl opacity-50" />
-        <div className="absolute bottom-20 left-0 w-96 h-96 bg-white rounded-full blur-3xl opacity-50" />
-      </div>
+    <main className="font-sans overflow-x-hidden bg-white">
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400&display=swap');
+      `}</style>
       
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808008_1px,transparent_1px),linear-gradient(to_bottom,#80808008_1px,transparent_1px)] bg-size-[40px_40px]" />
-
-      <div className="relative z-10 max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center py-20">
-        <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          <motion.div 
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-50 border border-red-200 text-red-700 text-sm font-semibold mb-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-600" />
-            </span>
-            v1.0 Live
-          </motion.div>
-
-          <h1 className="text-5xl md:text-7xl font-black text-gray-900 leading-[1.1] mb-6">
-            Unified Communication
-            <br />
-            <span className="text-transparent bg-clip-text bg-linear-to-r from-red-600 via-red-500 to-red-500">
-              Infrastructure
-            </span>
-          </h1>
-          
-          <p className="text-xl text-gray-600 mb-10 max-w-lg leading-relaxed">
-            Send SMS, Email, WhatsApp, and OTP with a single API. 
-            Built for developers, trusted by 2,000+ businesses.
-          </p>
-
-          <div className="flex flex-wrap gap-4">
-            <Link href="/auth/signup">
-              <motion.button 
-                whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(220,38,38,0.2)" }}
-                whileTap={{ scale: 0.95 }}
-                className="px-8 py-4 bg-linear-to-r from-red-600 to-red-700 text-white font-bold rounded-xl shadow-lg hover:shadow-2xl transition-all flex items-center gap-2"
-              >
-                Start Building Free <ArrowRight size={18} />
-              </motion.button>
-            </Link>
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-8 py-4 bg-white border-2 border-gray-300 text-gray-900 font-bold rounded-xl hover:border-red-600 transition-all flex items-center gap-2 shadow-sm"
-            >
-              <Play size={18} className="fill-red-600 text-red-600" /> Watch Demo
-            </motion.button>
-          </div>
-        </motion.div>
-
-        {/* Code Window */}
-        <motion.div
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="relative"
-        >
-          <div className="absolute -inset-1 bg-linear-to-r from-red-600 to-yellow-600 rounded-2xl blur opacity-25" />
-          <div className="relative bg-white rounded-2xl border-2 border-gray-200 overflow-hidden shadow-2xl">
-            <div className="flex items-center gap-2 px-5 py-4 bg-gray-50 border-b-2 border-gray-200">
-              <div className="w-3 h-3 rounded-full bg-red-500" />
-              <div className="w-3 h-3 rounded-full bg-yellow-500" />
-              <div className="w-3 h-3 rounded-full bg-green-500" />
-              <span className="ml-4 text-sm text-gray-600 font-mono font-semibold">send_sms.js</span>
-            </div>
-            <div className="p-6 font-mono text-sm bg-gray-900 text-gray-100">
-              <div className="space-y-1">
-                <div className="flex">
-                  <span className="text-gray-600 select-none mr-4 w-6 text-right">1</span>
-                  <span>
-                    <span className="text-purple-400">import</span> {'{ DropAPI }'} <span className="text-purple-400">from</span> <span className="text-green-400">'@dropapi/sdk'</span>;
-                  </span>
-                </div>
-                <div className="flex"><span className="text-gray-600 select-none mr-4 w-6 text-right">2</span></div>
-                <div className="flex">
-                  <span className="text-gray-600 select-none mr-4 w-6 text-right">3</span>
-                  <span><span className="text-purple-400">const</span> <span className="text-blue-400">client</span> = <span className="text-purple-400">new</span> DropAPI({'{'}</span>
-                </div>
-                <div className="flex">
-                  <span className="text-gray-600 select-none mr-4 w-6 text-right">4</span>
-                  <span className="pl-4"><span className="text-yellow-300">apiKey</span>: <span className="text-green-400">'sk_live_...'</span></span>
-                </div>
-                <div className="flex"><span className="text-gray-600 select-none mr-4 w-6 text-right">5</span><span>{'});'}</span></div>
-                <div className="flex mt-3">
-                  <span className="text-gray-600 select-none mr-4 w-6 text-right">6</span>
-                  <span className="text-gray-500">// Send SMS</span>
-                </div>
-                <div className="flex">
-                  <span className="text-gray-600 select-none mr-4 w-6 text-right">7</span>
-                  <span><span className="text-purple-400">const</span> <span className="text-blue-400">result</span> = <span className="text-purple-400">await</span> <span className="text-blue-400">client</span>.sms.send({'{'}</span>
-                </div>
-                <div className="flex">
-                  <span className="text-gray-600 select-none mr-4 w-6 text-right">8</span>
-                  <span className="pl-4"><span className="text-yellow-300">to</span>: <span className="text-green-400">'+234801234567'</span>,</span>
-                </div>
-                <div className="flex">
-                  <span className="text-gray-600 select-none mr-4 w-6 text-right">9</span>
-                  <span className="pl-4"><span className="text-yellow-300">message</span>: <span className="text-green-400">'Your code: 8291'</span></span>
-                </div>
-                <div className="flex">
-                  <span className="text-gray-600 select-none mr-4 w-6 text-right">10</span>
-                  <span>{'});'}</span>
-                </div>
-              </div>
-              
-              <motion.div 
-                className="mt-6 p-4 bg-green-500/20 border-2 border-green-500 rounded-lg text-green-400 flex items-center gap-3"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.5 }}
-              >
-                <CheckCircle size={20} /> 
-                <div>
-                  <p className="font-bold">Success!</p>
-                  <p className="text-xs text-green-300">Message ID: msg_892312332</p>
-                </div>
-              </motion.div>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-    </section>
-
-      {/* Services Section */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-24">
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
-          className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-8 sm:mb-12 md:mb-16"
-          style={{ color: '#1A1A1A' }}
-        >
-          Powerful APIs for Modern Communication
-        </motion.h2>
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
-        >
-          {[
-            { 
-              title: 'SMS API', 
-              description: 'Send bulk SMS & transactional messages at scale. Perfect for OTP, alerts, and notifications across Africa.',
-              icon: '📱'
-            },
-            { 
-              title: 'Email API', 
-              description: 'Reliable email delivery with templates, tracking, and analytics. Built for high-volume sending.',
-              icon: '✉️'
-            },
-            { 
-              title: 'OTP Service', 
-              description: 'Multi-channel verification via SMS, Email, or WhatsApp. Secure authentication in seconds.',
-              icon: '🔐'
-            },
-            { 
-              title: 'File Storage', 
-              description: 'Scalable file storage with CDN integration. Global delivery, local reliability.',
-              icon: '💾'
-            },
-          ].map((service, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              viewport={{ once: true }}
-              className="p-6 border hover:border-opacity-100 transition-all hover:scale-105"
-              style={{ borderColor: '#E5E5E5', backgroundColor: '#FFFFFF' }}
-            >
-              <div className="text-3xl mb-3">{service.icon}</div>
-              <h3 className="font-bold text-lg mb-2" style={{ color: '#1A1A1A' }}>
-                {service.title}
-              </h3>
-              <p style={{ color: '#666666' }} className="text-sm leading-relaxed">
-                {service.description}
-              </p>
-            </motion.div>
-          ))}
-        </motion.div>
-      </section>
-
-      {/* DropID Feature Highlight*/}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-24" style={{ backgroundColor: '#F5F5F5' }}>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4" style={{ color: '#1A1A1A' }}>
-              DropID: Human-Readable Database IDs
-            </h2>
-            <p className="text-lg mb-6" style={{ color: '#666666' }}>
-              Stop debugging cryptic UUIDs. DropID generates IDs that actually make sense.
-            </p>
-            <div className="space-y-4 mb-6">
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: '#DC143C' }}>
-                  <span className="text-white text-xs">✓</span>
-                </div>
-                <div>
-                  <p className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Instantly Readable</p>
-                  <p className="text-sm" style={{ color: '#666666' }}>
-                    <code className="bg-gray-100 px-2 py-1 rounded">user_a3f2b9c1d4e5</code> instead of <br/>
-                    <code className="bg-gray-100 px-2 py-1 rounded text-xs">550e8400-e29b-41d4-a916-446655440000</code>
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: '#DC143C' }}>
-                  <span className="text-white text-xs">✓</span>
-                </div>
-                <div>
-                  <p className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Multi-Tenant Ready</p>
-                  <p className="text-sm" style={{ color: '#666666' }}>
-                    <code className="bg-gray-100 px-2 py-1 rounded">acme_order_x7k9m2n4p1q8</code> - Perfect for SaaS apps
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: '#DC143C' }}>
-                  <span className="text-white text-xs">✓</span>
-                </div>
-                <div>
-                  <p className="font-semibold mb-1" style={{ color: '#1A1A1A' }}>Crypto-Secure & Fast</p>
-                  <p className="text-sm" style={{ color: '#666666' }}>2-3M IDs/sec, collision-resistant, only 2KB</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <Link href="/docs/dropid">
-                <Button style={{ backgroundColor: '#DC143C' }}>
-                  Read Docs
-                </Button>
-              </Link>
-              <a href="https://npmjs.com/package/drop-api-id" target="_blank" rel="noopener noreferrer">
-                <Button variant="outline">
-                  View on npm
-                </Button>
-              </a>
-            </div>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="relative"
-          >
-            <div className="bg-gray-900 rounded-lg p-6 text-sm font-mono overflow-x-auto shadow-2xl">
-              <div className="text-green-400 mb-2">// Before: Cryptic UUIDs</div>
-              <div className="text-red-400 line-through mb-4">
-                Error: User 550e8400-e29b-41d4-a916-446655440000 not found
-              </div>
-              <div className="text-green-400 mb-2">// After: Human-Readable</div>
-              <div className="text-green-300 mb-6">
-                Error: User <span className="text-yellow-300">user_a3f2b9c1d4e5</span> not found
-              </div>
-              <div className="text-blue-400 mb-2">// Install & Use</div>
-              <div className="text-gray-300 mb-1">$ npm install drop-api-id</div>
-              <div className="text-gray-300 mb-4"></div>
-              <div className="text-purple-400">import</div>
-              <div className="text-gray-300 inline"> {'{ dropid }'} </div>
-              <div className="text-purple-400 inline">from </div>
-              <div className="text-yellow-300 inline">'drop-api-id'</div>
-              <div className="text-gray-300">;</div>
-              <div className="text-gray-300 mt-4"></div>
-              <div className="text-blue-300 inline">dropid</div>
-              <div className="text-gray-300 inline">(</div>
-              <div className="text-yellow-300 inline">'user'</div>
-              <div className="text-gray-300 inline">);</div>
-              <div className="text-green-400 mt-1">// → user_a3f2b9c1d4e5</div>
-              <div className="text-gray-300 mt-4"></div>
-              <div className="text-blue-300 inline">dropid</div>
-              <div className="text-gray-300 inline">(</div>
-              <div className="text-yellow-300 inline">'order'</div>
-              <div className="text-gray-300 inline">, </div>
-              <div className="text-yellow-300 inline">'acme'</div>
-              <div className="text-gray-300 inline">);</div>
-              <div className="text-green-400 mt-1">// → acme_order_x7k9m2n4p1q8</div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Use Cases Section */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-24">
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
-          className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-8 sm:mb-12 md:mb-16"
-          style={{ color: '#1A1A1A' }}
-        >
-          Built for Every Use Case
-        </motion.h2>
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8"
-        >
-          {[
-            {
-              title: 'E-Commerce',
-              description: 'Order confirmations, shipping updates, and delivery notifications keep customers informed.',
-              features: ['Order Confirmations', 'Shipping Alerts', 'Readable Order IDs']
-            },
-            {
-              title: 'SaaS Platforms',
-              description: 'Secure authentication, account notifications, and debugging with readable IDs.',
-              features: ['2FA/OTP', 'DropID Integration', 'User Analytics']
-            },
-            {
-              title: 'FinTech & Banking',
-              description: 'Transaction alerts, authentication, and security notifications for financial institutions.',
-              features: ['Transaction Alerts', 'Secure Auth', 'Audit Trails']
-            },
-            {
-              title: 'Healthcare',
-              description: 'Appointment reminders, test results, and HIPAA-compliant patient IDs.',
-              features: ['Appointment Alerts', 'Patient IDs', 'Test Results']
-            },
-          ].map((useCase, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              viewport={{ once: true }}
-              className="p-6 border rounded-lg"
-              style={{ borderColor: '#E5E5E5', backgroundColor: '#FFFFFF' }}
-            >
-              <h3 className="font-bold text-xl mb-3" style={{ color: '#1A1A1A' }}>
-                {useCase.title}
-              </h3>
-              <p className="mb-4" style={{ color: '#666666' }}>
-                {useCase.description}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {useCase.features.map((feature, i) => (
-                  <span
-                    key={i}
-                    className="px-3 py-1 text-xs rounded"
-                    style={{ backgroundColor: '#F5F5F5', color: '#666666' }}
-                  >
-                    {feature}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-      </section>
-
-      {/* Why Choose Section */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-24" style={{ backgroundColor: '#F5F5F5' }}>
-        <h2
-          className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-8 sm:mb-12 md:mb-16"
-          style={{ color: '#1A1A1A' }}
-        >
-          Why Choose Drop API?
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-          {[
-            { title: '99.9% Uptime', description: 'Enterprise-grade reliability with redundant infrastructure' },
-            { title: 'Pan-African Coverage', description: 'Optimized routes and local partnerships across Africa' },
-            { title: 'Simple Pricing', description: 'Pay as you go, no hidden fees, scale effortlessly' },
-            { title: 'Developer Friendly', description: 'Comprehensive docs, SDKs, and DropID included free' },
-            { title: 'Real-time Analytics', description: 'Track delivery, opens, clicks, and engagement instantly' },
-            { title: '24/7 Support', description: 'Dedicated support team ready to help your business' },
-          ].map((feature, index) => (
-            <div
-              key={index}
-              className="flex flex-col items-center text-center p-6"
-            >
-              <div
-                className="w-12 h-12 rounded flex items-center justify-center text-white font-bold text-lg mb-4"
-                style={{ backgroundColor: '#DC143C' }}
-              >
-                {index + 1}
-              </div>
-              <h3 className="font-bold text-lg mb-2" style={{ color: '#1A1A1A' }}>
-                {feature.title}
-              </h3>
-              <p style={{ color: '#666666' }} className="text-sm">
-                {feature.description}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-24">
-        <h2
-          className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-8 sm:mb-12 md:mb-16"
-          style={{ color: '#1A1A1A' }}
-        >
-          Simple, Transparent Pricing
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
-          {[
-            { name: 'Starter', price: 'Free', period: '', features: ['1000 SMS/month', '100 Emails/month', 'DropID SDK Included', 'Basic Support', 'Community Access'], highlighted: false },
-            { name: 'Professional', price: '$99', period: '/month', features: ['100K SMS/month', '50K Emails/month', 'DropID SDK Included', 'Priority Support', 'Analytics Dashboard', 'API Access'], highlighted: true },
-            { name: 'Enterprise', price: 'Custom', period: '', features: ['Unlimited Everything', 'DropID SDK Included', 'Dedicated Account Manager', 'SLA Guarantee', 'Custom Integration', 'Training & Onboarding'], highlighted: false },
-          ].map((plan, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              viewport={{ once: true }}
-              className="p-8 border-2 rounded-lg relative"
-              style={{
-                borderColor: plan.highlighted ? '#DC143C' : '#E5E5E5',
-                backgroundColor: plan.highlighted ? '#FFF' : '#FFFFFF',
-              }}
-            >
-              {plan.highlighted && (
-                <div
-                  className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 px-4 py-1 rounded-full text-white text-xs font-bold"
-                  style={{ backgroundColor: '#DC143C' }}
-                >
-                  POPULAR
-                </div>
-              )}
-              <h3 className="font-bold text-2xl mb-2" style={{ color: '#1A1A1A' }}>
-                {plan.name}
-              </h3>
-              <div className="mb-6">
-                <span className="text-3xl font-bold" style={{ color: '#1A1A1A' }}>
-                  {plan.price}
-                </span>
-                {plan.period && <span style={{ color: '#666666' }}>{plan.period}</span>}
-              </div>
-              <ul className="space-y-3 mb-8">
-                {plan.features.map((feature, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm" style={{ color: '#666666' }}>
-                    <span style={{ color: '#DC143C' }}>✓</span>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/auth/signup" className="w-full">
-                <Button
-                  className="w-full"
-                  style={{
-                    backgroundColor: plan.highlighted ? '#DC143C' : '#FFFFFF',
-                    color: plan.highlighted ? '#FFFFFF' : '#1A1A1A',
-                    border: plan.highlighted ? 'none' : '1px solid #E5E5E5'
-                  }}
-                >
-                  Get Started
-                </Button>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-24">
-        <div
-          className="rounded-lg p-8 sm:p-12 md:p-16 text-center"
-          style={{ backgroundColor: '#1A1A1A' }}
-        >
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 text-white">
-            Ready to get started?
-          </h2>
-          <p className="text-gray-300 mb-6 sm:mb-8 text-sm sm:text-base">
-            Join developers building with Drop API today. DropID SDK included free.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth/signup">
-              <Button
-                size="lg"
-                className="text-sm sm:text-base"
-                style={{ backgroundColor: '#DC143C' }}
-              >
-                Sign Up Now
-              </Button>
-            </Link>
-            <Link href="/docs">
-              <Button
-                size="lg"
-                variant="outline"
-                className="text-sm sm:text-base bg-white"
-              >
-                Read Documentation
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer
-        className="border-t mt-12 sm:mt-16 md:mt-24 py-8 sm:py-12"
-        style={{ borderColor: '#E5E5E5' }}
-      >
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 sm:gap-8 mb-8">
-            <div>
-              <h4 className="font-bold mb-4" style={{ color: '#1A1A1A' }}>
-                Product
-              </h4>
-              <ul className="space-y-2 text-sm" style={{ color: '#666666' }}>
-                <li><a href="#" className="hover:underline">Features</a></li>
-                <li><a href="#" className="hover:underline">Pricing</a></li>
-                <li><Link href="/docs" className="hover:underline">Documentation</Link></li>
-                <li><Link href="/docs/dropid" className="hover:underline">DropID SDK</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4" style={{ color: '#1A1A1A' }}>
-                Company
-              </h4>
-              <ul className="space-y-2 text-sm" style={{ color: '#666666' }}>
-                <li><Link href="/about" className="hover:underline">About</Link></li>
-                <li><Link href="/blog" className="hover:underline">Blog</Link></li>
-                <li><a href="#" className="hover:underline">Contact</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4" style={{ color: '#1A1A1A' }}>
-                Legal
-              </h4>
-              <ul className="space-y-2 text-sm" style={{ color: '#666666' }}>
-                <li><Link href="/privacy" className="hover:underline">Privacy</Link></li>
-                <li><Link href="/terms" className="hover:underline">Terms</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4" style={{ color: '#1A1A1A' }}>
-                Developers
-              </h4>
-              <ul className="space-y-2 text-sm" style={{ color: '#666666' }}>
-                <li><a href="https://github.com/golddick/dropid" target="_blank" rel="noopener noreferrer" className="hover:underline">GitHub</a></li>
-                <li><a href="https://npmjs.com/package/drop-api-id" target="_blank" rel="noopener noreferrer" className="hover:underline">npm Package</a></li>
-                <li><a href="#" className="hover:underline">Twitter</a></li>
-              </ul>
-            </div>
-          </div>
-          <div
-            className="border-t pt-8"
-            style={{ borderColor: '#E5E5E5' }}
-          >
-            <p className="text-center text-sm" style={{ color: '#666666' }}>
-              &copy; 2024 Drop API. All rights reserved. DropID is open source (MIT License).
-            </p>
-          </div>
-        </div>
-      </footer>
+      <Navigation user={user} />
+      <HeroSection />
+      <Ticker />
+      <ServicesSection />
+      <DropIdSection />
+      <AnalyticsSection />
+      <UseCasesSection />
+      <WhyDropSection />
+      <PricingSection />
+      <TestimonialsSection />
+      <CTASection />
+      <Footer />
     </main>
   );
 }
 
-
-
-
-
-
-
-
-
-
-
-
+/* ─── Ticker Component ─── */
+function Ticker() {
+  return (
+    <div className="bg-black border-t border-b border-gray-900 py-3 overflow-hidden">
+      <div className="overflow-hidden">
+        <div className="flex animate-[tick_28s_linear_infinite] w-max">
+          {[...Array(2)].map((_, k) => (
+            <div key={k} className="flex items-center">
+              {['SMS API', 'Email API', 'WhatsApp', 'OTP Service', 'File Storage', 'DropID SDK', 'Pan-African', '99.9% SLA', 'Open Source', '2K+ Businesses'].map((item, j) => (
+                <span 
+                  key={j} 
+                  className={`font-mono text-xs uppercase tracking-widest px-7 border-r border-gray-800 whitespace-nowrap ${
+                    j % 2 === 0 ? 'text-white/40' : 'text-red-600'
+                  }`}
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
