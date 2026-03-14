@@ -1,0 +1,1257 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  USER
+  VIEWER
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  WRITER
+  DEVELOPER
+  VIEWER
+}
+
+enum ProjectEnvironment {
+  PRODUCTION
+  DEVELOPMENT
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum SmsStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  SCHEDULED
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  BOUNCED
+  FAILED
+  SCHEDULED
+}
+enum EmailFromType {
+IN_APP
+API
+}
+
+enum OtpChannel {
+  SMS
+  EMAIL
+  WHATSAPP
+  BOTH
+}
+
+enum OtpStatus {
+  PENDING
+  VERIFIED
+  EXPIRED
+  FAILED
+}
+
+enum FileVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+enum WebhookEvent {
+  SMS_DELIVERED
+  SMS_FAILED
+  EMAIL_DELIVERED
+  EMAIL_OPENED
+  EMAIL_CLICKED
+  EMAIL_BOUNCED
+  OTP_VERIFIED
+  OTP_EXPIRED
+  FILE_UPLOADED
+  FILE_DELETED
+}
+
+enum WebhookStatus {
+  ACTIVE
+  INACTIVE
+  FAILED
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum SenderIdStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PushPlatform {
+  IOS
+  ANDROID
+  WEB
+}
+
+enum PushStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum SubscriptionTier {
+  FREE
+  STARTER
+  PROFESSIONAL
+  BUSINESS
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  EXPIRED
+  PAST_DUE
+}
+
+enum BlogPostStatus {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+  ARCHIVED
+}
+
+enum NewsletterStatus {
+  DRAFT
+  SENT
+  SCHEDULED
+  CANCELLED
+}
+
+enum SubscriberStatus {
+  ACTIVE
+  UNSUBSCRIBED
+  BOUNCED
+}
+enum PlanSubscriptionStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum SubscriptionTransactionType {
+  SUBSCRIPTION_PAYMENT
+  SUBSCRIPTION_RENEWAL
+  SUBSCRIPTION_UPGRADE
+  SUBSCRIPTION_DOWNGRADE
+  SUBSCRIPTION_REFUND
+}
+
+enum NotificationType {
+  // Billing & Subscription
+  SUBSCRIPTION_CREATED
+  SUBSCRIPTION_RENEWED
+  SUBSCRIPTION_CANCELLED
+  SUBSCRIPTION_EXPIRING
+  SUBSCRIPTION_FAILED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  PAYMENT_REFUNDED
+  INVOICE_READY
+  CARD_EXPIRING
+  CARD_EXPIRED
+  PAYMENT_METHOD_UPDATED
+  
+  // Promo & Credits
+  PROMO_APPLIED
+  PROMO_EXPIRING
+  CREDITS_ADDED
+  CREDITS_LOW
+  
+  // Workspace & Team
+  WORKSPACE_INVITE
+  TEAM_MEMBER_JOINED
+  TEAM_MEMBER_LEFT
+  ROLE_CHANGED
+  
+  // System & Security
+  SYSTEM_ALERT
+  SECURITY_ALERT
+  LOGIN_FROM_NEW_DEVICE
+  PASSWORD_CHANGED
+  EMAIL_VERIFIED
+  ACCOUNT_LOCKED
+  
+  // API & Usage
+  USAGE_LIMIT_APPROACHING
+  USAGE_LIMIT_REACHED
+  API_KEY_CREATED
+  API_KEY_REVOKED
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+  SMS
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+  DISMISSED
+}
+
+enum ElementType {
+  TEXT
+  IMAGE
+  LOGO
+  VIDEO
+  BUTTON
+  SOCIAL
+  DIVIDER
+  COLUMNS
+}
+
+enum EmailCampaignStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// ============================================================
+// USER & AUTH
+// Prefix: usr_  ses_  tok_
+// ============================================================
+
+model User {
+  // ID injected by prisma-prefixed-ids extension → "usr_<nanoid>"
+  id               String     @id @default("")
+  email            String     @unique
+  fullName         String     @map("full_name")
+  passwordHash     String?    @map("password_hash")
+  avatarUrl        String?    @map("avatar_url")
+  phone            String?
+  bio              String?   @db.Text
+  location         String?
+  phoneVerified    Boolean    @default(false) @map("phone_verified")
+  emailVerified    Boolean    @default(false) @map("email_verified")
+  status           UserStatus @default(PENDING_VERIFICATION)
+  timezone         String     @default("Africa/Lagos")
+  language         String     @default("en")
+  twoFactorEnabled Boolean    @default(false) @map("two_factor_enabled")
+  twoFactorSecret  String?    @map("two_factor_secret")
+  twoFactorBackupCodes String?    @map("two_factor_backup_codes")
+  googleId         String?    @unique @map("google_id")
+  githubId         String?    @unique @map("github_id")
+  notifyEmail      Boolean    @default(true) @map("notify_email")
+  notifySms        Boolean    @default(false) @map("notify_sms")
+  lastLoginAt      DateTime?  @map("last_login_at")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  role             UserRole     @default(USER)
+  workspaceMembers  WorkspaceMember[]
+  sessions          UserSession[]
+  refreshTokens     RefreshToken[]
+  notifications     Notification[]
+  notificationPreference NotificationPreference[]
+
+  @@map("users")
+}
+
+// ses_<nanoid>
+model UserSession {
+  id           String   @id @default("")
+  userId       String   @map("user_id")
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  deviceInfo   Json?    @map("device_info")
+  isActive     Boolean  @default(true) @map("is_active")
+  lastActiveAt DateTime @default(now()) @map("last_active_at")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_sessions")
+}
+
+// tok_<nanoid>
+model RefreshToken {
+  id        String   @id @default("")
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// No prefix needed — ephemeral verification tokens
+model EmailVerification {
+  id        String    @id @default("")
+  email     String
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([email])
+  @@map("email_verifications")
+}
+
+model PasswordReset {
+  id        String    @id @default("")
+  email     String
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([email])
+  @@map("password_resets")
+}
+
+// ============================================================
+// WORKSPACE & TEAM
+// Prefix: wsp_  mbr_
+// ============================================================
+
+model Workspace {
+  id                           String   @id @default("") // wsp_<nanoid>
+  name                         String
+  description                  String?
+  email                        String?  @unique
+  slug                         String   @unique
+  logoUrl                      String?  @map("logo_url")
+  industry                     String?
+  website                      String?
+  subscriberLimit              Int     @default(500)
+  emailLimit                   Int     @default(20)
+  fileLimit                    Int     @default(5)
+  smsLimit                     Int     @default(5)
+  otpLimit                     Int     @default(5)
+  currentSubscribers           Int     @default(0) @map("current_subscribers")
+  currentEmailsSent            Int     @default(0) @map("current_emails_sent")
+  currentFilesUsed             Float         @default(0) @map("current_files_used") // in MB
+  currentSmsSent               Int     @default(0) @map("current_sms_sent")
+  currentOtpSent               Int     @default(0) @map("current_otp_sent")
+
+  teamSize                     String?   @map("team_size")
+  timezone                     String   @default("Africa/Lagos")
+  isActive                     Boolean  @default(true) @map("is_active")
+  createdAt                    DateTime @default(now()) @map("created_at")
+  updatedAt                    DateTime @updatedAt @map("updated_at")
+  members                      WorkspaceMember[]
+  plan                         SubscriptionTier   @default(FREE)
+  plansubscriptionStatus       PlanSubscriptionStatus             @default(INACTIVE)
+  invoices                     Invoice[]
+  usageLogs                    UsageLog[]
+  senderIds                    SenderId?
+  emailSenders                 EmailSender?
+  webhooks                     Webhook[]
+  subscription                 WorkspaceSubscription?
+  planSubscriptions            SubscriptionTransaction[]
+  smsMessages                  SmsMessage[]
+  emails                       Email[]
+  otpRequests                  OtpRequest[]
+  files                        File[]
+  folders                      Folder[]
+  pushNotifications            PushNotification[]
+  pushDevices                  PushDevice[]
+  blogPosts                    BlogPost[]
+  newsletters                  Newsletter[]
+  subscribers                  Subscriber[]
+  emailTemplates               EmailTemplate[]
+  redemptions                  PromoRedemption[]
+  apiKeys                      ApiKey[]
+
+
+  @@map("workspaces")
+}
+
+// mbr_<nanoid>
+model WorkspaceMember {
+  id          String        @id @default("")
+  workspaceId String        @map("workspace_id")
+  userId      String        @map("user_id")
+  role        WorkspaceRole @default(DEVELOPER)
+  invitedBy   String?       @map("invited_by")
+  joinedAt    DateTime?     @map("joined_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+model TeamInvitation {
+  id          String        @id @default("")
+  workspaceId String        @map("workspace_id")
+  email       String
+  status      String        @default("PENDING")
+  role        WorkspaceRole @default(DEVELOPER)
+  token       String        @unique
+  invitedBy   String        @map("invited_by")
+  expiresAt   DateTime      @map("expires_at")
+  acceptedAt  DateTime?     @map("accepted_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  @@index([workspaceId])
+  @@index([email])
+  @@map("team_invitations")
+}
+
+
+
+// key_<nanoid>  (plus da_live_ / da_test_ prefix on the actual secret value)
+model ApiKey {
+  id             String       @id @default("")
+  workspaceId      String       @map("workspace_id")
+  name           String
+  key            String       @unique @map("key")
+  jwt            String
+  isTest        Boolean  @default(false)
+  keyPrefix      String       @map("key_prefix") // "da_live_" | "da_test_"
+  lastFourChars  String       @map("last_four_chars")
+  status         ApiKeyStatus @default(ACTIVE)
+  permissions    Json?
+  rateLimitPerMin Int         @default(100) @map("rate_limit_per_min")
+  usageCount     Int         @default(0) @map("usage_count")
+  lastUsedAt     DateTime?    @map("last_used_at")
+  expiresAt      DateTime?    @map("expires_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  apiusageLogs APiUsageSummary[]
+
+  @@index([workspaceId])
+  @@map("api_keys")
+}
+
+// ============================================================
+// SENDER IDENTITY
+// Prefix: sid_  esd_ (email sender domain)
+// ============================================================
+
+model SenderId {
+  id              String         @id @default("") // sid_<nanoid>
+  workspaceId     String         @unique @map("workspace_id")
+  senderId        String         @map("sender_id")
+  status          SenderIdStatus @default(PENDING)
+  rejectionReason String?        @map("rejection_reason")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  smsMessages SmsMessage[]
+
+  @@unique([workspaceId, senderId])
+  @@map("sender_ids")
+}
+
+model EmailSender {
+  id           String    @id @default("") // esd_<nanoid>
+  workspaceId  String    @unique @map("workspace_id")
+  email        String
+  name         String    
+  verified     Boolean   @default(false)
+  spfVerified  Boolean   @default(false) @map("spf_verified")
+  dkimVerified Boolean   @default(false) @map("dkim_verified")
+  verifiedAt   DateTime? @map("verified_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  emails    Email[]
+
+  @@unique([workspaceId, email])
+  @@map("email_senders")
+}
+
+// ============================================================
+// SMS SERVICE
+// Prefix: sms_  sbk_
+// ============================================================
+
+model SmsMessage {
+  id          String    @id @default("") // sms_<nanoid>
+  workspaceId String    @map("workspace_id")
+  senderIdId  String?   @map("sender_id_id")
+  recipient   String
+  message     String
+  units       Int       @default(1)
+  creditsUsed Decimal   @map("credits_used") @db.Decimal(10, 2)
+  status      SmsStatus @default(PENDING)
+  providerRef String?   @map("provider_ref")
+  deliveredAt DateTime? @map("delivered_at")
+  scheduledAt DateTime? @map("scheduled_at")
+  metadata    Json?
+  source      String    @default("dashboard")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  senderId  SenderId? @relation(fields: [senderIdId], references: [id])
+
+  @@index([workspaceId])
+  @@index([recipient])
+  @@index([status])
+  @@index([createdAt])
+  @@map("sms_messages")
+}
+
+model SmsBulkJob {
+  id          String   @id @default("") // sbk_<nanoid>
+  workspaceId String   @map("workspace_id")
+  name        String?
+  totalCount  Int      @map("total_count")
+  sentCount   Int      @default(0) @map("sent_count")
+  failedCount Int      @default(0) @map("failed_count")
+  status      String   @default("PENDING")
+  scheduledAt DateTime? @map("scheduled_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([workspaceId])
+  @@map("sms_bulk_jobs")
+}
+
+// ============================================================
+// EMAIL SERVICE
+// Prefix: eml_  tpl_  etv_
+// ============================================================
+
+model Email {
+  id            String      @id @default("") // eml_<nanoid>
+  workspaceId   String      @map("workspace_id")
+  emailSenderId String?     @map("email_sender_id")
+  campaignId    String?     @map("campaign_id")
+  templateId    String?     @map("template_id")
+  fromEmail     String      @map("from_email")
+  fromName      String?     @map("from_name")
+  toEmails      String[]    @map("to_emails")
+  ccEmails      String[]    @default([]) @map("cc_emails")
+  bccEmails     String[]    @default([]) @map("bcc_emails")
+  subject       String
+  bodyHtml      String?     @map("body_html")
+  bodyText      String?     @map("body_text")
+  attachments   Json?
+  status        EmailStatus @default(PENDING)
+  providerRef   String?     @map("provider_ref")
+  mailSentFrom  EmailFromType @default(IN_APP)
+  openedAt      DateTime?   @map("opened_at")
+  clickedAt     DateTime?   @map("clicked_at")
+  deliveredAt   DateTime?   @map("delivered_at")
+  bouncedAt     DateTime?   @map("bounced_at")
+  bounceReason  String?     @map("bounce_reason")
+  scheduledAt   DateTime?   @map("scheduled_at")
+  openCount     Int         @default(0) @map("open_count")
+  clickCount    Int         @default(0) @map("click_count")
+  metadata      Json?
+  source        String      @default("dashboard")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id])
+  emailSender    EmailSender?   @relation(fields: [emailSenderId], references: [id])
+  template       EmailTemplate? @relation(fields: [templateId], references: [id])
+  trackingEvents EmailTrackingEvent[]
+  elements       EmailElement[]
+  campaign       EmailCampaign? @relation(fields: [campaignId], references: [id])
+
+  @@index([workspaceId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("emails")
+}
+
+// tpl_<nanoid>
+model EmailTemplate {
+  id          String   @id @default("")
+  workspaceId String   @map("workspace_id")
+  name        String   @unique
+  useCount    Int         @default(0) @map("use_count")
+  subject     String
+  bodyHtml    String?  @map("body_html")
+  bodyText    String?  @map("body_text")
+  variables   Json?
+  elements    Json?      // Stores the email layout/components as JSON
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  emails    Email[]
+
+  @@index([workspaceId])
+  @@map("email_templates")
+}
+
+// etv_<nanoid>
+model EmailTrackingEvent {
+  id        String   @id @default("")
+  emailId   String   @map("email_id")
+  event     String
+  url       String?
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  country   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  email Email @relation(fields: [emailId], references: [id], onDelete: Cascade)
+
+  @@index([emailId])
+  @@map("email_tracking_events")
+}
+
+model EmailElement {
+  id        String   @id @default("")
+  emailId     String
+  elementId   String      // Unique ID from the Mail Studio (e.g., "text-123456789")
+  type        ElementType
+  content     String?     // Text content for text/button elements
+  properties  Json        // Stores all element properties as JSON
+  sortOrder   Int         // Order in the email layout
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  email       Email       @relation(fields: [emailId], references: [id], onDelete: Cascade)
+  
+  @@unique([emailId, elementId])
+  @@index([emailId])
+  @@index([type])
+  @@index([sortOrder])
+}
+
+model EmailCampaign {
+  id          String   @id @default("") // cmp_<nanoid>
+  workspaceId String   @map("workspace_id")
+  status      EmailCampaignStatus   @default(ACTIVE) @map("campaign status")
+  name        String   @unique  @map("campaign_name")
+  subject     String
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  emailsSent  Int            @default(0)
+  openRate    Float?         @map("campaign_open_rate")
+  clickRate   Float?         @map("campaign_click_rate")
+  lastSentAt  DateTime?      @map("campaign_last_sent_at")
+  emails      Email[]
+}
+
+
+
+// ============================================================
+// OTP SERVICE
+// Prefix: otp_
+// ============================================================
+
+model OtpRequest {
+  id          String     @id @default("") // otp_<nanoid>
+  workspaceId String     @map("workspace_id")
+  channel     OtpChannel
+  recipient   String
+  otpLength   Int        @default(6) @map("otp_length")
+  otpHash     String     @map("otp_hash")
+  template    String?
+  validityMins Int       @default(10) @map("validity_mins")
+  status      OtpStatus  @default(PENDING)
+  attempts    Int        @default(0)
+  maxAttempts Int        @default(3) @map("max_attempts")
+  verifiedAt  DateTime?  @map("verified_at")
+  expiresAt   DateTime   @map("expires_at")
+  providerRef String?    @map("provider_ref")
+  ipAddress   String?    @map("ip_address")
+  metadata    Json?
+  source      String     @default("api")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+  @@index([recipient])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("otp_requests")
+}
+
+// ============================================================
+// FILE STORAGE
+// Prefix: fil_  fld_
+// ============================================================
+
+model Folder {
+  id          String   @id @default("") // fld_<nanoid>
+  workspaceId String   @map("workspace_id")
+  parentId    String?  @map("parent_id")
+  name        String
+  path        String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent    Folder?   @relation("FolderChildren", fields: [parentId], references: [id])
+  children  Folder[]  @relation("FolderChildren")
+  files     File[]
+
+  @@unique([workspaceId, path])
+  @@index([workspaceId])
+  @@map("folders")
+}
+
+// fil_<nanoid>
+model File {
+  id             String         @id @default("")
+  workspaceId    String         @map("workspace_id")
+  folderId       String?        @map("folder_id")
+  name           String
+  originalName   String         @map("original_name")
+  mimeType       String         @map("mime_type")
+  size           Float    
+  storageKey     String         @unique @map("storage_key")
+  cdnUrl         String?        @map("cdn_url")
+  directUrl      String?        @map("direct_url")
+  visibility     FileVisibility @default(PUBLIC)
+  shareToken     String?        @unique @map("share_token")
+  shareExpiresAt DateTime?      @map("share_expires_at")
+  sharePassword  String?        @map("share_password")
+  width          Int?
+  height         Int?
+  duration       Float?
+  metadata       Json?
+  source         String         @default("dashboard")
+  uploadedBy     String?        @map("uploaded_by")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  folder    Folder?   @relation(fields: [folderId], references: [id])
+
+  @@index([workspaceId])
+  @@index([folderId])
+  @@index([mimeType])
+  @@map("files")
+}
+
+// ============================================================
+// PUSH NOTIFICATIONS
+// Prefix: pdv_  psh_
+// ============================================================
+
+model PushDevice {
+  id          String       @id @default("") // pdv_<nanoid>
+  workspaceId String       @map("workspace_id")
+  deviceToken String       @map("device_token")
+  platform    PushPlatform
+  appId       String?      @map("app_id")
+  userId      String?      @map("user_id")
+  segments    String[]     @default([])
+  isActive    Boolean      @default(true) @map("is_active")
+  lastSeenAt  DateTime?    @map("last_seen_at")
+  metadata    Json?
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, deviceToken])
+  @@index([workspaceId])
+  @@map("push_devices")
+}
+
+// psh_<nanoid>
+model PushNotification {
+  id          String     @id @default("")
+  workspaceId String     @map("workspace_id")
+  title       String
+  body        String
+  imageUrl    String?    @map("image_url")
+  data        Json?
+  segments    String[]   @default([])
+  platform    String[]   @default([])
+  status      PushStatus @default(PENDING)
+  totalSent   Int        @default(0) @map("total_sent")
+  totalFailed Int        @default(0) @map("total_failed")
+  creditsUsed Decimal    @map("credits_used") @db.Decimal(10, 2)
+  scheduledAt DateTime?  @map("scheduled_at")
+  sentAt      DateTime?  @map("sent_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+  @@map("push_notifications")
+}
+
+// ============================================================
+// BLOG
+// Prefix: blg_
+// ============================================================
+
+model BlogPost {
+  id          String         @id @default("") // blg_<nanoid>
+  workspaceId String         @map("workspace_id")
+  authorId    String         @map("author_id")
+  title       String
+  slug        String
+  excerpt     String?
+  content     String
+  coverImage  String?        @map("cover_image")
+  tags        String[]       @default([])
+  seoTitle    String?        @map("seo_title")
+  seoDesc     String?        @map("seo_desc")
+  status      BlogPostStatus @default(DRAFT)
+  publishedAt DateTime?      @map("published_at")
+  scheduledAt DateTime?      @map("scheduled_at")
+  viewCount   Int            @default(0) @map("view_count")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+  @@map("blog_posts")
+}
+
+// ============================================================
+// NEWSLETTER & SUBSCRIBERS
+// Prefix: nws_  sub_
+// ============================================================
+
+model Subscriber {
+  id              String           @id @default("") // sub_<nanoid>
+  workspaceId     String           @map("workspace_id")
+  email           String
+  name            String?
+  status          SubscriberStatus @default(ACTIVE)
+  segments        String[]         @default([])
+  customFields    Json?            @map("custom_fields")
+  confirmedAt     DateTime?        @map("confirmed_at")
+  unsubscribedAt  DateTime?        @map("unsubscribed_at")
+  source          String?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([workspaceId, email])
+  @@index([workspaceId])
+  @@map("subscribers")
+}
+
+// nws_<nanoid>
+model Newsletter {
+  id          String           @id @default("")
+  workspaceId String           @map("workspace_id")
+  subject     String
+  bodyHtml    String?          @map("body_html")
+  bodyText    String?          @map("body_text")
+  fromEmail   String           @map("from_email")
+  fromName    String?          @map("from_name")
+  segments    String[]         @default([])
+  status      NewsletterStatus @default(DRAFT)
+  totalSent   Int              @default(0) @map("total_sent")
+  openCount   Int              @default(0) @map("open_count")
+  clickCount  Int              @default(0) @map("click_count")
+  bounceCount Int              @default(0) @map("bounce_count")
+  unsubCount  Int              @default(0) @map("unsub_count")
+  scheduledAt DateTime?        @map("scheduled_at")
+  sentAt      DateTime?        @map("sent_at")
+  creditsUsed Decimal          @default(0) @map("credits_used") @db.Decimal(10, 2)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+  @@map("newsletters")
+}
+
+// ============================================================
+// WEBHOOKS
+// Prefix: whk_  wdl_
+// ============================================================
+
+model Webhook {
+  id              String        @id @default("") // whk_<nanoid>
+  workspaceId     String        @map("workspace_id")
+  name            String
+  url             String
+  secret          String
+  events          WebhookEvent[]
+  status          WebhookStatus @default(ACTIVE)
+  failureCount    Int           @default(0) @map("failure_count")
+  lastTriggeredAt DateTime?     @map("last_triggered_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  workspace     Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  deliveryLogs  WebhookDelivery[]
+
+  @@index([workspaceId])
+  @@map("webhooks")
+}
+
+// wdl_<nanoid>
+model WebhookDelivery {
+  id           String       @id @default("")
+  webhookId    String       @map("webhook_id")
+  event        WebhookEvent
+  payload      Json
+  responseCode Int?         @map("response_code")
+  responseBody String?      @map("response_body")
+  duration     Int?
+  success      Boolean      @default(false)
+  attempt      Int          @default(1)
+  nextRetryAt  DateTime?    @map("next_retry_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@map("webhook_deliveries")
+}
+
+// ============================================================
+// BILLING & CREDITS
+// Prefix: txn_  inv_
+// ============================================================
+
+
+model SubscriptionTransaction {
+  id            String                        @id @default("")
+  workspaceId   String                        @map("workspace_id")
+  subscriptionId String                       @map("subscription_id")
+  type          SubscriptionTransactionType    @default(SUBSCRIPTION_PAYMENT)
+  status        TransactionStatus              @default(PENDING)
+  amount        Decimal                        @db.Decimal(12, 2)
+  description   String
+  referenceId   String?                        @map("reference_id")
+  invoiceId     String?                        @map("invoice_id")
+  metadata      Json?
+  createdAt     DateTime                       @default(now()) @map("created_at")
+
+  workspace     Workspace                      @relation(fields: [workspaceId], references: [id])
+  subscription  WorkspaceSubscription          @relation(fields: [subscriptionId], references: [id])
+  invoice       Invoice?                        @relation(fields: [invoiceId], references: [id])
+
+  @@index([workspaceId])
+  @@index([subscriptionId])
+  @@index([createdAt])
+  @@map("subscription_transactions")
+}
+
+
+model WorkspaceSubscription {
+  id                 String             @id @default("")
+  workspaceId        String             @unique @map("workspace_id")
+  tier               SubscriptionTier   @default(FREE)
+  status             SubscriptionStatus @default(ACTIVE)
+  monthlyPrice       Decimal            @map("monthly_price") @db.Decimal(12, 2)
+  currentPeriodStart DateTime           @map("current_period_start")
+  currentPeriodEnd   DateTime           @map("current_period_end")
+  cancelledAt        DateTime?          @map("cancelled_at")
+  paymentRef         String?            @map("payment_ref")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  workspace          Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  promoRedemptions   PromoRedemption[]
+  planSubscriptions SubscriptionTransaction[]
+
+  @@map("workspace_subscriptions")
+}
+
+// ============================================================
+// USAGE ANALYTICS
+// Prefix: ulg_
+// ============================================================
+
+model UsageLog {
+  id          String   @id @default("") // ulg_<nanoid>
+  workspaceId String   @map("workspace_id")
+  service     String
+  month             String   @map("month") // Format: YYYY-MM
+  currentSubscribers           Int     @default(0) @map("current_subscribers")
+  currentEmailsSent            Int     @default(0) @map("current_emails_sent")
+  currentFilesUsed             Float   @default(0) @map("current_files_used") // in MB
+  currentSmsSent               Int     @default(0) @map("current_sms_sent")
+  currentOtpSent               Int     @default(0) @map("current_otp_sent")
+  duration    Int?
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+  @@index([service])
+  @@index([createdAt])
+  @@map("usage_logs")
+}
+
+model APiUsageSummary {
+  id          String   @id @default("")
+  workspaceId String   @map("workspace_id")
+  apiKeyId    String?  @map("api_key_id")
+  date        DateTime @db.Date
+  service     String
+  totalCalls  Int      @default(0) @map("total_calls")
+  successCalls Int     @default(0) @map("success_calls")
+  failedCalls Int      @default(0) @map("failed_calls")
+  apiKey    ApiKey?   @relation(fields: [apiKeyId], references: [id])
+
+  @@unique([workspaceId, date, service])
+  @@index([workspaceId])
+  @@map("api_usage_summaries")
+}
+
+
+model PromoCode {
+  id              String   @id @default("")
+  code            String   @unique
+  description     String?
+  discountType    DiscountType @default(PERCENTAGE)
+  discountValue   Int      // 10 for 10% or 1000 for fixed amount in NGN
+  maxUses         Int?     @default(1) // null = unlimited
+  usedCount       Int      @default(0)
+  validFrom       DateTime
+  validUntil      DateTime
+  minPlanTier     SubscriptionTier? // Minimum tier required (null = any)
+  appliesToPlans  Json?    // Array of tiers this code applies to, null = all
+  firstTimeOnly   Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  
+  redemptions     PromoRedemption[]
+  invoices        Invoice[]
+
+  @@map("promo_codes")
+}
+
+model PromoRedemption {
+  id              String   @id @default("")
+  promoCodeId     String   @map("promo_code_id")
+  workspaceId     String   @map("workspace_id")
+  subscriptionId  String?  @map("subscription_id")
+  invoiceId       String?  @map("invoice_id")
+  discountAmount  Int      @map("discount_amount") // Amount discounted in NGN
+  createdAt       DateTime @default(now())
+
+  promoCode       PromoCode          @relation(fields: [promoCodeId], references: [id])
+  workspace       Workspace          @relation(fields: [workspaceId], references: [id])
+  subscription    WorkspaceSubscription? @relation(fields: [subscriptionId], references: [id])
+  invoice         Invoice?           @relation(fields: [invoiceId], references: [id])
+
+  @@map("promo_redemptions")
+}
+
+model Invoice {
+  id            String        @id @default("")
+  workspaceId   String        @map("workspace_id")
+  invoiceNumber String        @unique @map("invoice_number")
+  amount        Decimal       @db.Decimal(12, 2)
+  discount      Decimal?      @default(0) @db.Decimal(12, 2)
+  finalAmount   Decimal       @db.Decimal(12, 2)
+  currency      String        @default("NGN")
+  status        InvoiceStatus @default(PENDING)
+  paymentRef    String?       @map("payment_ref")
+  paymentMethod String?       @map("payment_method")
+  paidAt        DateTime?     @map("paid_at")
+  periodStart   DateTime?     @map("period_start")
+  periodEnd     DateTime?     @map("period_end")
+  promoCodeId   String?       @map("promo_code_id")
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+
+  workspace     Workspace          @relation(fields: [workspaceId], references: [id])
+  promoCode     PromoCode?         @relation(fields: [promoCodeId], references: [id])
+  redemptions   PromoRedemption[]
+  planSubscriptions SubscriptionTransaction[]
+
+  @@index([workspaceId])
+  @@map("invoices")
+}
+
+model TwoFactorOTP {
+  email     String   @id
+  code      String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@map("two_factor_otps")
+}
+
+model Notification {
+  id              String               @id @default("")
+  userId          String               @map("user_id")
+  type            NotificationType
+  priority        NotificationPriority @default(MEDIUM)
+  channel         NotificationChannel  @default(IN_APP)
+  status          NotificationStatus   @default(UNREAD)
+  
+  // Content
+  title           String
+  message         String
+  shortMessage    String?              @map("short_message") // For push notifications
+  actionUrl       String?              @map("action_url") // Link to relevant page
+  actionLabel     String?              @map("action_label") // e.g., "View Invoice", "Update Card"
+  imageUrl        String?              @map("image_url")
+  deliveryLog     NotificationDeliveryLog[]
+  
+  // Metadata
+  metadata        Json?                 // Flexible metadata for additional data
+  expiresAt       DateTime?             @map("expires_at")
+  readAt          DateTime?              @map("read_at")
+  archivedAt      DateTime?              @map("archived_at")
+  
+  // Delivery tracking
+  emailSent       Boolean                @default(false) @map("email_sent")
+  emailSentAt     DateTime?              @map("email_sent_at")
+  pushSent        Boolean                @default(false) @map("push_sent")
+  pushSentAt      DateTime?              @map("push_sent_at")
+  smsSent         Boolean                @default(false) @map("sms_sent")
+  smsSentAt       DateTime?              @map("sms_sent_at")
+  
+  // Relations
+  user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@index([expiresAt])
+  @@map("notifications")
+}
+
+// Notification preferences per user
+model NotificationPreference {
+  id              String               @id @default("")
+  userId          String               @unique @map("user_id")
+  
+  // Channel preferences
+  emailEnabled    Boolean               @default(true) @map("email_enabled")
+  pushEnabled     Boolean               @default(true) @map("push_enabled")
+  smsEnabled      Boolean               @default(false) @map("sms_enabled")
+  inAppEnabled    Boolean               @default(true) @map("in_app_enabled")
+  
+  // Notification type preferences (JSON for flexibility)
+  // Example: { "SUBSCRIPTION_EXPIRING": { "email": true, "push": false } }
+  typePreferences Json?                  @map("type_preferences")
+  
+  // Quiet hours
+  quietHoursEnabled Boolean             @default(false) @map("quiet_hours_enabled")
+  quietHoursStart  String?               @map("quiet_hours_start") // Format: "22:00"
+  quietHoursEnd    String?               @map("quiet_hours_end")   // Format: "08:00"
+  quietHoursTimeZone String?             @map("quiet_hours_time_zone") // e.g., "Africa/Lagos"
+  
+  // Batch settings
+  digestEnabled    Boolean               @default(false) @map("digest_enabled")
+  digestFrequency  String?               @map("digest_frequency") // daily, weekly, monthly
+  lastDigestSentAt DateTime?             @map("last_digest_sent_at")
+  
+  // Relations
+  user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  @@map("notification_preferences")
+}
+
+// Notification delivery logs for tracking
+model NotificationDeliveryLog {
+  id              String               @id @default("")
+  notificationId  String                @map("notification_id")
+  channel         NotificationChannel
+  status          String                 // sent, failed, delivered, opened, clicked
+  attemptedAt     DateTime               @default(now()) @map("attempted_at")
+  deliveredAt     DateTime?              @map("delivered_at")
+  openedAt        DateTime?              @map("opened_at")
+  clickedAt       DateTime?              @map("clicked_at")
+  errorMessage    String?                @map("error_message")
+  provider        String?                 // e.g., 'resend', 'firebase', 'twilio'
+  providerMessageId String?              @map("provider_message_id")
+  metadata        Json?
+  
+  // Relations
+  notification    Notification           @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([status])
+  @@map("notification_delivery_logs")
+}

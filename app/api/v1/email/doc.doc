@@ -1,0 +1,108 @@
+# Add sender
+curl -X POST https://api.dropapi.com/v1/email/senders \
+  -H "Authorization: Bearer da_live_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newsletter@yourdomain.com",
+    "name": "Your Company"
+  }'
+
+# Response
+{
+  "success": true,
+  "data": {
+    "id": "esd_abc123",
+    "email": "newsletter@yourdomain.com",
+    "name": "Your Company",
+    "verified": false,
+    "createdAt": "2024-01-01T00:00:00Z"
+  },
+  "message": "Email sender added. Verify it before use."
+}
+
+# Verify sender (admin only - in production this would be via DNS)
+curl -X PATCH "https://api.dropapi.com/v1/email/senders/verify?email=newsletter@yourdomain.com" \
+  -H "Authorization: Bearer da_live_your_api_key" 
+
+
+
+
+
+
+
+
+
+
+
+  # Send HTML email
+curl -X POST https://api.dropapi.com/v1/email/send \
+  -H "Authorization: Bearer da_live_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": {
+      "email": "newsletter@yourdomain.com",
+      "name": "Your Company"
+    },
+    "to": ["customer@example.com", "support@example.com"],
+    "cc": ["manager@example.com"],
+    "subject": "Welcome to our service",
+    "html": "<h1>Welcome!</h1><p>Thanks for joining <strong>{{name}}</strong>.</p>",
+    "text": "Welcome! Thanks for joining.",
+    "metadata": {
+      "customerId": "12345",
+      "campaign": "welcome"
+    }
+  }'
+
+# Response
+{
+  "success": true,
+  "data": {
+    "id": "eml_abc123",
+    "messageId": "<abc123@mail.example.com>",
+    "to": ["customer@example.com"],
+    "subject": "Welcome to our service",
+    "from": "newsletter@yourdomain.com",
+    "createdAt": "2024-01-01T00:00:00Z"
+  },
+  "meta": {
+    "requestId": "abc123",
+    "responseTime": "234ms",
+    "rateLimit": {
+      "limit": 60,
+      "remaining": 59,
+      "reset": 1704067200
+    }
+  }
+}
+
+
+# Create template
+curl -X POST https://api.dropapi.com/v1/email/templates \
+  -H "Authorization: Bearer da_live_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "welcome_email",
+    "subject": "Welcome {{name}}!",
+    "html": "<h1>Welcome {{name}}!</h1><p>Thanks for joining {{company}}.</p>",
+    "text": "Welcome {{name}}! Thanks for joining {{company}}.",
+    "variables": ["name", "company"]
+  }'
+
+# Send using template
+curl -X POST https://api.dropapi.com/v1/email/send \
+  -H "Authorization: Bearer da_live_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": {
+      "email": "newsletter@yourdomain.com",
+      "name": "Your Company"
+    },
+    "to": ["user@example.com"],
+    "subject": "Welcome!",
+    "templateId": "tpl_welcome_email",
+    "templateData": {
+      "name": "John Doe",
+      "company": "Acme Inc"
+    }
+  }'
