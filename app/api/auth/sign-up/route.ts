@@ -1,3 +1,6 @@
+
+
+
 // ============================================================
 // DROP API — POST /api/auth/sign-up
 // src/app/api/auth/sign-up/route.ts
@@ -48,11 +51,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Create user (ID auto-injected as usr_xxx by extension)
+    // 4. Create user
     const passwordHash = await hashPassword(password);
     const user = await db.user.create({
       data: {
-        id:dropid('user'),
+        id: dropid('user'),
         fullName,
         email,
         passwordHash,
@@ -69,6 +72,16 @@ export async function POST(req: NextRequest) {
     });
 
     // 5. Create email verification token
+    // First, invalidate any existing tokens for this email
+    await db.emailVerification.updateMany({
+      where: { 
+        email, 
+        usedAt: null,
+        Verified: false 
+      },
+      data: { usedAt: new Date() }
+    });
+
     const token = generateSecureToken();
     await db.emailVerification.create({
       data: {
@@ -76,6 +89,8 @@ export async function POST(req: NextRequest) {
         email,
         token,
         expiresAt: EXPIRY.emailVerification(),
+        Verified: false,
+        usedAt: null
       },
     });
 

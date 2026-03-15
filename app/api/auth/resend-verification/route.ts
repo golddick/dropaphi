@@ -1,3 +1,7 @@
+
+
+
+
 // ============================================================
 // DROP API — POST /api/auth/resend-verification
 // src/app/api/auth/resend-verification/route.ts
@@ -26,40 +30,96 @@ export async function POST(req: NextRequest) {
 
     const { email } = parsed.data;
 
-    const user = await db.user.findUnique({ where: { email } });
+    // Find user
+    const user = await db.user.findUnique({ 
+      where: { email },
+      select: { 
+        emailVerified: true, 
+        fullName: true 
+      }
+    });
 
     // Always return success to prevent email enumeration
     if (!user || user.emailVerified) {
       return ok(null, "If this email exists and is unverified, a link has been sent");
     }
 
-    // Check cooldown — find most recent unused verification
-    const recent = await db.emailVerification.findFirst({
-      where: { email, usedAt: null },
-      orderBy: { createdAt: "desc" },
+    // Check for existing valid verification token
+    const existingValid = await db.emailVerification.findFirst({
+      where: { 
+        email,
+        usedAt: null,
+        Verified: false,
+        expiresAt: { gt: new Date() }
+      },
+      orderBy: { createdAt: "desc" }
     });
 
-    if (recent) {
-      const elapsed = Date.now() - recent.createdAt.getTime();
+    // Check cooldown if there's an existing token
+    if (existingValid) {
+      const elapsed = Date.now() - existingValid.createdAt.getTime();
       if (elapsed < RESEND_COOLDOWN_MS) {
         const secondsLeft = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
         return err(
           `Please wait ${secondsLeft}s before requesting another link`,
           429,
-          "RATE_LIMITED"
+          "RATE_LIMITED",
+          {
+            cooldownRemaining: secondsLeft,
+            canResend: false
+          }
         );
       }
+
+      // Cooldown passed - we can resend the same token
+      // But don't create a new one, just resend the existing
+      sendVerificationEmail(email, existingValid.token,)
+        .catch(console.error);
+
+      return ok(
+        { 
+          verificationSent: true,
+          message: "Verification email resent"
+        }, 
+        "Verification email sent"
+      );
     }
 
-    // Create new token
-    const token = generateSecureToken();
-    await db.emailVerification.create({
-      data: { email, token, expiresAt: EXPIRY.emailVerification() },
+    // No valid existing token - create a new one
+    // First, invalidate any old tokens
+    await db.emailVerification.updateMany({
+      where: { 
+        email, 
+        usedAt: null,
+        Verified: false 
+      },
+      data: { usedAt: new Date() }
     });
 
-    sendVerificationEmail(email, token).catch(console.error);
+    // Create new verification token
+    const token = generateSecureToken();
+    await db.emailVerification.create({
+      data: { 
+        email, 
+        token, 
+        expiresAt: EXPIRY.emailVerification(),
+        Verified: false,
+        usedAt: null
+      },
+    });
 
-    return ok(null, "Verification email sent"); 
+    // Send verification email
+    sendVerificationEmail(email, token, )
+      .catch(console.error);
+
+    return ok(
+      {
+        verificationSent: true,
+        message: "Verification email sent"
+      },
+      "Verification email sent"
+    );
+
   } catch (error) {
     console.error("[RESEND_VERIFICATION]", error);
     return serverError();

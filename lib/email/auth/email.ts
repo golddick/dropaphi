@@ -16,7 +16,7 @@ const RETRY_DELAY = 2000; // 2 seconds
 async function sendViaNodemailerWithRetry(opts: SendEmailOptions, retryCount = 0): Promise<any> {
   try {
     const mailOptions = {
-      from: `Drop APHI <${process.env.MAIL_FROM ?? "dropaphi.hq@gmail.com"}>`,
+      from: `Drop APHI <${process.env.MAIL_FROM ?? "noreply@thenews.africa"}>`,
       to: opts.to,
       subject: opts.subject,
       text: opts.text,
@@ -118,7 +118,7 @@ export async function sendEmail(opts: SendEmailOptions) {
 }
 
 // ---- Templated auth emails --------------------------------
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://dropaphi.vercel.app";
 
 export async function sendVerificationEmail(email: string, token: string) {
   const url = `${APP_URL}/auth/verify-email?token=${token}`;

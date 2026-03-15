@@ -351,8 +351,9 @@ model RefreshToken {
 // No prefix needed — ephemeral verification tokens
 model EmailVerification {
   id        String    @id @default("")
-  email     String
+  email     String    @unique
   token     String    @unique
+  Verified  Boolean    @default(false) @map("verified")
   expiresAt DateTime  @map("expires_at")
   usedAt    DateTime? @map("used_at")
   createdAt DateTime  @default(now()) @map("created_at")

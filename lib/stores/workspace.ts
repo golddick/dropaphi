@@ -193,8 +193,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             body: JSON.stringify(workspaceData),
           });
 
-          if (data.data?.workspace) {
-            const newWorkspace = data.data.workspace;
+          if (data.data) {
+            const newWorkspace = data.data;
             set((state) => ({
               workspaces: [...state.workspaces, newWorkspace],
               currentWorkspace: newWorkspace,

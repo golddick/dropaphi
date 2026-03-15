@@ -95,64 +95,6 @@ export default function Step1Page() {
     }
   };
 
-  // const handleSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   const newErrors: Record<string, string> = {};
-
-  //   if (!formData.name.trim()) {
-  //     newErrors.name = 'Workspace name is required';
-  //   } else if (formData.name.length < 3) {
-  //     newErrors.name = 'Workspace name must be at least 3 characters';
-  //   }
-
-  //   if (formData.website && !/^https?:\/\/.+\..+/.test(formData.website)) {
-  //     newErrors.website = 'Please enter a valid URL (e.g., https://example.com)';
-  //   }
-
-  //   if (!formData.industry) {
-  //     newErrors.industry = 'Please select an industry';
-  //   }
-
-  //   if (!formData.teamSize) {
-  //     newErrors.teamSize = 'Please select team size';
-  //   }
-
-  //   if (Object.keys(newErrors).length > 0) {
-  //     setErrors(newErrors);
-  //     return;
-  //   }
-
-  //   // Prepare workspace data for API
-  //   const workspaceData = {
-  //     name: formData.name,
-  //     website: formData.website,
-  //     industry: formData.industry,
-  //     teamSize: formData.teamSize,
-  //     description: formData.description,
-  //   };
-
-  //   try {
-  //     // Show loading toast
-  //     const loadingToast = toast.loading('Creating your workspace...');
-      
-  //     // Call API to create workspace
-  //     const newWorkspace = await createWorkspace(workspaceData);
-      
-  //     toast.dismiss(loadingToast);
-      
-  //     if (newWorkspace) {
-  //       toast.success('Workspace created successfully!');
-  //       router.push('/onboarding/step2');
-  //     } else {
-  //       toast.error('Failed to create workspace. Please try again.');
-  //     }
-  //   } catch (error) {
-  //     toast.error('An error occurred. Please try again.');
-  //     console.error('Error creating workspace:', error);
-  //   }
-  // };
-
-  // app/onboarding/step1/page.tsx - Updated handleSubmit
 
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();

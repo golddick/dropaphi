@@ -1,31 +1,13 @@
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // app/api/auth/login/route.ts
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { err, ok, serverError, unauthorized, validationError } from "@/lib/respond/response";
 import { db } from "@/lib/db";
 import { dropid } from "dropid";
-import { verifyPassword } from "@/lib/auth/auth-client";
+import { verifyPassword, generateSecureToken } from "@/lib/auth/auth-client";
 import { EXPIRY, setAuthCookies, signAccessToken, signRefreshToken } from "@/lib/auth/auth-server";
+import { sendVerificationEmail } from "@/lib/email/auth/email";
 import { generateOTP, sendOTPEmail, storeOTP } from "@/lib/auth/2fa-utils";
 
 // ---- Validation --------------------------------------------
@@ -34,6 +16,9 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"), 
   rememberMe: z.boolean().optional(),
 });
+
+// Rate-limit: allow resend only every 60 seconds
+const RESEND_COOLDOWN_MS = 60 * 1000;
 
 // ---- Handler -----------------------------------------------
 export async function POST(req: NextRequest) {
@@ -52,20 +37,20 @@ export async function POST(req: NextRequest) {
 
     const { email, password, rememberMe } = parsed.data;
 
-    // 2. Find user
+    // 2. Find user with all needed fields
     console.log("🔍 Looking up user:", email);
     const user = await db.user.findUnique({ 
       where: { email },
       select: {
         id: true,
         email: true,
-        passwordHash: true,
         fullName: true,
-        avatarUrl: true,
+        passwordHash: true,
         emailVerified: true,
         twoFactorEnabled: true,
         status: true,
         timezone: true,
+        avatarUrl: true,
         lastLoginAt: true,
       }
     });
@@ -92,23 +77,95 @@ export async function POST(req: NextRequest) {
       return err("Your account has been suspended. Contact support.", 403, "SUSPENDED");
     }
 
-    // 5. Check email verification
+    // 5. CHECK EMAIL VERIFICATION - BLOCK LOGIN IF NOT VERIFIED
     if (!user.emailVerified) {
-      console.log("❌ Email not verified");
+      console.log("❌ Email not verified - checking for existing verification token");
+      
+      // Check for existing UNUSED verification token
+      const existingVerification = await db.emailVerification.findFirst({
+        where: { 
+          email: user.email,
+          usedAt: null,        // Not used yet
+          Verified: false,      // Not verified
+          expiresAt: { gt: new Date() } // Not expired
+        },
+        orderBy: { createdAt: "desc" }
+      });
+
+      let cooldownRemaining = 0;
+      let token = null;
+
+      if (existingVerification) {
+        // Check cooldown
+        const elapsed = Date.now() - existingVerification.createdAt.getTime();
+        if (elapsed < RESEND_COOLDOWN_MS) {
+          cooldownRemaining = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
+          token = existingVerification.token; // Use existing token
+        }
+      }
+
+      // If no valid existing token or cooldown passed, create new one
+      if (!token) {
+        // Invalidate old tokens
+        await db.emailVerification.updateMany({
+          where: { 
+            email: user.email,
+            usedAt: null,
+            Verified: false
+          },
+          data: { 
+            usedAt: new Date() // Mark as used so they can't be used again
+          }
+        });
+
+        // Create new verification token
+        token = generateSecureToken();
+        await db.emailVerification.create({
+          data: { 
+            email: user.email,
+            token,
+            expiresAt: EXPIRY.emailVerification(),
+            Verified: false,
+            usedAt: null
+          },
+        });
+
+        // Send verification email (fire and forget)
+        // sendVerificationEmail(user.email, token, user.fullName || 'User')
+        sendVerificationEmail(user.email, token, )
+          .catch(err => console.error("Failed to send verification email:", err));
+        
+        console.log("✅ New verification email sent to:", user.email);
+      } else {
+        // Use existing valid token - resend the same email
+        sendVerificationEmail(user.email, token, )
+          .catch(err => console.error("Failed to resend verification email:", err));
+        
+        console.log("✅ Existing verification email resent to:", user.email);
+      }
+
+      // Return error with verification info
       return err(
-        "Please verify your email before logging in.",
+        cooldownRemaining > 0
+          ? `Please verify your email before logging in. A verification link was recently sent. You can request another in ${cooldownRemaining} seconds.`
+          : "Please verify your email before logging in. A verification link has been sent to your email.",
         403,
-        "EMAIL_NOT_VERIFIED"
+        "EMAIL_NOT_VERIFIED",
+        {
+          email: user.email,
+          verificationSent: true,
+          cooldownRemaining,
+          canResend: cooldownRemaining === 0
+        }
       );
     }
 
-    // 6. CHECK IF 2FA IS ENABLED
+    // 6. CHECK IF 2FA IS ENABLED (only for verified users)
     if (user.twoFactorEnabled) {
       console.log("🔐 2FA enabled for user, sending OTP");
       
-      // Generate and send OTP
       const otp = generateOTP();
-      storeOTP(user.email, otp);
+      await storeOTP(user.email, otp);
       
       // Send OTP via email
       await sendOTPEmail(user.email, otp, user.fullName || 'User');
@@ -121,7 +178,7 @@ export async function POST(req: NextRequest) {
       }, "2FA required");
     }
 
-    // 7. Clean up old sessions and tokens
+    // 7. Clean up old sessions and tokens (only for verified users)
     console.log("🧹 Cleaning up old sessions and tokens");
     await db.$transaction([
       db.userSession.updateMany({
@@ -164,7 +221,7 @@ export async function POST(req: NextRequest) {
     ]); 
     console.log("✅ Tokens signed");
 
-    // 10. Save refresh token to DB (ONCE!)
+    // 10. Save refresh token to DB
     console.log("💾 Saving refresh token to DB");
     const refreshTokenRecord = await db.refreshToken.create({
       data: {
@@ -176,12 +233,12 @@ export async function POST(req: NextRequest) {
     });
     console.log("✅ Refresh token saved with ID:", refreshTokenRecord.id);
 
-    // 11. Set cookies (ONCE!)
+    // 11. Set cookies
     console.log("🍪 Setting cookies");
     await setAuthCookies({
       accessToken,
       refreshToken: refreshTokenRaw,
-      expiresIn: rememberMe ? 60 * 60 * 24 * 30 : 60 * 15, // 30 days if remember me, else 15 mins
+      expiresIn: rememberMe ? 60 * 60 * 24 * 30 : 60 * 15,
     });
     console.log("✅ Cookies set");
 
@@ -191,7 +248,7 @@ export async function POST(req: NextRequest) {
       data: { lastLoginAt: new Date() },
     });
 
-    // 13. Return success
+    // 13. Return success for verified users
     console.log("✅ Login successful for user:", user.id);
     
     return ok({
@@ -216,7 +273,6 @@ export async function POST(req: NextRequest) {
     console.error("❌ [LOGIN API] Error:", error);
     console.error("Error stack:", error instanceof Error ? error.stack : "No stack");
     
-    // Return proper JSON error
     return new Response(
       JSON.stringify({ 
         error: "Internal server error",
