@@ -405,7 +405,7 @@ model Workspace {
   updatedAt                    DateTime @updatedAt @map("updated_at")
   members                      WorkspaceMember[]
   plan                         SubscriptionTier   @default(FREE)
-  plansubscriptionStatus       PlanSubscriptionStatus             @default(INACTIVE)
+  planSubscriptionStatus       PlanSubscriptionStatus             @default(INACTIVE)
   invoices                     Invoice[]
   usageLogs                    UsageLog[]
   senderIds                    SenderId?
