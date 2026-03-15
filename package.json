@@ -2,13 +2,13 @@
   "name": "dropaphi",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "prisma generate && next dev",
-    "build": "prisma generate && next build",
-    "postinstall": "prisma generate",
-    "start": "next start",
-    "vercel-build": "prisma generate && next build",
-    "lint": "eslint"
+ "scripts": {
+  "dev": "prisma generate && next dev",
+  "build": "prisma generate && next build",
+  "postinstall": "prisma generate",
+  "start": "next start",
+  "vercel-build": "prisma migrate deploy && prisma generate && next build",
+  "lint": "eslint"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
