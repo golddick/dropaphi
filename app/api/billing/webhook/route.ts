@@ -956,7 +956,7 @@ async function handleSubscriptionPayment(data: any, requestId: string) {
       where: { id: metadata.workspaceId },
       data: {
         plan: metadata.tier,
-        plansubscriptionStatus: PlanSubscriptionStatus.ACTIVE,
+        planSubscriptionStatus: PlanSubscriptionStatus.ACTIVE,
         subscriberLimit: plan.limits.subscribers,
         emailLimit: plan.limits.email,
         smsLimit: plan.limits.sms,
@@ -1162,7 +1162,7 @@ async function handleSubscriptionCreate(data: any, requestId: string) {
       where: { id: member.workspaceId },
       data: {
         plan: tier,
-        plansubscriptionStatus: PlanSubscriptionStatus.ACTIVE,
+        planSubscriptionStatus: PlanSubscriptionStatus.ACTIVE,
         subscriberLimit: planConfig.limits.subscribers,
         emailLimit: planConfig.limits.email,
         smsLimit: planConfig.limits.sms,
@@ -1294,7 +1294,7 @@ async function handleSubscriptionRenewal(data: any, requestId: string) {
     await tx.workspace.update({
       where: { id: subscription.workspaceId },
       data: {
-        plansubscriptionStatus: PlanSubscriptionStatus.ACTIVE,
+        planSubscriptionStatus: PlanSubscriptionStatus.ACTIVE,
         updatedAt: new Date(),
       },
     });
@@ -1410,7 +1410,7 @@ async function handleSubscriptionDisable(data: any, requestId: string) {
       where: { id: subscription.workspaceId },
       data: {
         plan: SubscriptionTier.FREE,
-        plansubscriptionStatus: PlanSubscriptionStatus.INACTIVE,
+        planSubscriptionStatus: PlanSubscriptionStatus.INACTIVE,
         subscriberLimit: freePlan.limits.subscribers,
         emailLimit: freePlan.limits.email,
         smsLimit: freePlan.limits.sms,
@@ -1496,7 +1496,7 @@ async function handleSubscriptionCancel(data: any, requestId: string) {
       where: { id: subscription.workspaceId },
       data: {
         plan: SubscriptionTier.FREE,
-        plansubscriptionStatus: PlanSubscriptionStatus.INACTIVE,
+        planSubscriptionStatus: PlanSubscriptionStatus.INACTIVE,
         subscriberLimit: freePlan.limits.subscribers,
         emailLimit: freePlan.limits.email,
         smsLimit: freePlan.limits.sms,

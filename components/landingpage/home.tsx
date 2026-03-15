@@ -336,7 +336,6 @@ export const AnalyticsMockup = () => (
   </svg>
 );
 
-/* ─── Component Imports ─── */
 
 /* ─── Main Page ─── */
 export default function LandingPage() {

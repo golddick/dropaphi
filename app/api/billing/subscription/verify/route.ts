@@ -208,7 +208,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Redirect to success page with query params
-    const successUrl = new URL('/dashboard/billing', process.env.NEXT_PUBLIC_APP_URL);
+    const successUrl = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
     successUrl.searchParams.set('status', 'success');
     successUrl.searchParams.set('reference', transactionRef);
     if (discount) {
@@ -225,7 +225,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Redirect to error page
-    const errorUrl = new URL('/dashboard/billing', process.env.NEXT_PUBLIC_APP_URL);
+    const errorUrl = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
     errorUrl.searchParams.set('status', 'error');
     errorUrl.searchParams.set('message', 'Payment verification failed');
     
