@@ -410,7 +410,7 @@ CREATE TABLE "EmailElement" (
 CREATE TABLE "EmailCampaign" (
     "id" TEXT NOT NULL DEFAULT '',
     "workspace_id" TEXT NOT NULL,
-    "campaign status" "EmailCampaignStatus" NOT NULL DEFAULT 'ACTIVE',
+    "campaign_status" "EmailCampaignStatus" NOT NULL DEFAULT 'ACTIVE',
     "campaign_name" TEXT NOT NULL,
     "subject" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

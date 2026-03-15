@@ -692,7 +692,7 @@ model EmailElement {
 model EmailCampaign {
   id          String   @id @default("") // cmp_<nanoid>
   workspaceId String   @map("workspace_id")
-  status      EmailCampaignStatus   @default(ACTIVE) @map("campaign status")
+  status      EmailCampaignStatus @default(ACTIVE) @map("campaign_status")
   name        String   @unique  @map("campaign_name")
   subject     String
 
