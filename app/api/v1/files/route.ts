@@ -1,16 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { validateApiKey } from "@/lib/api-key/validate";
+import { handleCORS, addCORSHeaders } from "@/lib/cors";
+
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS(req: NextRequest) {
+  return handleCORS(req);
+}
 
 export async function GET(req: NextRequest) {
   try {
     // Validate API key
     const validation = await validateApiKey(req);
     if (!validation.valid) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { success: false, error: validation.error },
         { status: validation.status || 401 }
       );
+      return addCORSHeaders(response);
     }
 
     const { searchParams } = new URL(req.url);
@@ -53,7 +60,7 @@ export async function GET(req: NextRequest) {
       db.file.count({ where }),
     ]);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: {
         files: files.map(f => ({
@@ -68,12 +75,14 @@ export async function GET(req: NextRequest) {
         },
       },
     });
+    return addCORSHeaders(response);
 
   } catch (error) {
     console.error("[V1_LIST_FILES_ERROR]", error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { success: false, error: "Internal server error" },
       { status: 500 }
     );
+    return addCORSHeaders(response);
   }
 }

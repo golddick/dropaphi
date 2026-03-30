@@ -175,8 +175,8 @@ export async function POST(
 
     const result = await mailSender.sendEmail({
       to: toEmails,
-      // cc: ccEmails,
-      // bcc: bccEmails,
+      cc: ccEmails,
+      bcc: bccEmails,
 
       subject,
 

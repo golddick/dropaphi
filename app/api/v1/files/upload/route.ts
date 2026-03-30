@@ -4,6 +4,7 @@ import { dropid } from "dropid";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { validateApiKey } from "@/lib/api-key/validate";
 import { z } from "zod";
+import { handleCORS, addCORSHeaders } from "@/lib/cors"; // Add this import
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 const ALLOWED_MIME_TYPES = [
@@ -86,29 +87,36 @@ function bytesToMB(bytes: number | bigint): number {
   return Math.round((bytesNum / (1024 * 1024)) * 100) / 100;
 }
 
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS(req: NextRequest) {
+  return handleCORS(req);
+}
+
 export async function POST(req: NextRequest) {
   try {
     // 1. Validate API key
     const validation = await validateApiKey(req);
     if (!validation.valid) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { 
           success: false,
           error: validation.error 
         },
         { status: validation.status || 401 }
       );
+      return addCORSHeaders(response);
     }
 
     const { keyInfo } = validation;
     if (!keyInfo) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { 
           success: false,
           error: "Invalid API key information" 
         },
         { status: 401 }
       );
+      return addCORSHeaders(response);
     }
 
     // 2. Check if test key can upload (optional - you might want to restrict test keys)
@@ -127,13 +135,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (!workspace) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { 
           success: false,
           error: "Workspace not found" 
         },
         { status: 404 }
       );
+      return addCORSHeaders(response);
     }
 
     // 4. Parse form data
@@ -142,13 +151,14 @@ export async function POST(req: NextRequest) {
     const metadataStr = formData.get("metadata") as string | null;
 
     if (!file) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { 
           success: false,
           error: "No file uploaded. Please provide a file in the 'file' field." 
         },
         { status: 400 }
       );
+      return addCORSHeaders(response);
     }
 
     // 5. Parse metadata if provided
@@ -159,7 +169,7 @@ export async function POST(req: NextRequest) {
         const validated = uploadMetadataSchema.parse(parsed);
         metadata = validated;
       } catch (error) {
-        return NextResponse.json(
+        const response = NextResponse.json(
           { 
             success: false,
             error: "Invalid metadata format. Please provide valid JSON.",
@@ -167,12 +177,13 @@ export async function POST(req: NextRequest) {
           },
           { status: 400 }
         );
+        return addCORSHeaders(response);
       }
     }
 
     // 6. Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { 
           success: false,
           error: "File too large",
@@ -181,11 +192,12 @@ export async function POST(req: NextRequest) {
         },
         { status: 400 }
       );
+      return addCORSHeaders(response);
     }
 
     // 7. Validate mime type
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { 
           success: false,
           error: "File type not allowed",
@@ -194,12 +206,13 @@ export async function POST(req: NextRequest) {
         },
         { status: 400 }
       );
+      return addCORSHeaders(response);
     }
  
     // 8. Check file limit
-   const fileSizeMB = bytesToMB(file.size);
+    const fileSizeMB = bytesToMB(file.size);
     if (workspace.currentFilesUsed + fileSizeMB > workspace.fileLimit) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: false,
           error: "Storage limit exceeded",
@@ -209,12 +222,13 @@ export async function POST(req: NextRequest) {
         },
         { status: 403 }
       );
+      return addCORSHeaders(response);
     }
 
     // 9. Generate file info
     const fileId = dropid("fil");
     const originalFileName = file.name;
-    const customFileName = (metadata as any).filename;
+    const customFileName = 'DROPAPI';
     const uniqueFileName = generateUniqueFileName(originalFileName, customFileName);
     const storageKey = `${keyInfo.workspaceId}/${uniqueFileName}`;
 
@@ -232,13 +246,14 @@ export async function POST(req: NextRequest) {
 
     if (uploadError) {
       console.error("[V1_UPLOAD_ERROR]", uploadError);
-      return NextResponse.json(
+      const response = NextResponse.json(
         { 
           success: false,
           error: "Failed to upload file to storage: " + uploadError.message 
         },
         { status: 500 }
       );
+      return addCORSHeaders(response);
     }
 
     // 11. Get public URL from Supabase
@@ -248,7 +263,7 @@ export async function POST(req: NextRequest) {
 
     // 12. Generate API URL for the file
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://api.dropapi.com';
-    const fileUrl = `${baseUrl}/v1/files/${keyInfo.workspaceId}/${uniqueFileName}`;
+    const fileUrl = `${baseUrl}/api/v1/files/${fileId}`;
 
     // 13. Create file record in database
     const fileRecord = await db.file.create({
@@ -311,10 +326,8 @@ export async function POST(req: NextRequest) {
       },
     });
 
-
-
     // 17. Return success response
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: {
         id: fileRecord.id,
@@ -327,10 +340,12 @@ export async function POST(req: NextRequest) {
         metadata: metadata,
       },
     }, { status: 201 });
+    
+    return addCORSHeaders(response);
 
   } catch (error) {
     console.error("[V1_UPLOAD_ERROR]", error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { 
         success: false,
         error: "Internal server error",
@@ -338,18 +353,6 @@ export async function POST(req: NextRequest) {
       },
       { status: 500 }
     );
+    return addCORSHeaders(response);
   }
-}
-
-// Optional: Add rate limiting headers
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-      'Access-Control-Max-Age': '86400',
-    },
-  });
 }

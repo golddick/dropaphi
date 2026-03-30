@@ -147,17 +147,19 @@ export function getKeyEnvironment(key: string): 'live' | 'test' | null {
   return null;
 }
 
+
 /**
  * Validate API key format
- * Should be: da_live_XXXXXXXXXX or da_test_XXXXXXXXXX (total ~18-19 chars)
+ * Checks that it starts with the correct prefix and has at least some characters after
  */
 export function isValidKeyFormat(key: string): boolean {
   if (!key) return false;
   
+  // Check that it starts with the correct prefix
   const isValidPrefix = key.startsWith('da_live_') || key.startsWith('da_test_');
   if (!isValidPrefix) return false;
   
-  // Should have exactly 10 chars after prefix
-  const afterPrefix = key.substring(key.indexOf('_') + 5); // after "da_live_" or "da_test_"
-  return afterPrefix.length === 10 && /^[A-Za-z0-9_-]+$/.test(afterPrefix);
+  // Make sure there's at least 1 character after the prefix
+  const afterPrefix = key.substring(key.indexOf('_') + 5);
+  return afterPrefix.length > 0;
 }

@@ -237,7 +237,7 @@ export async function POST(
           to: subscriber.email,
           subject,
           html: personalizedHtml,
-          text: personalizedText,
+          text: personalizedText, 
           fromEmail: sender.email,
           fromName: sender.name,
           workspaceId:workspaceId,

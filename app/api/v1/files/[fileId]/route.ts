@@ -1,138 +1,179 @@
+
+
+
+// app/api/v1/files/[fileId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { validateApiKey } from "@/lib/api-key/validate";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { validateApiKey } from "@/lib/api-key/validate";
+import { handleCORS, addCORSHeaders } from "@/lib/cors";
+
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS(req: NextRequest) {
+  return handleCORS(req);
+}
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ fileId: string }> }
+  { params }: { params: { fileId: string } }
 ) {
   try {
-    // Validate API key
-    const validation = await validateApiKey(req);
-    if (!validation.valid) {
-      return NextResponse.json(
-        { success: false, error: validation.error },
-        { status: validation.status || 401 }
-      );
-    }
-
     const { fileId } = await params;
 
-    // Find file
-    const file = await db.file.findFirst({
+    console.log("[FILE_ACCESS] Looking for file with ID:", fileId);
+
+    // 1️⃣ Find file by ID
+    const file = await db.file.findUnique({
       where: {
-        id: fileId,
-        workspaceId: validation.keyInfo?.workspaceId,
+        id: fileId, // This should match your file.id field
       },
       select: {
         id: true,
-        originalName: true,
         name: true,
+        originalName: true,
         mimeType: true,
         size: true,
-        cdnUrl: true,
+        storageKey: true,
         directUrl: true,
         visibility: true,
-        width: true,
-        height: true,
-        duration: true,
-        metadata: true,
+        workspaceId: true,
         createdAt: true,
+        metadata: true,
       },
     });
 
     if (!file) {
-      return NextResponse.json(
-        { success: false, error: "File not found" },
+      console.log("[FILE_ACCESS] File not found:", fileId);
+      const response = NextResponse.json(
+        { 
+          success: false, 
+          error: "File not found",
+          fileId: fileId 
+        },
         { status: 404 }
       );
+      return addCORSHeaders(response);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        ...file,
-        size: Number(file.size),
-      },
+    console.log("[FILE_ACCESS] Found file:", {
+      id: file.id,
+      name: file.originalName,
+      visibility: file.visibility,
+      workspaceId: file.workspaceId
     });
 
-  } catch (error) {
-    console.error("[V1_FILE_INFO_ERROR]", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
-  }
-}
+    // 2️⃣ If file is PUBLIC, serve directly without auth
+    if (file.visibility === "PUBLIC") {
+      // Get file from Supabase storage
+      const { data: urlData } = supabaseAdmin.storage
+        .from("workspace-files")
+        .getPublicUrl(file.storageKey);
 
+      // For browser access, redirect to the actual file
+      // For API access, return JSON with URL
+      const acceptHeader = req.headers.get("accept") || "";
+      
+      if (acceptHeader.includes("text/html")) {
+        // Browser is requesting - redirect to actual file
+        const response = NextResponse.redirect(urlData.publicUrl);
+        return addCORSHeaders(response);
+      } else {
+        // API request - return JSON
+        const response = NextResponse.json({
+          success: true,
+          data: {
+            id: file.id,
+            name: file.originalName,
+            mimeType: file.mimeType,
+            size: file.size,
+            url: urlData.publicUrl,
+            directUrl: file.directUrl,
+            visibility: file.visibility,
+            createdAt: file.createdAt,
+          }
+        });
+        return addCORSHeaders(response);
+      }
+    }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ fileId: string }> }
-) {
-  try {
-    // Validate API key
+    // 3️⃣ If file is PRIVATE, validate API key
     const validation = await validateApiKey(req);
     if (!validation.valid) {
-      return NextResponse.json(
-        { success: false, error: validation.error },
+      const response = NextResponse.json(
+        { 
+          success: false, 
+          error: validation.error,
+          message: "This file is private. Please provide a valid API key."
+        },
         { status: validation.status || 401 }
       );
+      return addCORSHeaders(response);
     }
 
-    const { fileId } = await params;
-
-    // Find file
-    const file = await db.file.findFirst({
-      where: {
-        id: fileId,
-        workspaceId: validation.keyInfo?.workspaceId,
-      },
-    });
-
-    if (!file) {
-      return NextResponse.json(
-        { success: false, error: "File not found" },
-        { status: 404 }
-      );
-    }
-
-    // Delete from Supabase storage
-    const { error: deleteError } = await supabaseAdmin.storage
-      .from("workspace-files")
-      .remove([file.storageKey]);
-
-    if (deleteError) {
-      console.error("[V1_DELETE_STORAGE_ERROR]", deleteError);
-    }
-
-    // Update workspace usage
-    const fileSizeMB = Number(file.size) / (1024 * 1024);
-    await db.workspace.update({
-      where: { id: validation.keyInfo!.workspaceId },
-      data: {
-        currentFilesUsed: {
-          decrement: fileSizeMB,
+    const { keyInfo } = validation;
+    if (!keyInfo) {
+      const response = NextResponse.json(
+        { 
+          success: false, 
+          error: "Invalid API key information" 
         },
-      },
-    });
+        { status: 401 }
+      );
+      return addCORSHeaders(response);
+    }
 
-    // Delete from database
-    await db.file.delete({
-      where: { id: fileId },
-    });
+    // 4️⃣ Check if API key belongs to the same workspace
+    if (keyInfo.workspaceId !== file.workspaceId) {
+      const response = NextResponse.json(
+        { 
+          success: false, 
+          error: "Access denied. This file belongs to a different workspace." 
+        },
+        { status: 403 }
+      );
+      return addCORSHeaders(response);
+    }
 
-    return NextResponse.json({
-      success: true,
-      message: "File deleted successfully",
-    });
+
+    // 6️⃣ Serve the private file
+    const { data: urlData } = supabaseAdmin.storage
+      .from("workspace-files")
+      .getPublicUrl(file.storageKey);
+
+    const acceptHeader = req.headers.get("accept") || "";
+    
+    if (acceptHeader.includes("text/html")) {
+      // Browser is requesting - redirect to actual file
+      const response = NextResponse.redirect(urlData.publicUrl);
+      return addCORSHeaders(response);
+    } else {
+      // API request - return JSON
+      const response = NextResponse.json({
+        success: true,
+        data: {
+          id: file.id,
+          name: file.originalName,
+          mimeType: file.mimeType,
+          size: file.size,
+          url: urlData.publicUrl,
+          directUrl: file.directUrl,
+          visibility: file.visibility,
+          createdAt: file.createdAt,
+        }
+      });
+      return addCORSHeaders(response);
+    }
 
   } catch (error) {
-    console.error("[V1_DELETE_ERROR]", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error" },
+    console.error("[V1_FILE_ACCESS_ERROR]", error);
+    const response = NextResponse.json(
+      {
+        success: false,
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
+    return addCORSHeaders(response);
   }
 }

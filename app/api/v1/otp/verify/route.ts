@@ -1,37 +1,50 @@
+// app/api/v1/otp/verify/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { dropid } from "dropid";
 import { z } from "zod";
 import { validateApiKey } from "@/lib/api-key/validate";
 import { verifyOTP } from "@/lib/v1-api/otp/utils";
-
+import { handleCORS, addCORSHeaders } from "@/lib/cors";
 
 // Validation schema for verify OTP request
 const verifyOTPSchema = z.object({
-  id: z.string().optional(), // OTP request ID (optional)
+  id: z.string().optional(),
   email: z.string().email("Invalid email address"),
   code: z.string().min(4).max(8),
 });
+
+export async function OPTIONS(req: NextRequest) {
+  return handleCORS(req);
+}
 
 export async function POST(req: NextRequest) {
   try {
     // 1. Validate API key
     const validation = await validateApiKey(req);
     if (!validation.valid) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { success: false, error: validation.error },
         { status: validation.status || 401 }
       );
+      return addCORSHeaders(response);
     }
 
     const { keyInfo } = validation;
+    if (!keyInfo) {
+      const response = NextResponse.json(
+        { success: false, error: "Invalid API key information" },
+        { status: 401 }
+      );
+      return addCORSHeaders(response);
+    }
 
     // 2. Parse and validate request body
     const body = await req.json();
     const parsed = verifyOTPSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: false,
           error: "Validation error",
@@ -39,13 +52,14 @@ export async function POST(req: NextRequest) {
         },
         { status: 400 }
       );
+      return addCORSHeaders(response);
     }
 
     const { id, email, code } = parsed.data;
 
     // 3. Find the OTP request
     const whereClause: any = {
-      workspaceId: keyInfo!.workspaceId,
+      workspaceId: keyInfo.workspaceId,
       recipient: email,
       status: "PENDING",
       expiresAt: { gt: new Date() },
@@ -61,13 +75,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (!otpRequest) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: false,
           error: "No valid OTP found for this email",
         },
         { status: 404 }
       );
+      return addCORSHeaders(response);
     }
 
     // 4. Check attempts
@@ -77,20 +92,22 @@ export async function POST(req: NextRequest) {
         data: { status: "FAILED" },
       });
 
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: false,
           error: "Maximum verification attempts exceeded",
+          attemptsRemaining: 0,
         },
         { status: 429 }
       );
+      return addCORSHeaders(response);
     }
 
-    // 5. Verify OTP
-    const isValid = await verifyOTP(code, otpRequest.otpHash);
+    // 5. Verify OTP (using our new verify function that compares with decrypted OTP)
+    const isValid = verifyOTP(code, otpRequest.otpEncrypted);
 
     // 6. Update attempts
-    await db.otpRequest.update({
+    const updatedRequest = await db.otpRequest.update({
       where: { id: otpRequest.id },
       data: {
         attempts: { increment: 1 },
@@ -98,14 +115,17 @@ export async function POST(req: NextRequest) {
     });
 
     if (!isValid) {
-      return NextResponse.json(
+      const attemptsRemaining = otpRequest.maxAttempts - (updatedRequest.attempts);
+      
+      const response = NextResponse.json(
         {
           success: false,
           error: "Invalid OTP code",
-          attemptsRemaining: otpRequest.maxAttempts - (otpRequest.attempts + 1),
+          attemptsRemaining,
         },
         { status: 400 }
       );
+      return addCORSHeaders(response);
     }
 
     // 7. Mark as verified
@@ -121,7 +141,7 @@ export async function POST(req: NextRequest) {
     await db.aPiUsageSummary.upsert({
       where: {
         workspaceId_date_service: {
-          workspaceId: keyInfo!.workspaceId,
+          workspaceId: keyInfo.workspaceId,
           date: new Date(),
           service: "otp_verify",
         },
@@ -132,8 +152,8 @@ export async function POST(req: NextRequest) {
       },
       create: {
         id: dropid("aus"),
-        workspaceId: keyInfo!.workspaceId,
-        apiKeyId: keyInfo!.id,
+        workspaceId: keyInfo.workspaceId,
+        apiKeyId: keyInfo.id,
         date: new Date(),
         service: "otp_verify",
         totalCalls: 1,
@@ -143,19 +163,24 @@ export async function POST(req: NextRequest) {
     });
 
     // 9. Return success response
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: true,
         data: {
           verified: true,
           message: "OTP verified successfully",
+          id: otpRequest.id,
+          verifiedAt: new Date().toISOString(),
         },
       },
       { status: 200 }
     );
+    
+    return addCORSHeaders(response);
+    
   } catch (error) {
     console.error("[V1_OTP_VERIFY_ERROR]", error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: false,
         error: "Internal server error",
@@ -163,17 +188,6 @@ export async function POST(req: NextRequest) {
       },
       { status: 500 }
     );
+    return addCORSHeaders(response);
   }
-}
-
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type",
-      "Access-Control-Max-Age": "86400",
-    },
-  });
 }

@@ -16,7 +16,7 @@ export interface EmailOptions {
   }>;
   headers?: Record<string, string>;
 }
-
+ 
 export interface EmailResult {
   success: boolean;
   messageId?: string;
@@ -144,4 +144,4 @@ class EmailSenderService {
 }
 
 // Export singleton instance
-export const emailSender = new EmailSenderService();
+export const emailSender = new EmailSenderService(); 

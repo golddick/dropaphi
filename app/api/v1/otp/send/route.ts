@@ -1,12 +1,20 @@
+// app/api/v1/otp/send/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { dropid } from "dropid";
 import { z } from "zod";
 import { validateApiKey } from "@/lib/api-key/validate";
 import { checkWorkspaceOTPLimit, getWorkspaceEmailSender } from "@/lib/v1-api/workspace/sender";
-import { generateOTP, getDefaultOTPTemplate, getDefaultTextTemplate, hashOTP } from "@/lib/v1-api/otp/utils";
-import { mailSender } from "@/lib/email/service/transporter";
+import { generateOTP, encryptOTP, getDefaultOTPTemplate, getDefaultTextTemplate } from "@/lib/v1-api/otp/utils";
+import { handleCORS, addCORSHeaders } from "@/lib/cors";
+import { emailSender } from "@/lib/v1-api/email/OtpTransporter";
 
+// Helper function to get start of day
+function getStartOfDay(date: Date = new Date()): Date {
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  return startOfDay;
+}
 
 // Validation schema for send OTP request
 const sendOTPSchema = z.object({
@@ -15,29 +23,36 @@ const sendOTPSchema = z.object({
   html: z.string().optional(),
   text: z.string().optional(),
   length: z.number().min(4).max(8).default(6),
-  expiry: z.number().min(1).max(60).default(10), // minutes
+  expiry: z.number().min(1).max(60).default(10),
   metadata: z.record(z.any()).optional(),
   brandName: z.string().optional(),
   customFields: z.record(z.string()).optional(),
 });
+
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS(req: NextRequest) {
+  return handleCORS(req);
+}
 
 export async function POST(req: NextRequest) {
   try {
     // 1. Validate API key
     const validation = await validateApiKey(req);
     if (!validation.valid) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { success: false, error: validation.error },
         { status: validation.status || 401 }
-      );
+      ); 
+      return addCORSHeaders(response);
     }
 
     const { keyInfo } = validation;
     if (!keyInfo) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { success: false, error: "Invalid API key information" },
         { status: 401 }
       );
+      return addCORSHeaders(response);
     }
 
     // 2. Parse and validate request body
@@ -45,7 +60,7 @@ export async function POST(req: NextRequest) {
     const parsed = sendOTPSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: false,
           error: "Validation error",
@@ -53,6 +68,7 @@ export async function POST(req: NextRequest) {
         },
         { status: 400 }
       );
+      return addCORSHeaders(response);
     }
 
     const { 
@@ -67,10 +83,50 @@ export async function POST(req: NextRequest) {
       customFields
     } = parsed.data;
 
-    // 3. Check workspace OTP limit
+    // 3. Get workspace sender (do this first to fail fast)
+    const sender = await getWorkspaceEmailSender(keyInfo.workspaceId);
+    if (!sender) {
+      const response = NextResponse.json(
+        { success: false, error: "No email sender configured for workspace" },
+        { status: 400 }
+      );
+      return addCORSHeaders(response);
+    }
+
+    // 4. CRITICAL: Check for ANY existing active OTP for this email
+    const existingActiveOTP = await db.otpRequest.findFirst({
+      where: {
+        workspaceId: keyInfo.workspaceId,
+        recipient: email,
+        status: 'PENDING',
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    // If there's an active OTP, return error
+    if (existingActiveOTP) {
+      const timeRemaining = Math.ceil((existingActiveOTP.expiresAt.getTime() - Date.now()) / 60000);
+      
+      const response = NextResponse.json(
+        {
+          success: false,
+          error: "Active OTP code exists",
+          details: {
+            message: "An active verification code has already been sent to this email",
+            expiresIn: `${timeRemaining} minutes`,
+            expiresAt: existingActiveOTP.expiresAt.toISOString(),
+            // Don't include the OTP in response for security
+          },
+        },
+        { status: 409 } // 409 Conflict
+      );
+      return addCORSHeaders(response);
+    }
+
+    // 5. Check workspace OTP limit
     const limitCheck = await checkWorkspaceOTPLimit(keyInfo.workspaceId);
     if (!limitCheck.allowed) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: false,
           error: "OTP limit exceeded",
@@ -80,23 +136,15 @@ export async function POST(req: NextRequest) {
         },
         { status: 429 }
       );
+      return addCORSHeaders(response);
     }
 
-    // 4. Get workspace sender
-    const sender = await getWorkspaceEmailSender(keyInfo.workspaceId);
-    if (!sender) {
-      return NextResponse.json(
-        { success: false, error: "No email sender configured for workspace" },
-        { status: 400 }
-      );
-    }
-
-    // 5. Generate OTP
+    // 6. Generate OTP
     const otp = generateOTP(length);
-    const otpHash = await hashOTP(otp);
+    const otpEncrypted = encryptOTP(otp);
     const expiresAt = new Date(Date.now() + expiry * 60 * 1000);
 
-    // 6. Create OTP record
+    // 7. Create OTP record
     const otpId = dropid("otp");
     const otpRecord = await db.otpRequest.create({
       data: {
@@ -105,11 +153,12 @@ export async function POST(req: NextRequest) {
         channel: "EMAIL",
         recipient: email,
         otpLength: length,
-        otpHash,
+        otpEncrypted,
         validityMins: expiry,
         status: 'PENDING',
         expiresAt,
         maxAttempts: 3,
+        resentCount: 0,
         metadata: {
           ...metadata,
           apiKeyId: keyInfo.id,
@@ -121,15 +170,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 7. Prepare email content
-    const companyName = brandName || sender.name || "DropAPHI";
+    // 8. Prepare email content
+    const companyName = brandName || sender.name || "RTAS";
     
-    // Process HTML: replace placeholders if custom HTML is provided
     let emailHtml = html;
     let emailText = text;
     
     if (emailHtml) {
-      // Replace placeholders in custom HTML
       const placeholders: Record<string, string> = {
         '{{otp}}': otp,
         '{{company}}': companyName,
@@ -147,26 +194,23 @@ export async function POST(req: NextRequest) {
           emailText = emailText!.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), value);
         });
       } else {
-        emailText = `Your verification code is: ${otp}`;
+        emailText = `Your verification code is: ${otp}\n\nThis code will expire in ${expiry} minutes.`;
       }
     } else {
-      // Use default templates
       emailHtml = getDefaultOTPTemplate(otp, companyName);
-      emailText = text || getDefaultTextTemplate(otp);
+      emailText = text || getDefaultTextTemplate(otp, companyName);
     }
 
-    // 8. Prepare email subject
-    const emailSubject = subject || `Your verification code: ${otp}`;
+    const emailSubject = subject || `Your verification code for ${companyName}`;
 
     // 9. Send email
-    const emailResult = await mailSender.sendEmail({
+    const emailResult = await emailSender.sendEmail({
       to: email,
       subject: emailSubject,
       html: emailHtml,
       text: emailText,
       fromEmail: sender.email,
       fromName: sender.name,
-      replyTo: sender.replyTo,
       headers: {
         "X-OTP-ID": otpId,
         "X-Workspace-ID": keyInfo.workspaceId,
@@ -175,7 +219,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!emailResult.success) {
-      // Update OTP record as failed
+      // Mark OTP as failed
       await db.otpRequest.update({
         where: { id: otpId },
         data: {
@@ -187,7 +231,34 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      return NextResponse.json(
+      // Track failed API usage
+      const today = getStartOfDay();
+      
+      await db.aPiUsageSummary.upsert({
+        where: {
+          workspaceId_date_service: {
+            workspaceId: keyInfo.workspaceId,
+            date: today,
+            service: "otp_send",
+          },
+        },
+        update: {
+          totalCalls: { increment: 1 },
+          failedCalls: { increment: 1 },
+        },
+        create: {
+          id: dropid("aus"),
+          workspaceId: keyInfo.workspaceId,
+          apiKeyId: keyInfo.id,
+          date: today,
+          service: "otp_send",
+          totalCalls: 1,
+          successCalls: 0,
+          failedCalls: 1,
+        },
+      });
+
+      const response = NextResponse.json(
         { 
           success: false, 
           error: "Failed to send OTP email",
@@ -195,6 +266,7 @@ export async function POST(req: NextRequest) {
         },
         { status: 500 }
       );
+      return addCORSHeaders(response);
     }
 
     // 10. Update workspace OTP count
@@ -205,12 +277,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 11. Log API usage
+    // 11. Track successful API usage
+    const today = getStartOfDay();
+    
     await db.aPiUsageSummary.upsert({
       where: {
         workspaceId_date_service: {
           workspaceId: keyInfo.workspaceId,
-          date: new Date(),
+          date: today,
           service: "otp_send",
         },
       },
@@ -222,7 +296,7 @@ export async function POST(req: NextRequest) {
         id: dropid("aus"),
         workspaceId: keyInfo.workspaceId,
         apiKeyId: keyInfo.id,
-        date: new Date(),
+        date: today,
         service: "otp_send",
         totalCalls: 1,
         successCalls: 1,
@@ -230,23 +304,60 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 12. Return success response (NEVER return the OTP in production!)
-    return NextResponse.json(
+    // 12. Return success response
+    const response = NextResponse.json(
       {
         success: true,
         data: {
           id: otpRecord.id,
           message: `OTP sent successfully to ${email}`,
           expiresAt: expiresAt.toISOString(),
-          // For testing only - remove in production
           ...(process.env.NODE_ENV === "development" && { debug: { otp } }),
         },
       },
       { status: 200 }
     );
+    
+    return addCORSHeaders(response);
+    
   } catch (error) {
     console.error("[V1_OTP_SEND_ERROR]", error);
-    return NextResponse.json(
+
+    // Track failed API usage for unexpected errors
+    try {
+      const validation = await validateApiKey(req);
+      if (validation.valid && validation.keyInfo) {
+        const today = getStartOfDay();
+        
+        await db.aPiUsageSummary.upsert({
+          where: {
+            workspaceId_date_service: {
+              workspaceId: validation.keyInfo.workspaceId,
+              date: today,
+              service: "otp_send",
+            },
+          },
+          update: {
+            totalCalls: { increment: 1 },
+            failedCalls: { increment: 1 },
+          },
+          create: {
+            id: dropid("aus"),
+            workspaceId: validation.keyInfo.workspaceId,
+            apiKeyId: validation.keyInfo.id,
+            date: today,
+            service: "otp_send",
+            totalCalls: 1,
+            successCalls: 0,
+            failedCalls: 1,
+          },
+        });
+      }
+    } catch (summaryError) {
+      console.error("[V1_OTP_SEND_SUMMARY_ERROR]", summaryError);
+    }
+
+    const response = NextResponse.json(
       {
         success: false,
         error: "Internal server error",
@@ -254,18 +365,8 @@ export async function POST(req: NextRequest) {
       },
       { status: 500 }
     );
+    return addCORSHeaders(response);
   }
 }
 
-// Add OPTIONS for CORS
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type",
-      "Access-Control-Max-Age": "86400",
-    },
-  });
-}
+

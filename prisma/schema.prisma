@@ -714,25 +714,27 @@ model EmailCampaign {
 // ============================================================
 
 model OtpRequest {
-  id          String     @id @default("") // otp_<nanoid>
-  workspaceId String     @map("workspace_id")
-  channel     OtpChannel
-  recipient   String
-  otpLength   Int        @default(6) @map("otp_length")
-  otpHash     String     @map("otp_hash")
-  template    String?
-  validityMins Int       @default(10) @map("validity_mins")
-  status      OtpStatus  @default(PENDING)
-  attempts    Int        @default(0)
-  maxAttempts Int        @default(3) @map("max_attempts")
-  verifiedAt  DateTime?  @map("verified_at")
-  expiresAt   DateTime   @map("expires_at")
-  providerRef String?    @map("provider_ref")
-  ipAddress   String?    @map("ip_address")
-  metadata    Json?
-  source      String     @default("api")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
+  id              String     @id @default("") // otp_<nanoid>
+  workspaceId     String     @map("workspace_id")
+  channel         OtpChannel
+  recipient       String
+  otpLength       Int        @default(6) @map("otp_length")
+  otpEncrypted    String     @map("otp_encrypted")
+  template        String?
+  validityMins    Int       @default(10) @map("validity_mins")
+  status          OtpStatus  @default(PENDING)
+  attempts        Int        @default(0)
+  maxAttempts     Int        @default(3) @map("max_attempts")
+  verifiedAt      DateTime?  @map("verified_at")
+  resentCount     Int       @default(0)  
+  lastResentAt    DateTime? 
+  expiresAt       DateTime   @map("expires_at")
+  providerRef     String?    @map("provider_ref")
+  ipAddress       String?    @map("ip_address")
+  metadata        Json?
+  source          String     @default("api")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
 
   workspace Workspace @relation(fields: [workspaceId], references: [id])
 

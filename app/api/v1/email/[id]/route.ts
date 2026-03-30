@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { dropid } from "dropid";
 import { validateApiKey } from "@/lib/api-key/validate";
+import { handleCORS, addCORSHeaders } from "@/lib/cors"; // Add this import
+
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS(req: NextRequest) {
+  return handleCORS(req);
+}
 
 export async function GET(
   req: NextRequest,
@@ -11,10 +17,11 @@ export async function GET(
     // 1. Validate API key
     const validation = await validateApiKey(req);
     if (!validation.valid) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { success: false, error: validation.error },
         { status: validation.status || 401 }
       );
+      return addCORSHeaders(response);
     }
 
     const { id } = await params;
@@ -51,10 +58,11 @@ export async function GET(
     });
 
     if (!email) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { success: false, error: "Email not found" },
         { status: 404 }
       );
+      return addCORSHeaders(response);
     }
 
     // 3. Log API usage
@@ -83,21 +91,24 @@ export async function GET(
     });
 
     // 4. Return response
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: {
         ...email,
         toEmails: email.toEmails.length,
       },
     });
+    return addCORSHeaders(response);
+    
   } catch (error) {
     console.error("[V1_EMAIL_STATUS_ERROR]", error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: false,
         error: "Internal server error",
       },
       { status: 500 }
     );
+    return addCORSHeaders(response);
   }
 }

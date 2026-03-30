@@ -146,7 +146,7 @@ export async function sendEmailVerificationOTP(
         <body>
           <div class="container">
             <div class="header">
-              <span class="logo">DropAPI</span>
+              <span class="logo">DropAPHI</span>
             </div>
             <div class="content">
               <h2 style="color: #333; margin-bottom: 20px;">Hello ${name},</h2>

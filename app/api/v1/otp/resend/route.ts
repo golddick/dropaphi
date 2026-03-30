@@ -1,52 +1,66 @@
+// app/api/v1/otp/resend/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { dropid } from "dropid";
 import { z } from "zod";
 import { validateApiKey } from "@/lib/api-key/validate";
 import { checkWorkspaceOTPLimit, getWorkspaceEmailSender } from "@/lib/v1-api/workspace/sender";
-import { generateOTP, getDefaultOTPTemplate, getDefaultTextTemplate, hashOTP } from "@/lib/v1-api/otp/utils";
-import { mailSender } from "@/lib/email/service/transporter";
+import { generateOTP, encryptOTP, getDefaultOTPTemplate, getDefaultTextTemplate } from "@/lib/v1-api/otp/utils";
+import { handleCORS, addCORSHeaders } from "@/lib/cors";
+import { emailSender } from "@/lib/v1-api/email/OtpTransporter";
 
-// Validation schema for resend OTP request
-const resendOTPSchema = z.object({
+// Helper function to get start of day
+function getStartOfDay(date: Date = new Date()): Date {
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  return startOfDay;
+}
+
+// Validation schema for regenerate OTP request
+const regenerateOTPSchema = z.object({
   email: z.string().email("Invalid email address"),
-  otpId: z.string().optional(), // Optional: specific OTP request to resend
   subject: z.string().optional(),
   html: z.string().optional(),
   text: z.string().optional(),
-  length: z.number().min(4).max(8).optional(),
-  expiry: z.number().min(1).max(60).optional(),
+  length: z.number().min(4).max(8).default(6),
+  expiry: z.number().min(1).max(60).default(10),
   metadata: z.record(z.any()).optional(),
   brandName: z.string().optional(),
   customFields: z.record(z.string()).optional(),
-  reason: z.enum(['expired', 'not_received', 'new_request']).optional().default('new_request'),
+  reason: z.enum(['expired', 'not_received', 'new_request']).optional().default('not_received'),
 });
+
+export async function OPTIONS(req: NextRequest) {
+  return handleCORS(req);
+}
 
 export async function POST(req: NextRequest) {
   try {
     // 1. Validate API key
     const validation = await validateApiKey(req);
     if (!validation.valid) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { success: false, error: validation.error },
         { status: validation.status || 401 }
       );
+      return addCORSHeaders(response);
     }
 
     const { keyInfo } = validation;
     if (!keyInfo) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { success: false, error: "Invalid API key information" },
         { status: 401 }
       );
+      return addCORSHeaders(response);
     }
 
     // 2. Parse and validate request body
     const body = await req.json();
-    const parsed = resendOTPSchema.safeParse(body);
+    const parsed = regenerateOTPSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: false,
           error: "Validation error",
@@ -54,56 +68,56 @@ export async function POST(req: NextRequest) {
         },
         { status: 400 }
       );
+      return addCORSHeaders(response);
     }
 
     const { 
       email, 
-      otpId,
       subject, 
       html, 
       text,
-      length = 6, 
-      expiry = 10, 
+      length, 
+      expiry, 
       metadata,
       brandName,
       customFields,
       reason
     } = parsed.data;
 
-    // 3. Check if there's an existing pending OTP for this email
-    const existingOTP = await db.otpRequest.findFirst({
+    // 3. Check rate limiting (prevent spam)
+    const recentOTP = await db.otpRequest.findFirst({
       where: {
         workspaceId: keyInfo.workspaceId,
         recipient: email,
-        status: 'PENDING',
-        expiresAt: { gt: new Date() },
+        createdAt: { gt: new Date(Date.now() - 60 * 1000) } // Last 60 seconds
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'desc' }
     });
 
-    // 4. If there's a valid pending OTP and no specific otpId requested, inform the user
-    if (existingOTP && !otpId && reason !== 'new_request') {
-      const timeRemaining = Math.ceil((existingOTP.expiresAt.getTime() - Date.now()) / 60000);
+    if (recentOTP) {
+      const secondsSinceLast = Math.ceil((Date.now() - recentOTP.createdAt.getTime()) / 1000);
+      const waitSeconds = 60 - secondsSinceLast;
       
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Active OTP exists",
-          details: {
-            message: `An active OTP already exists and will expire in ${timeRemaining} minutes`,
-            otpId: existingOTP.id,
-            expiresAt: existingOTP.expiresAt.toISOString(),
-            remainingMinutes: timeRemaining,
+      if (waitSeconds > 0) {
+        const response = NextResponse.json(
+          {
+            success: false,
+            error: "Please wait before requesting another code",
+            details: {
+              message: `You can request another code in ${waitSeconds} seconds`,
+              nextAttemptIn: waitSeconds,
+            },
           },
-        },
-        { status: 409 } // Conflict
-      );
+          { status: 429 }
+        );
+        return addCORSHeaders(response);
+      }
     }
 
-    // 5. Check workspace OTP limit
+    // 4. Check workspace OTP limit
     const limitCheck = await checkWorkspaceOTPLimit(keyInfo.workspaceId);
     if (!limitCheck.allowed) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: false,
           error: "OTP limit exceeded",
@@ -113,57 +127,56 @@ export async function POST(req: NextRequest) {
         },
         { status: 429 }
       );
+      return addCORSHeaders(response);
     }
 
-    // 6. Get workspace sender
+    // 5. Get workspace sender
     const sender = await getWorkspaceEmailSender(keyInfo.workspaceId);
     if (!sender) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { success: false, error: "No email sender configured for workspace" },
         { status: 400 }
       );
+      return addCORSHeaders(response);
     }
 
-    // 7. Generate new OTP
+    // 6. Mark any existing pending OTPs as expired/regenerated
+    await db.otpRequest.updateMany({
+      where: {
+        workspaceId: keyInfo.workspaceId,
+        recipient: email,
+        status: 'PENDING',
+        expiresAt: { gt: new Date() }
+      },
+      data: {
+        status: 'EXPIRED',
+        metadata: {
+          regeneratedAt: new Date().toISOString(),
+          regeneratedReason: reason
+        }
+      }
+    });
+
+    // 7. Generate NEW OTP
     const otp = generateOTP(length);
-    const otpHash = await hashOTP(otp);
+    const otpEncrypted = encryptOTP(otp);
     const expiresAt = new Date(Date.now() + expiry * 60 * 1000);
 
-    // 8. If an otpId was provided, mark the old OTP as expired (optional)
-    if (otpId) {
-      await db.otpRequest.updateMany({
-        where: {
-          id: otpId,
-          workspaceId: keyInfo.workspaceId,
-        },
-        data: {
-          status: 'EXPIRED',
-          metadata: {
-            ...(existingOTP?.metadata as Record<string, any> || {}),
-            expiredBy: 'resend',
-            expiredAt: new Date().toISOString(),
-          },
-        },
-      }).catch(() => {
-        // Ignore error if OTP not found
-        console.log(`[OTP_RESEND] Could not expire OTP: ${otpId}`);
-      });
-    }
-
-    // 9. Create new OTP record
-    const newOtpId = dropid("otp");
+    // 8. Create new OTP record
+    const otpId = dropid("otp");
     const otpRecord = await db.otpRequest.create({
       data: {
-        id: newOtpId,
+        id: otpId,
         workspaceId: keyInfo.workspaceId,
         channel: "EMAIL",
         recipient: email,
         otpLength: length,
-        otpHash,
+        otpEncrypted,
         validityMins: expiry,
         status: 'PENDING',
         expiresAt,
         maxAttempts: 3,
+        resentCount: 0,
         metadata: {
           ...metadata,
           apiKeyId: keyInfo.id,
@@ -171,35 +184,33 @@ export async function POST(req: NextRequest) {
           isTestKey: keyInfo.isTest,
           brandName,
           customFields,
-          previousOtpId: otpId || existingOTP?.id,
-          resendReason: reason,
-          resendCount: existingOTP ? ((existingOTP.metadata as any)?.resendCount || 0) + 1 : 0,
+          regenerated: true,
+          regeneratedReason: reason,
+          previousOtpExpired: true
         },
       },
     });
 
-    // 10. Prepare email content
-    const companyName = brandName || sender.name || "DropAPHI";
+    // 9. Prepare email content
+    const companyName = brandName || sender.name || "RTAS";
     
-    // Process HTML: replace placeholders if custom HTML is provided
     let emailHtml = html;
     let emailText = text;
     
-    // Add resend notice to email content
-    const resendNotice = reason === 'expired' 
-      ? "We noticed your previous code expired, so we've sent you a new one." 
+    // Customize message based on reason
+    const messagePrefix = reason === 'expired' 
+      ? "Your previous code has expired. Here's a new one:" 
       : reason === 'not_received'
-      ? "You requested a new code because you didn't receive the previous one."
-      : "As requested, here's your new verification code.";
+      ? "Here's a new verification code:"
+      : "As requested, here's your new verification code:";
 
     if (emailHtml) {
-      // Replace placeholders in custom HTML
       const placeholders: Record<string, string> = {
         '{{otp}}': otp,
         '{{company}}': companyName,
         '{{expiry}}': expiry.toString(),
         '{{email}}': email,
-        '{{resend_notice}}': resendNotice,
+        '{{message_prefix}}': messagePrefix,
         ...customFields,
       };
       
@@ -212,22 +223,24 @@ export async function POST(req: NextRequest) {
           emailText = emailText!.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), value);
         });
       } else {
-        emailText = `Your verification code is: ${otp}\n\n${resendNotice}`;
+        emailText = `${messagePrefix}\n\nYour verification code is: ${otp}\n\nThis code will expire in ${expiry} minutes.`;
       }
     } else {
-      // Use default templates with resend notice
-      const defaultHtml = getDefaultOTPTemplate(otp, companyName);
-      emailHtml = defaultHtml.replace('</body>', `<p style="color: #667eea; font-style: italic;">${resendNotice}</p>\n</body>`);
-      emailText = text || `${getDefaultTextTemplate(otp)}\n\n${resendNotice}`;
+      // Use default template with regeneration message
+      emailHtml = getDefaultOTPTemplate(otp, companyName);
+      // Add regeneration message
+      emailHtml = emailHtml.replace(
+        '<p>Your verification code is:</p>',
+        `<p>${messagePrefix}</p>\n<p>Your new verification code is:</p>`
+      );
+      emailText = text || `${messagePrefix}\n\nYour verification code is: ${otp}\n\nThis code will expire in ${expiry} minutes.`;
     }
 
-    // 11. Prepare email subject (add [Resent] tag if applicable)
-    const emailSubject = subject 
-      ? (reason !== 'new_request' ? `[Resent] ${subject}` : subject)
-      : (reason !== 'new_request' ? `[Resent] Your verification code: ${otp}` : `Your verification code: ${otp}`);
+    // 10. Prepare email subject
+    const emailSubject = subject || `New verification code for ${companyName}`;
 
-    // 12. Send email
-    const emailResult = await mailSender.sendEmail({
+    // 11. Send email with new OTP
+    const emailResult = await emailSender.sendEmail({
       to: email,
       subject: emailSubject,
       html: emailHtml,
@@ -236,18 +249,18 @@ export async function POST(req: NextRequest) {
       fromName: sender.name,
       replyTo: sender.replyTo,
       headers: {
-        "X-OTP-ID": newOtpId,
+        "X-OTP-ID": otpRecord.id,
         "X-Workspace-ID": keyInfo.workspaceId,
         "X-API-Key-ID": keyInfo.id,
-        "X-OTP-Resend": "true",
-        "X-OTP-Reason": reason || "new_request",
+        "X-OTP-Regenerate": "true",
+        "X-OTP-Reason": reason,
       },
     });
 
     if (!emailResult.success) {
-      // Update OTP record as failed
+      // Mark OTP as failed
       await db.otpRequest.update({
-        where: { id: newOtpId },
+        where: { id: otpId },
         data: {
           status: "FAILED",
           metadata: {
@@ -257,17 +270,18 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      return NextResponse.json(
+      const response = NextResponse.json(
         { 
           success: false, 
-          error: "Failed to resend OTP email",
+          error: "Failed to send OTP email",
           details: emailResult.error 
         },
         { status: 500 }
       );
+      return addCORSHeaders(response);
     }
 
-    // 13. Update workspace OTP count
+    // 12. Update workspace OTP count
     await db.workspace.update({
       where: { id: keyInfo.workspaceId },
       data: {
@@ -275,13 +289,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // 14. Log API usage
+    // 13. Track API usage
+    const today = getStartOfDay();
     await db.aPiUsageSummary.upsert({
       where: {
         workspaceId_date_service: {
           workspaceId: keyInfo.workspaceId,
-          date: new Date(),
-          service: "otp_resend",
+          date: today,
+          service: "otp_regenerate",
         },
       },
       update: {
@@ -292,33 +307,34 @@ export async function POST(req: NextRequest) {
         id: dropid("aus"),
         workspaceId: keyInfo.workspaceId,
         apiKeyId: keyInfo.id,
-        date: new Date(),
-        service: "otp_resend",
+        date: today,
+        service: "otp_regenerate",
         totalCalls: 1,
         successCalls: 1,
         failedCalls: 0,
       },
     });
 
-    // 15. Return success response
-    return NextResponse.json(
+    // 14. Return success response
+    const response = NextResponse.json(
       {
         success: true,
         data: {
-          id: newOtpId,
-          message: `OTP resent successfully to ${email}`,
+          id: otpRecord.id,
+          message: `New verification code sent to ${email}`,
           expiresAt: expiresAt.toISOString(),
-          previousOtpId: otpId || existingOTP?.id,
-          resendCount: existingOTP ? ((existingOTP.metadata as any)?.resendCount || 0) + 1 : 1,
-          // For testing only - remove in production
+          regenerated: true,
           ...(process.env.NODE_ENV === "development" && { debug: { otp } }),
         },
       },
       { status: 200 }
     );
+    
+    return addCORSHeaders(response);
+    
   } catch (error) {
-    console.error("[V1_OTP_RESEND_ERROR]", error);
-    return NextResponse.json(
+    console.error("[V1_OTP_REGENERATE_ERROR]", error);
+    const response = NextResponse.json(
       {
         success: false,
         error: "Internal server error",
@@ -326,17 +342,6 @@ export async function POST(req: NextRequest) {
       },
       { status: 500 }
     );
+    return addCORSHeaders(response);
   }
-}
-
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type",
-      "Access-Control-Max-Age": "86400",
-    },
-  });
 }

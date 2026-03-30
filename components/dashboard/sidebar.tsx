@@ -51,9 +51,9 @@ export function DashboardSidebar({
   {
     label: 'Services',
     items: [
-      { label: 'SMS', icon: MessageSquare, href: `/dashboard/${workspaceId}/sms` },
+      // { label: 'SMS', icon: MessageSquare, href: `/dashboard/${workspaceId}/sms` },
       { label: 'Email', icon: Mail, href: `/dashboard/${workspaceId}/email` },
-      { label: 'OTP', icon: Lock, href: `/dashboard/${workspaceId}/otp` },
+      // { label: 'OTP', icon: Lock, href: `/dashboard/${workspaceId}/otp` },
     ],
   },
   {

@@ -1,3 +1,4 @@
+// lib/api-key/validate.ts
 import { db } from "@/lib/db";
 import { NextRequest } from "next/server";
 import { isValidKeyFormat, getKeyEnvironment } from "./utils";
@@ -18,24 +19,19 @@ export async function validateApiKey(req: NextRequest): Promise<{
   status?: number;
 }> {
   try {
-    // Get API key from header
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    // Get API key from X-API-Key header (this is what your client sends)
+    const apiKey = req.headers.get("x-api-key");
+    
+    if (!apiKey) {
+      console.log('No X-API-Key header found');
       return { 
         valid: false, 
-        error: "Missing or invalid authorization header. Use: Bearer YOUR_API_KEY",
+        error: "Missing API key. Provide via X-API-Key header",
         status: 401
       };
     }
 
-    const apiKey = authHeader.split(" ")[1];
-    if (!apiKey) {
-      return { 
-        valid: false, 
-        error: "API key is required",
-        status: 401
-      };
-    }
+    console.log('API Key received:', apiKey.substring(0, 10) + '...');
 
     // Validate key format first
     if (!isValidKeyFormat(apiKey)) {
@@ -81,6 +77,7 @@ export async function validateApiKey(req: NextRequest): Promise<{
     });
 
     if (!keyRecord) {
+      console.log('API key not found in database:', apiKey.substring(0, 10) + '...');
       return { 
         valid: false, 
         error: "Invalid API key",
@@ -135,7 +132,6 @@ export async function validateApiKey(req: NextRequest): Promise<{
       keyInfo: {
         id: keyRecord.id,
         workspaceId: keyRecord.workspaceId,
-        // userId: keyRecord.userId || '',
         name: keyRecord.name,
         tier: keyRecord.workspace.subscription?.tier || 'FREE',
         isTest: keyRecord.isTest,

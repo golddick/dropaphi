@@ -6,6 +6,7 @@ import { validateApiKey } from "@/lib/api-key/validate";
 import { checkWorkspaceEmailLimit, getWorkspaceEmailSender } from "@/lib/v1-api/workspace/sender";
 import { defaultTemplates, htmlToText, processTemplate } from "@/lib/v1-api/email/template";
 import { mailSender } from "@/lib/email/service/transporter";
+import { handleCORS, addCORSHeaders } from "@/lib/cors"; // Add this import
 
 // Validation schema for send email request
 const sendEmailSchema = z.object({
@@ -15,6 +16,7 @@ const sendEmailSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
   html: z.string().optional(),
   text: z.string().optional(),
+  brandName: z.string().optional( ),
   template: z.enum(["welcome", "newsletter", "marketing", "notification"]).optional(),
   templateData: z.record(z.any()).optional(),
   fromName: z.string().optional(),
@@ -33,23 +35,30 @@ const sendEmailSchema = z.object({
   metadata: z.record(z.any()).optional(),
 });
 
+// Handle OPTIONS requests for CORS preflight
+export async function OPTIONS(req: NextRequest) {
+  return handleCORS(req);
+}
+
 export async function POST(req: NextRequest) {
   try {
     // 1. Validate API key
     const validation = await validateApiKey(req);
     if (!validation.valid) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { success: false, error: validation.error },
         { status: validation.status || 401 }
       );
+      return addCORSHeaders(response);
     }
 
     const { keyInfo } = validation;
     if (!keyInfo) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { success: false, error: "Invalid API key information" },
         { status: 401 }
       );
+      return addCORSHeaders(response);
     }
 
     // 2. Parse and validate request body
@@ -57,7 +66,7 @@ export async function POST(req: NextRequest) {
     const parsed = sendEmailSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: false,
           error: "Validation error",
@@ -65,6 +74,7 @@ export async function POST(req: NextRequest) {
         },
         { status: 400 }
       );
+      return addCORSHeaders(response);
     }
 
     const {
@@ -78,6 +88,7 @@ export async function POST(req: NextRequest) {
       templateData,
       fromName,
       replyTo,
+      brandName,
       attachments,
       headers,
       scheduledAt,
@@ -88,7 +99,7 @@ export async function POST(req: NextRequest) {
     // 3. Check workspace email limit
     const limitCheck = await checkWorkspaceEmailLimit(keyInfo.workspaceId);
     if (!limitCheck.allowed) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: false,
           error: "Email limit exceeded",
@@ -98,15 +109,17 @@ export async function POST(req: NextRequest) {
         },
         { status: 429 }
       );
+      return addCORSHeaders(response);
     }
 
     // 4. Get workspace sender
     const sender = await getWorkspaceEmailSender(keyInfo.workspaceId);
     if (!sender) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { success: false, error: "No email sender configured for workspace" },
         { status: 400 }
       );
+      return addCORSHeaders(response);
     }
 
     // 5. Prepare email content
@@ -169,7 +182,7 @@ export async function POST(req: NextRequest) {
         workspaceId: keyInfo.workspaceId,
         emailSenderId: sender.id !== "system" ? sender.id : null,
         fromEmail: sender.email,
-        fromName: fromName || sender.name,
+        fromName: brandName ||fromName || sender.name,
         toEmails,
         ccEmails,
         bccEmails,
@@ -192,7 +205,7 @@ export async function POST(req: NextRequest) {
 
     // 9. If scheduled, don't send now
     if (scheduledAt) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: true,
           data: {
@@ -204,6 +217,7 @@ export async function POST(req: NextRequest) {
         },
         { status: 202 }
       );
+      return addCORSHeaders(response);
     }
 
     // 10. Process attachments (decode from base64)
@@ -212,6 +226,8 @@ export async function POST(req: NextRequest) {
       content: Buffer.from(att.content, 'base64'),
       contentType: att.contentType,
     }));
+
+    console.log(sender.name, 'sender name sendemail ')
 
     // 11. Send email
     const emailResult = await mailSender.sendEmail({
@@ -222,8 +238,8 @@ export async function POST(req: NextRequest) {
       html: emailHtml,
       text: emailText || htmlToText(emailHtml),
       fromEmail: sender.email,
-      fromName: fromName || sender.name,
-      replyTo: replyTo || sender.replyTo,
+      fromName:  sender.name || brandName || fromName ,
+      // replyTo: replyTo || sender.replyTo,
       attachments: processedAttachments,
       headers: {
         "X-Email-ID": emailId,
@@ -244,7 +260,7 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      return NextResponse.json(
+      const response = NextResponse.json(
         { 
           success: false, 
           error: "Failed to send email",
@@ -252,6 +268,7 @@ export async function POST(req: NextRequest) {
         },
         { status: 500 }
       );
+      return addCORSHeaders(response);
     }
 
     // 12. Update email record as delivered
@@ -298,7 +315,7 @@ export async function POST(req: NextRequest) {
     });
 
     // 15. Return success response
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: true,
         data: {
@@ -311,9 +328,12 @@ export async function POST(req: NextRequest) {
       },
       { status: 200 }
     );
+    return addCORSHeaders(response);
+    
   } catch (error) {
     console.error("[V1_EMAIL_SEND_ERROR]", error);
-    return NextResponse.json(
+    
+    const response = NextResponse.json(
       {
         success: false,
         error: "Internal server error",
@@ -321,17 +341,6 @@ export async function POST(req: NextRequest) {
       },
       { status: 500 }
     );
+    return addCORSHeaders(response);
   }
-}
-
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type",
-      "Access-Control-Max-Age": "86400",
-    },
-  });
 }
