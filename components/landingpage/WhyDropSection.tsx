@@ -24,7 +24,7 @@ export default function WhyDropSection() {
           className="mb-16 max-w-lg"
         >
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-900/20 border border-red-800/30 font-mono text-xs uppercase tracking-wider text-red-400 mb-4">
-            Why Drop API
+            Why Drop APHI
           </div>
           <h2 className="font-[Bricolage_Grotesque] text-[clamp(2rem,4vw,2.8rem)] font-extrabold tracking-tight leading-tight">
             The infrastructure<br /><span className="text-red-600">you actually deserve</span>

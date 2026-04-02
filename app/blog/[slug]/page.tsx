@@ -110,8 +110,8 @@ export default function BlogPostPage() {
 
       {/* ── ARTICLE HEADER — dark ── */}
       <section className="bg-black text-white px-6 py-20 relative overflow-hidden">
-        <div className="absolute top-1/2 left-[30%] -translate-x-1/2 -translate-y-3/5 w-[600px] h-[400px] bg-[radial-gradient(ellipse,rgba(220,20,60,0.12)_0%,transparent_65%)] pointer-events-none" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(220,20,60,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(220,20,60,0.03)_1px,transparent_1px)] bg-[size:48px_48px]" />
+        <div className="absolute top-1/2 left-[30%] -translate-x-1/2 -translate-y-3/5 w-150 h-100 bg-[radial-gradient(ellipse,rgba(220,20,60,0.12)_0%,transparent_65%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(220,20,60,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(220,20,60,0.03)_1px,transparent_1px)] bg-size-[48px_48px]" />
         
         <div className="max-w-3xl mx-auto relative z-10">
           <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
@@ -147,7 +147,7 @@ export default function BlogPostPage() {
             {/* Author + share */}
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-red-600 flex items-center justify-center font-['Bricolage_Grotesque'] font-extrabold text-base text-white flex-shrink-0">
+                <div className="w-11 h-11 rounded-full bg-red-600 flex items-center justify-center font-['Bricolage_Grotesque'] font-extrabold text-base text-white shrink-0">
                   G
                 </div>
                 <div>
@@ -244,7 +244,7 @@ const result = await drop.sms.send({
 
 console.log(result.deliveredAt)  // typically < 1 second
 console.log(result.carrier)       // 'MTN Nigeria'
-console.log(result.route)         // 'direct'`} />
+              console.log(result.route)         // 'direct'`} />
 
             <p>
               The SDK detects the destination carrier automatically, selects the optimal route from our routing table, and falls back gracefully if a route degrades — all without you changing a line of code.
@@ -269,7 +269,7 @@ await drop.otp.send({ phone, channel: 'sms' })
 // File storage - edge delivery from African nodes
 await drop.storage.upload({ file, path: 'invoices/q3.pdf' })
 
-// All tracked in one dashboard, one bill, one SDK`} />
+              // All tracked in one dashboard, one bill, one SDK`} />
 
             <h2>What We're Building Next</h2>
             <p>
@@ -282,11 +282,11 @@ await drop.storage.upload({ file, path: 'invoices/q3.pdf' })
             {/* Article footer */}
             <div className="mt-12 pt-8 border-t border-gray-200">
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center font-['Bricolage_Grotesque'] font-extrabold text-lg text-white flex-shrink-0">
+                <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center font-['Bricolage_Grotesque'] font-extrabold text-lg text-white shrink-0">
                   G
                 </div>
                 <div>
-                  <p className="font-['Bricolage_Grotesque'] font-bold text-base text-gray-900">Golddick O.</p>
+                  <p className="font-['Bricolage_Grotesque'] font-bold text-base text-gray-900">Golddick E.</p>
                   <p className="font-['Plus_Jakarta_Sans'] text-sm text-gray-500">Founder & CEO at Drop APHI. Prev. engineering at Paystack. Building Africa's communication stack from Lagos.</p>
                 </div>
               </div>
@@ -418,7 +418,7 @@ await drop.storage.upload({ file, path: 'invoices/q3.pdf' })
               <input 
                 type="email" 
                 placeholder="your@email.com" 
-                className="flex-1 min-w-[200px] px-4 py-3 rounded-lg bg-[#141414] border border-[#222] text-white font-['Plus_Jakarta_Sans'] text-sm outline-none" 
+                className="flex-1 min-w-50 px-4 py-3 rounded-lg bg-[#141414] border border-[#222] text-white font-['Plus_Jakarta_Sans'] text-sm outline-none" 
               />
               <button className="inline-flex items-center gap-2 px-5 py-3 bg-red-600 text-white rounded-lg font-['Bricolage_Grotesque'] font-bold hover:bg-red-700 transition-all flex-shrink-0">
                 Subscribe <ArrowRight size={14} />

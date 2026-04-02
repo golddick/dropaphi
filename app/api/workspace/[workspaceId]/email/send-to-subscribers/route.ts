@@ -246,7 +246,7 @@ export async function POST(
             "X-Email-ID": emailId,
             "X-Workspace-ID": workspaceId,
             "X-Subscriber-ID": subscriber.id,
-          },
+          }, 
         });
 
         if (result.success) {

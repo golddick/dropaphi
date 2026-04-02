@@ -71,7 +71,7 @@ export default function Footer() {
 
         <div className="border-t border-gray-100 pt-7 flex flex-col md:flex-row justify-between items-center gap-3">
           <p className="font-mono text-xs text-gray-400">
-            © 2024 Drop API · DropID is open source (MIT License)
+            © 2025 Drop API · DropID is open source (MIT License)
           </p>
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500" />

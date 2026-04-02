@@ -343,9 +343,6 @@ export default function LandingPage() {
 
   return (
     <main className="font-sans overflow-x-hidden bg-white">
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400&display=swap');
-      `}</style>
       
       <Navigation user={user} />
       <HeroSection />
@@ -364,7 +361,7 @@ export default function LandingPage() {
 }
 
 /* ─── Ticker Component ─── */
-function Ticker() {
+export function Ticker() {
   return (
     <div className="bg-black border-t border-b border-gray-900 py-3 overflow-hidden">
       <div className="overflow-hidden">

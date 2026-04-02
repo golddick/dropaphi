@@ -4,7 +4,7 @@ import { db } from '@/lib/db';
 
 export async function requireAdmin() {
   try {
-    const result = await requireAuth();
+    const result = await requireAuth(); 
     
     // If requireAuth returned a Response (error), return it
     if (result instanceof Response) {
@@ -38,7 +38,7 @@ export async function requireAdmin() {
       );
     }
 
-    if (user.role !== 'ADMIN') {
+    if (user.role !== 'ADMIN' && user.role !== 'OWNER') {
       console.log('[requireAdmin] User is not admin:', session.userId, 'Role:', user.role);
       return new Response(
         JSON.stringify({ error: 'Forbidden - Admin access required' }),

@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
       by: ['plan'],
       _count: true,
       where: {
-        plansubscriptionStatus: 'ACTIVE'
+        planSubscriptionStatus: 'ACTIVE'
       }
     });
 
@@ -114,15 +114,15 @@ export async function GET(req: NextRequest) {
     });
 
     // API usage statistics
-    const totalApiCalls = await db.aPiUsageSummary.aggregate({
-      _sum: { totalCalls: true }
+    const totalApiCalls = await db.apiKey.aggregate({
+      _sum: { usageCount: true }
     });
 
-    const apiCallsThisPeriod = await db.aPiUsageSummary.aggregate({
+    const apiCallsThisPeriod = await db.apiKey.aggregate({
       where: {
-        date: { gte: startDate }
+        createdAt: { gte: startDate }
       },
-      _sum: { totalCalls: true }
+      _sum: { usageCount: true }
     });
 
     // Communication statistics
@@ -245,8 +245,8 @@ export async function GET(req: NextRequest) {
           failed: failedTransactions
         },
         api: {
-          totalCalls: totalApiCalls._sum.totalCalls || 0,
-          thisPeriod: apiCallsThisPeriod._sum.totalCalls || 0
+          totalCalls: totalApiCalls._sum.usageCount || 0,
+          thisPeriod: apiCallsThisPeriod._sum.usageCount || 0
         },
         communications: {
           emails: {

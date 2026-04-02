@@ -44,7 +44,7 @@ export default function AnalyticsSection() {
             </p>
             {features.map(({ icon, title, desc }) => (
               <div key={title} className="flex gap-4 mb-5.5 items-start">
-                <div className="w-11 h-11 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center text-red-600 flex-shrink-0">
+                <div className="w-11 h-11 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shrink-0">
                   {icon}
                 </div>
                 <div>

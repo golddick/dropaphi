@@ -127,7 +127,7 @@ export default function BlogPage() {
   
   return (
     <div className="overflow-x-hidden bg-white">
-      <style jsx>{`
+      {/* <style jsx>{`
         @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400&display=swap');
         
         .blog-card-hover { transition: all 0.28s; }
@@ -136,7 +136,7 @@ export default function BlogPage() {
         .tag-pill:hover { transform: translateY(-1px); }
         .featured-card { transition: all 0.3s; }
         .featured-card:hover { box-shadow: 0 24px 64px rgba(0,0,0,0.12); }
-      `}</style>
+      `}</style> */}
       
       <Navigation user={user} />
 

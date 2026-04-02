@@ -105,7 +105,7 @@ export interface SendEmailData {
 export interface CreateCampaignData {
   name: string
   subject: string
-  templateId?: string
+  templateId?: string 
   scheduledAt?: string
 }
 

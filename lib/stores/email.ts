@@ -55,6 +55,7 @@ interface EmailState {
   currentPage: number;
   pageSize: number;
   stats: EmailStats | null;
+  
 
   // Template Actions
   fetchTemplates: () => Promise<void>;
@@ -71,10 +72,11 @@ interface EmailState {
   updateCampaign: (campaignId: string, data: Partial<CreateCampaignData>) => Promise<EmailCampaign | null>;
   deleteCampaign: (campaignId: string) => Promise<void>;
 
-  // Email Actions
+  // Email Actions 
   sendEmail: (data: SendEmailData) => Promise<Email | null>;
   sendCampaign: (campaignId: string, templateId?: string) => Promise<void>;
   sendToSubscribers: (campaignId: string, html: string, subject: string) => Promise<void>;
+  sendToSubscriber: (campaignId: string, html: string, subject: string, email: string) => Promise<void>;
   
   // Email Fetch Actions
   fetchRecentEmails: (limit?: number) => Promise<void>;
@@ -82,6 +84,8 @@ interface EmailState {
   fetchEmailById: (id: string) => Promise<void>;
   fetchEmailsByType: (type: EmailFromType, limit?: number) => Promise<void>;
   fetchEmailsByStatus: (status: EmailStatus, limit?: number) => Promise<void>;
+  fetchEmailsForSubscriber: (subscriberId: string) => Promise<void>;
+  recentEmailsForSubscriber: Email[];
   
   // Email Management Actions
   deleteEmail: (id: string) => Promise<void>;
@@ -108,6 +112,7 @@ export const useEmailStore = create<EmailState>()(
       campaigns: [],
       emails: [],
       recentEmails: [],
+      recentEmailsForSubscriber: [],
       selectedEmail: null,
       currentTemplate: null,
       currentCampaign: null,
@@ -572,10 +577,41 @@ export const useEmailStore = create<EmailState>()(
         set({ isSending: false });
       }
         },
- 
-      // ========================================
-      // Email Fetch Actions
-      // ========================================
+
+      sendToSubscriber: async (campaignId: string, html: string, subject: string, email: string) => {
+        const { currentWorkspace } = useWorkspaceStore.getState();
+        if (!currentWorkspace?.id) {
+          const error = 'No workspace selected';
+          set({ error });
+          toast.error(error);
+          throw new Error(error);
+        }
+
+        set({ isSending: true, error: null });
+        try {
+          const response = await apiFetch(`/api/workspace/${currentWorkspace.id}/email/send-to-subscriber`, {
+            method: 'POST',
+            body: JSON.stringify({
+              campaignId,
+              subject,
+              html,
+              email,
+              text: html.replace(/<[^>]*>/g, ''), // Convert HTML to plain text
+            }),
+          });
+
+          toast.success(response.message || 'Email sent successfully!');
+          return response;
+        } catch (error) {
+          console.error('❌ Send to subscriber error:', error);
+          const errorMessage = (error as Error).message;
+          set({ error: errorMessage });
+          toast.error(errorMessage);
+          throw error;
+        } finally {
+          set({ isSending: false });
+        }
+      },
 
       fetchRecentEmails: async (limit: number = 10) => {
         const { currentWorkspace } = useWorkspaceStore.getState();
@@ -726,6 +762,53 @@ export const useEmailStore = create<EmailState>()(
         }
       },
 
+      fetchEmailsForSubscriber: async (subscriberId: string) => {
+        const { currentWorkspace } = useWorkspaceStore.getState();
+        if (!currentWorkspace?.id) {
+          set({ error: 'No workspace selected' });
+          return;
+        }
+
+        set({ isLoading: true, error: null });
+        try {
+          const response = await fetch(
+            `/api/workspace/${currentWorkspace.id}/email/subscriber/${subscriberId}?limit=10`,
+            {
+              credentials: 'include',
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch emails');
+          }
+
+          const result = await response.json();
+          console.log('API Response:', result);
+          
+          // Set the emails directly
+          if (result.success && result.data?.emails) {
+            console.log('Setting emails:', result.data.emails);
+            // Use set to update the state
+            set({ 
+              recentEmailsForSubscriber: result.data.emails,
+              isLoading: false 
+            });
+          } else {
+            set({ 
+              recentEmailsForSubscriber: [],
+              isLoading: false 
+            });
+          }
+        } catch (error) {
+          console.error('❌ Fetch emails for subscriber error:', error);
+          set({ 
+            error: (error as Error).message,
+            isLoading: false,
+            recentEmailsForSubscriber: []
+          });
+        }
+      },
+
       // ========================================
       // Email Management Actions
       // ========================================
@@ -796,42 +879,6 @@ export const useEmailStore = create<EmailState>()(
           set({ isLoading: false });
         }
       },
-
-      // updateEmailStatus: async (id: string, status: EmailStatus, metadata?: any) => {
-      //   const { currentWorkspace } = useWorkspaceStore.getState();
-      //   if (!currentWorkspace?.id) {
-      //     set({ error: 'No workspace selected' });
-      //     return;
-      //   }
-
-      //   try {
-      //     const data = await apiFetch(
-      //       `/api/workspace/${currentWorkspace.id}/email/${id}/status`,
-      //       {
-      //         method: 'PATCH',
-      //         body: JSON.stringify({ status, metadata }),
-      //       }
-      //     );
-
-      //     if (data.data) {
-      //       set((state) => ({
-      //         emails: state.emails.map((email) =>
-      //           email.id === id ? { ...email, ...data.data } : email
-      //         ),
-      //         recentEmails: state.recentEmails.map((email) =>
-      //           email.id === id ? { ...email, ...data.data } : email
-      //         ),
-      //         selectedEmail: state.selectedEmail?.id === id
-      //           ? { ...state.selectedEmail, ...data.data }
-      //           : state.selectedEmail,
-      //       }));
-      //     }
-      //   } catch (error) {
-      //     console.error('❌ Update email status error:', error);
-      //     set({ error: (error as Error).message });
-      //     toast.error('Failed to update email status');
-      //   }
-      // },
 
       retryBouncedEmail: async (id: string) => {
         const { currentWorkspace } = useWorkspaceStore.getState();

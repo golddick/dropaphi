@@ -31,7 +31,7 @@ export default function DropIdSection() {
               { title: '2–3M IDs/sec', desc: 'Crypto-secure, collision-resistant, only 2KB bundle' },
             ].map(({ title, desc }) => (
               <div key={title} className="flex gap-3.5 mb-5 items-start">
-                <div className="w-5.5 h-5.5 rounded bg-red-600 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <div className="w-5.5 h-5.5 rounded bg-red-600 flex items-center justify-center shrink-0 mt-0.5">
                   <span className="text-white text-xs">✓</span>
                 </div>
                 <div>

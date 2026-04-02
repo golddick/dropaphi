@@ -101,7 +101,7 @@ export async function POST(
     const {
       to,
       cc,
-      bcc,
+      bcc, 
       subject,
       html,
       text,
@@ -183,7 +183,7 @@ export async function POST(
       html,
       text: text || html.replace(/<[^>]*>/g, ""),
 
-      fromEmail: sender.email,
+      fromEmail: sender.email, 
       fromName: sender.name,
     });
 

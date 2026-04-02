@@ -16,11 +16,24 @@ export interface Subscriber {
   updatedAt: string;
 }
 
+// export interface SubscriberStats {
+//   total: number;
+//   active: number;
+//   unsubscribed: number;
+//   bounced: number;
+// }
+
 export interface SubscriberStats {
   total: number;
   active: number;
   unsubscribed: number;
   bounced: number;
+  // Email stats (optional for backward compatibility)
+  emailsSent?: number;
+  emailsOpened?: number;
+  emailsClicked?: number;
+  openRate?: number;
+  clickRate?: number;
 }
 
 export interface SubscriberFilters {
