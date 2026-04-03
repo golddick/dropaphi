@@ -25,13 +25,15 @@ export async function GET(
       return new Response("File not found", { status: 404 });
     }
 
+    const isImage = file.originalName?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+
     // 🔥 Generate signed URL (valid for 60 seconds)
     const { data, error } = await supabaseAdmin.storage
+    
       .from("workspace-files")
       .createSignedUrl(file.storageKey, 60, {
-      download: file.originalName,
+      download: isImage ? undefined : file.originalName,
     });
-      // .createSignedUrl(file.storageKey, 60);
 
     if (error || !data?.signedUrl) {
       return new Response(
@@ -41,12 +43,12 @@ export async function GET(
     }
 
     // Option 1: return JSON
-    return Response.json({
-      url: data.signedUrl,
-    });
+    // return Response.json({
+    //   url: data.signedUrl,
+    // });
 
     // Option 2 (better UX): redirect directly
-    // return Response.redirect(data.signedUrl);
+    return Response.redirect(data.signedUrl);
 
   } catch (error: any) {
     return new Response(error.message, { status: 500 });
