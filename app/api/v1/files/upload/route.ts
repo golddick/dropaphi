@@ -264,7 +264,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://api.dropapi.com';
     const cdnUrl = `${baseUrl}/api/files/${fileId}`;
 
-    // 13. Create file record in database 
+    // 13. Create file record in database  
     const fileRecord = await db.file.create({
       data: {
         id: fileId,
