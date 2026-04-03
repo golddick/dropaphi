@@ -11,7 +11,7 @@ export async function GET(
   { params }: { params: { fileId: string } }
 ) {
   try {
-    const { fileId } = params;
+    const { fileId } = await params;
 
     const file = await db.file.findUnique({
       where: { id: fileId },
