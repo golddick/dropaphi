@@ -262,7 +262,7 @@ export async function POST(req: NextRequest) {
 
     // 12. Generate API URL for the file
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://api.dropapi.com';
-    const fileUrl = `${baseUrl}/api/v1/files/${fileId}`;
+    const cdnUrl = `${baseUrl}/api/files/${fileId}`;
 
     // 13. Create file record in database 
     const fileRecord = await db.file.create({
@@ -274,7 +274,7 @@ export async function POST(req: NextRequest) {
         mimeType: file.type,
         size: fileSizeMB,
         storageKey,
-        cdnUrl: fileUrl,
+        cdnUrl: cdnUrl,
         directUrl: urlData.publicUrl,
         visibility: (metadata as any).visibility || 'PUBLIC',
         metadata: {
@@ -333,7 +333,7 @@ export async function POST(req: NextRequest) {
         name: originalFileName,
         size: fileSizeMB,
         mimeType: file.type,
-        url: fileUrl,
+        url: cdnUrl,
         directUrl: urlData.publicUrl,
         createdAt: fileRecord.createdAt.toISOString(),
         metadata: metadata,
