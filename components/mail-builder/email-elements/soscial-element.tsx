@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Plus, X } from "lucide-react"
 import { socialIconSVGs, socialPlatforms } from "@/lib/social-icons"
+import { dropid } from "dropid"
 
 interface SocialLink {
   id: string
@@ -45,7 +46,8 @@ export function SocialElement({ id, properties = {}, isSelected, onSelect, onUpd
     if (newPlatform && newUrl) {
       const platform = socialPlatforms.find((p) => p.id === newPlatform)
       const newLink: SocialLink = {
-        id: `${newPlatform}-${Date.now()}`,
+        // id: `${newPlatform}-${Date.now()}`,
+        id: dropid(`${newPlatform}`),
         platform: newPlatform,
         url: newUrl,
         iconColor: platform?.color,

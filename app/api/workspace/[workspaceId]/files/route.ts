@@ -146,10 +146,10 @@ export async function POST(
 
     const uploadResult = await uploadWorkspaceFile(workspaceId, file);
 
-    const baseUrl =
+    const baseUrl = 
       process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-    const cdnUrl = `${baseUrl}/api/files/${uploadResult.path}`;
+    const cdnUrl = `${baseUrl}/api/files/${fileId}`;
 
     // Create file record and update workspace in a transaction to ensure consistency
     const result = await db.$transaction(async (tx) => {

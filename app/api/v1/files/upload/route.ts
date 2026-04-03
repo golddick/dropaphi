@@ -69,16 +69,15 @@ function sanitizeFileName(fileName: string): string {
 // Helper function to generate unique filename
 function generateUniqueFileName(originalName: string, customName?: string): string {
   const timestamp = Date.now();
-  const random = Math.random().toString(36).substring(2, 8);
   
   if (customName) {
     const sanitized = sanitizeFileName(customName);
     const ext = originalName.split('.').pop();
-    return `${timestamp}-${random}-${sanitized}.${ext}`;
+    return `${timestamp}-${sanitized}.${ext}`;
   }
   
   const sanitized = sanitizeFileName(originalName);
-  return `${timestamp}-${random}-${sanitized}`;
+  return `${timestamp}-${sanitized}`;
 }
 
 function bytesToMB(bytes: number | bigint): number {
@@ -265,7 +264,7 @@ export async function POST(req: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://api.dropapi.com';
     const fileUrl = `${baseUrl}/api/v1/files/${fileId}`;
 
-    // 13. Create file record in database
+    // 13. Create file record in database 
     const fileRecord = await db.file.create({
       data: {
         id: fileId,

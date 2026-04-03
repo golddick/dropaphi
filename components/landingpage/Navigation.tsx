@@ -40,11 +40,11 @@ export default function Navigation({ user }: NavigationProps) {
         <div className="flex items-center gap-3">
           {!user ? (
             <>
-              <Link href="/signin" className="hidden md:block text-sm text-gray-600 hover:text-gray-900 no-underline">
+              <Link href="/auth/login" className="hidden md:block text-sm text-gray-600 hover:text-gray-900 no-underline">
                 Sign In
               </Link>
               <Link 
-                href="/signup" 
+                href="/auth/signup" 
                 className="inline-flex items-center gap-2 px-5 py-2 bg-red-600 text-white rounded-lg font-[Bricolage_Grotesque] font-bold text-sm hover:bg-red-700 transition-all hover:-translate-y-0.5 shadow-lg shadow-red-600/25 no-underline"
               >
                 Get Started <ArrowRight size={14} />

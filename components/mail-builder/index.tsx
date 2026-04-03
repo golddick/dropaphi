@@ -35,6 +35,7 @@ import { CodeEditor } from "./code-editor/code-editor"
 import { useWorkspaceStore } from "@/lib/stores/workspace"
 import { useEmailStore } from "@/lib/stores/email"
 import { parseHTMLToElements } from "@/lib/email/generator/html-generator"
+import { dropid } from "dropid"
 // import { generateEmailHTML } from "@/lib/email/generator/html-generator"
 
 interface EmailElement { 
@@ -108,7 +109,7 @@ export default function DropAphiMailStudio() {
     { id: "button", icon: Icons.Button, label: "Button", category: "Basics" },
     { id: "social", icon: Icons.Social, label: "Social", category: "Basics" },
     { id: "divider", icon: Icons.Divider, label: "Divider", category: "Layout" },
-    { id: "columns-1", icon: Icons.Columns, label: "1 Column", category: "Layout" },
+    // { id: "columns-1", icon: Icons.Columns, label: "1 Column", category: "Layout" },
     { id: "columns-2", icon: Icons.Columns, label: "2 Columns", category: "Layout" },
     { id: "logo", icon: Icons.Image, label: "Logo", category: "Media" },
   ]
@@ -177,7 +178,8 @@ export default function DropAphiMailStudio() {
     if (over.id === "email-canvas" && active.data.current?.type) {
       const componentType = active.data.current.type.replace(/-(1|2)$/, "")
       const newElement: EmailElement = {
-        id: `${componentType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        // id: `${componentType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        id: dropid(`${componentType}`),
         type: componentType as EmailElement["type"],
         properties: active.data.current.type.includes("columns")
           ? { columns: active.data.current.type.includes("2") ? 2 : 1 }
@@ -228,7 +230,8 @@ export default function DropAphiMailStudio() {
   const handleComponentClick = (componentId: string, label: string) => {
     const componentType = componentId.replace(/-(1|2)$/, "")
     const newElement: EmailElement = {
-      id: `${componentType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      // id: `${componentType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: dropid(`${componentType}`),
       type: componentType as EmailElement["type"],
       properties: componentId.includes("columns")
         ? { columns: componentId.includes("2") ? 2 : 1 }
@@ -468,7 +471,7 @@ export default function DropAphiMailStudio() {
         } else {
           // Fallback: create a text element with the HTML content
           const fallbackElement: EmailElement = {
-            id: `text-${Date.now()}`,
+            id: dropid('text'),
             type: "text",
             content: "HTML content could not be parsed. Please check your HTML structure.",
             properties: { color: "#ff0000" }
@@ -556,7 +559,7 @@ const parseAsText = (content: string) => {
     
     if (restContent) {
       const textElement: EmailElement = {
-        id: `text-${Date.now()}`,
+        id: dropid('text'),
         type: "text",
         content: restContent,
       }

@@ -16,6 +16,7 @@ import { TextElement } from "./text.element"
 import { SocialElement } from "./soscial-element"
 import { SortableElement } from "../drag-drop/sortable-element"
 import { Plus } from "lucide-react"
+import { dropid } from "dropid"
 
 interface ColumnsElementProps {
   id: string
@@ -70,7 +71,8 @@ export function ColumnsElement({
 
   const addElementToColumn = (columnIndex: number, elementType: string) => {
     const newElement = {
-      id: `${elementType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      // id: `${elementType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: dropid(`${elementType}`),
       type: elementType,
       content: elementType === "text" ? "Sample text" : elementType === "button" ? "Click me" : undefined,
       properties: {

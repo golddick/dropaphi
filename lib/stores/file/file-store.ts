@@ -7,7 +7,7 @@ export interface FileType {
   originalName: string;
   mimeType: string;
   size: number;
-  cdnUrl: string | null;
+  cdnUrl: string | null; 
   directUrl: string | null;
   visibility: "PUBLIC" | "PRIVATE";
   width?: number | null;

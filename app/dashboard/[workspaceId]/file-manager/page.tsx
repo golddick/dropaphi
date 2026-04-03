@@ -62,6 +62,8 @@ export default function FileManagerPage() {
     await handleFilesUpload(droppedFiles);
   };
 
+  console.log(files, 'file')
+
   const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.currentTarget.files;
     if (selectedFiles) {
@@ -385,10 +387,10 @@ export default function FileManagerPage() {
                       </div>
                     </div>
                     <p className="text-sm font-bold truncate" style={{ color: '#1A1A1A' }}>
-                      {file.name}
+                      {file.originalName}
                     </p>
                     <p className="text-xs mt-1" style={{ color: '#999999' }}>
-                      {formatFileSize(file.size)}
+                      {file.size}
                     </p>
                     <div className="flex gap-2 mt-3">
                       <Button
@@ -440,7 +442,7 @@ export default function FileManagerPage() {
                       <FileIcon size={20} style={{ color: '#999999' }} />
                       <div>
                         <p className="text-sm font-bold" style={{ color: '#1A1A1A' }}>
-                          {file.name}
+                          {file.originalName}
                         </p>
                         <p className="text-xs" style={{ color: '#999999' }}>
                           {formatFileSize(file.size)} • {formatDate(file.createdAt)}

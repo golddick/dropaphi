@@ -46,7 +46,7 @@ export function TemplatePreviewModal({ template, open, onOpenChange }: TemplateP
           <DialogTitle className="flex items-center justify-between">
             <span>{template.name}</span>
             <div className="flex items-center gap-2">
-              <Button
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setPreviewMode('desktop')}
@@ -62,7 +62,7 @@ export function TemplatePreviewModal({ template, open, onOpenChange }: TemplateP
               >
                 <Smartphone size={16} />
               </Button>
-              <Separator orientation="vertical" className="h-6" />
+              <Separator orientation="vertical" className="h-6" /> */}
               <Button
                 variant="outline"
                 size="sm"

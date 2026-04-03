@@ -120,12 +120,12 @@ export default function CampaignManagementPage() {
         onOpenChange={setShowTemplatePreview}
       />
 
-      {selectedCampaign && (
+      {/* {selectedCampaign && (
         <CampaignDetails 
           campaign={selectedCampaign} 
           onClose={() => setSelectedCampaign(null)}
         />
-      )}
+      )} */}
     </div>
   );
 }

@@ -111,77 +111,7 @@ const renderElement = (element: EmailElement): string => {
         .join("; ")}">${props.text || element.content || "Click me"}</a></div>`
 
 
-//   case "social": {
-//   // Handle both single platform and multiple links
-//   const links = props.links || (props.platform ? [{ 
-//     platform: props.platform, 
-//     url: props.url || '#' 
-//   }] : [])
-  
-//   if (!links || links.length === 0) {
-//     return `<div style="text-align: center; color: #666; padding: 8px; margin: 4px 0;">
-//       No social links configured
-//     </div>`
-//   }
 
-//   const iconSize = props.iconSize || 24
-//   const spacing = props.spacing || 8
-  
-//   // Icon color - either iconColor prop or white by default
-//   const iconColor = props.iconColor || "#ffffff"
-
-//   // Container alignment
-//   const socialContainer = props.alignment === "center"
-//     ? "text-align: center;"
-//     : props.alignment === "right"
-//       ? "text-align: right;"
-//       : "text-align: left;"
-
-//   const socialLinksHTML = links
-//     .map((link: any) => {
-//       const platform = link.platform?.toLowerCase()
-//       if (!platform) return ""
-      
-//       // Get platform-specific color from the imported function
-//       const platformColor = getSocialColor(platform)
-      
-//       // Link/container style
-//       const linkStyle = {
-//         display: "inline-flex",
-//         alignItems: "center",
-//         justifyContent: "center",
-//         width: `${iconSize}px`,
-//         height: `${iconSize}px`,
-//         backgroundColor: props.backgroundColor || platformColor,
-//         borderRadius: props.borderRadius ? `${props.borderRadius}px` : "50%",
-//         margin: `0 ${spacing / 2}px`,
-//         textDecoration: "none",
-//         transition: "opacity 0.2s ease",
-//       }
-
-//       // Get the SVG and replace fill colors with iconColor
-//       const iconSVG = getSocialIconSVG(platform)
-//         .replace(/fill="[^"]*"/g, `fill="${iconColor}"`)
-//         .replace(/stroke="[^"]*"/g, `stroke="${iconColor}"`)
-//         .replace(/currentColor/g, iconColor)
-
-//       // Convert style object to string
-//       const linkStyleString = Object.entries(linkStyle)
-//         .map(([key, value]) => {
-//           const cssKey = key.replace(/([A-Z])/g, "-$1").toLowerCase()
-//           return `${cssKey}: ${value}`
-//         })
-//         .join("; ")
-
-//       return `
-//         <a href="${link.url || '#'}" target="_blank" rel="noopener noreferrer" style="${linkStyleString}">
-//           ${iconSVG}
-//         </a>`
-//     })
-//     .join("")
-
-//   return `<div style="${socialContainer}">${socialLinksHTML}</div>`
-// }
 
         case "social": {
   // Handle both single platform and multiple links
@@ -252,9 +182,8 @@ const renderElement = (element: EmailElement): string => {
     .join("")
 
   return `<div style="${socialContainer}">${socialLinksHTML}</div>`
-}
+          }
 
-   
     case "divider":
       const dividerStyle = {
         border: "none",

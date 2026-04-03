@@ -92,10 +92,15 @@ export default function OverviewPage() {
     setChartPeriod,
   } = useDashboardStore();
 
+  // useEffect(() => {
+  //   fetchOverview(workspaceId);
+  //   fetchChartData(workspaceId);
+  // }, [workspaceId]);
+
   useEffect(() => {
-    fetchOverview(workspaceId);
-    fetchChartData(workspaceId);
-  }, [workspaceId]);
+  fetchOverview(workspaceId);
+  fetchChartData(workspaceId, chartPeriod);
+}, [workspaceId, chartPeriod]);
 
   console.log(overview, 'das over')
   console.log(workspaceId, 'das workspace')
@@ -172,12 +177,18 @@ export default function OverviewPage() {
           </h2>
           <div className="flex gap-2">
             {(['7d', '30d', '90d'] as const).map((period) => (
+              // <button
+              //   key={period}
+              //   onClick={() => {
+              //     setChartPeriod(period);
+              //     fetchChartData( period);
+              //   }}
               <button
-                key={period}
-                onClick={() => {
-                  setChartPeriod(period);
-                  fetchChartData( period);
-                }}
+              key={period}
+              onClick={() => {
+                setChartPeriod(period);
+                fetchChartData(workspaceId, period);
+              }}
                 className={`px-3 py-1 text-sm rounded-lg transition-colors ${
                   chartPeriod === period 
                     ? 'text-white' 

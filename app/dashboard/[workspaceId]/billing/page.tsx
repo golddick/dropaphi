@@ -201,7 +201,7 @@ export default function BillingPage() {
 
   if (isLoading && !subscription) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <Loader2 size={40} className="animate-spin" style={{ color: '#DC143C' }} />
       </div>
     );
@@ -209,7 +209,7 @@ export default function BillingPage() {
 
   if (!currentWorkspace) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-100">
         <div className="text-center">
           <Building2 size={48} className="mx-auto mb-4 text-gray-400" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Workspace Selected</h3>
@@ -274,11 +274,11 @@ export default function BillingPage() {
       </motion.div>
 
       {/* Promo Codes Banner */}
-      {promoCodes.length > 0 && !appliedPromo && !isFreePlan && (
+      {/* {promoCodes.length > 0 && !appliedPromo && !isFreePlan && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-red-500 to-red-600 rounded-lg p-4 text-white"
+          className="bg-linear-to-r from-red-500 to-red-600 rounded-lg p-4 text-white"
         >
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
@@ -302,7 +302,7 @@ export default function BillingPage() {
             </div>
           </div>
         </motion.div>
-      )}
+      )} */}
 
       {/* Current Plan */}
       {subscription && (

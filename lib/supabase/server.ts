@@ -7,7 +7,7 @@ export async function uploadWorkspaceFile(
 ) {
   const fileExt = file.name.split(".").pop();
   const fileName = `${randomUUID()}.${fileExt}`;
-
+ 
   const storagePath = `${workspaceId}/${fileName}`;
 
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -33,38 +33,3 @@ export async function uploadWorkspaceFile(
   };
 }
 
-
-
-
-// import { createServerClient } from '@supabase/ssr'
-// import { cookies } from 'next/headers'
-
-// export async function createRouteClient() {
-//   const cookieStore = await cookies()
-
-//   return createServerClient(
-//     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-//     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-//     {
-//       cookies: {
-//         get(name: string) {
-//           return cookieStore.get(name)?.value
-//         },
-//         set(name: string, value: string, options: any) {
-//           try {
-//             cookieStore.set(name, value, options)
-//           } catch (error) {
-//             // Handle cookie setting error in server component
-//           }
-//         },
-//         remove(name: string, options: any) {
-//           try {
-//             cookieStore.set(name, '', { ...options, maxAge: 0 })
-//           } catch (error) {
-//             // Handle cookie removal error in server component
-//           }
-//         },
-//       },
-//     }
-//   )
-// }
