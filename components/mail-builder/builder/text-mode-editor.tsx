@@ -4,16 +4,25 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Icons } from "@/components/icons/icons"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Save } from "lucide-react"
+import { Eye, Save, Send } from "lucide-react"
 
 interface TextModeEditorProps {
   initialContent: string
   subject: string
   onSave: (content: string) => void
   onSubjectChange: (subject: string) => void
+  onPreview?: () => void
+  onSend?: () => void
 }
 
-export function TextModeEditor({ initialContent, subject, onSave, onSubjectChange }: TextModeEditorProps) {
+export function TextModeEditor({ 
+  initialContent, 
+  subject, 
+  onSave, 
+  onSubjectChange,
+  onPreview,
+  onSend
+}: TextModeEditorProps) {
   const [content, setContent] = useState(initialContent)
 
   const handleSave = () => {
@@ -53,8 +62,8 @@ export function TextModeEditor({ initialContent, subject, onSave, onSubjectChang
   const bodyContent = content
 
   return (
-    <div className="h-(calc[100vh-100]) flex flex-col bg-background">
-      <Tabs defaultValue="editor" className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col bg-background h-full overflow-hidden">
+      <Tabs defaultValue="editor" className="flex-1 flex flex-col min-h-0">
         <div className="border-b border-border p-4 space-y-3">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="editor">Editor</TabsTrigger>
@@ -62,11 +71,11 @@ export function TextModeEditor({ initialContent, subject, onSave, onSubjectChang
           </TabsList>
         </div>
 
-        <TabsContent value="editor" className="flex-1 overflow-hidden p-4">
+        <TabsContent value="editor" className="flex-1 flex flex-col overflow-hidden p-4 min-h-0">
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="w-full h-full p-3 border border-border rounded-lg bg-background text-foreground text-sm resize-none focus:ring-2 focus:ring-accent focus:border-transparent"
+            className="flex-1 w-full p-4 border border-border rounded-lg bg-background text-foreground text-base leading-relaxed resize-none focus:ring-2 focus:ring-accent focus:border-transparent outline-none shadow-inner"
             placeholder="Type your email content here...
 
             Add subject line at the top, then your message below.
@@ -96,19 +105,44 @@ export function TextModeEditor({ initialContent, subject, onSave, onSubjectChang
         </TabsContent>
       </Tabs>
 
-      <div className="border-t border-border p-4 flex gap-2 justify-end">
+      <div className="border-t border-border p-4 flex gap-3 justify-end items-center bg-card/50">
         <Button
           size="sm"
-          variant="outline"
+          variant="ghost"
           onClick={() => setContent("")}
+          className="text-muted-foreground hover:text-destructive"
         >
           Clear
         </Button>
+        
+        {onPreview && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onPreview}
+            className="md:hidden"
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            Preview
+          </Button>
+        )}
+
+        {onSend && (
+          <Button
+            size="sm"
+            onClick={onSend}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            <Send className="w-4 h-4 mr-2" />
+            Send
+          </Button>
+        )}
+
         <Button
           size="sm"
-          variant="default"
+          variant="outline"
           onClick={handleSave}
-          className="bg-red-500 hover:bg-red-600"
+          className="hidden md:flex border-accent/20 hover:bg-accent/10"
         >
           <Save className="w-4 h-4 mr-2" />
           Switch to Visual

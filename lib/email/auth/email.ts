@@ -1,4 +1,4 @@
-// src/lib/email.ts
+// src/lib/email/auth/email.ts
 import { transporter } from '@/lib/transport';
 import * as nodemailer from 'nodemailer';
 
@@ -16,7 +16,7 @@ const RETRY_DELAY = 2000; // 2 seconds
 async function sendViaNodemailerWithRetry(opts: SendEmailOptions, retryCount = 0): Promise<any> {
   try {
     const mailOptions = {
-      from: `Drop APHI <${process.env.MAIL_FROM ?? "noreply@thenews.africa"}>`,
+      from: `${process.env.NAME_FROM ?? 'Drop APHI'} <${process.env.MAIL_FROM ?? 'noreply@dropaphi.xyz'}>`,
       to: opts.to,
       subject: opts.subject,
       text: opts.text,
@@ -42,7 +42,7 @@ async function sendViaNodemailerWithRetry(opts: SendEmailOptions, retryCount = 0
     // Log more details for debugging
     if (error.code === 'ETIMEDOUT' || error.message.includes('timeout') || error.message.includes('Greeting')) {
       console.error('[Nodemailer] Connection timeout - check SMTP server availability');
-      console.error('[Nodemailer] Current config:', {
+      console.error('[Nodemailer] Current SMTP config:', {
         host: process.env.SMTP_HOST,
         port: process.env.SMTP_PORT,
         secure: process.env.SMTP_SECURE,
@@ -94,7 +94,8 @@ async function sendToConsole(opts: SendEmailOptions) {
 }
 
 export async function sendEmail(opts: SendEmailOptions) {
-  const provider = process.env.MAIL_PROVIDER ?? "nodemailer";
+  // Use dedicated AUTH provider for in-app auth emails
+  const provider = process.env.AUTH_AUTH_MAIL_PROVIDER ?? process.env.MAIL_PROVIDER ?? "nodemailer";
   
   // In development, if email fails, fallback to console
   try {
@@ -144,7 +145,7 @@ export async function sendVerificationEmail(email: string, token: string) {
           Verify Email
         </a>
         <p style="color:#999;font-size:13px;margin-top:32px">
-          If you didn't create a Drop API account, you can ignore this email.
+          If you didn't create a Drop APHI account, you can ignore this email.
         </p>
       </div>
     `,

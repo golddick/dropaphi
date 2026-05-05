@@ -27,11 +27,17 @@ export async function GET(req: NextRequest) {
             currentOtpSent: true,
             currentFilesUsed: true,
             currentSubscribers: true,
+            currentBlogsCount: true,
+            currentPushSent: true,
+            currentApiCalls: true,
             smsLimit: true,
             emailLimit: true,
             otpLimit: true,
             fileLimit: true,
             subscriberLimit: true,
+            blogLimit: true,
+            pushLimit: true,
+            apiLimit: true,
           }
         }
       },
@@ -68,6 +74,11 @@ export async function GET(req: NextRequest) {
       console.log('✅ Created FREE subscription:', subscription.id);
     }
 
+    // Get wallet for credits
+    const wallet = await db.wallet.findUnique({
+      where: { workspaceId: member.workspaceId },
+    });
+
     // Get plan details for limits
     const plan = getPlanByTier(subscription.tier as any);
 
@@ -86,14 +97,17 @@ export async function GET(req: NextRequest) {
         createdAt: subscription.createdAt.toISOString(),
         updatedAt: subscription.updatedAt.toISOString(),
         
-        // Add limits from plan
-        limits: plan ? {
-          sms: plan.limits.sms,
-          email: plan.limits.email,
-          otp: plan.limits.otp,
-          storage: plan.limits.storage,
-          subscribers: plan.limits.email, // Adjust as needed
-        } : null,
+        // Add limits from plan/workspace
+        limits: {
+          sms: member.workspace.smsLimit,
+          email: member.workspace.emailLimit,
+          otp: member.workspace.otpLimit,
+          storage: member.workspace.fileLimit,
+          subscribers: member.workspace.subscriberLimit,
+          blog: member.workspace.blogLimit,
+          push: member.workspace.pushLimit,
+          api: member.workspace.apiLimit,
+        },
         
         // Add usage from workspace
         usage: {
@@ -102,7 +116,23 @@ export async function GET(req: NextRequest) {
           otp: member.workspace.currentOtpSent || 0,
           storage: member.workspace.currentFilesUsed || 0,
           subscribers: member.workspace.currentSubscribers || 0,
+          blog: member.workspace.currentBlogsCount || 0,
+          push: member.workspace.currentPushSent || 0,
+          api: member.workspace.currentApiCalls || 0,
         },
+
+        // Add wallet credits
+        credits: {
+          sms: wallet?.smsCredits || 0,
+          email: wallet?.emailCredits || 0,
+          otp: wallet?.otpCredits || 0,
+          storage: wallet?.storageCredits || 0,
+          subscribers: 0, // subscribers typically don't have credits
+          blog: wallet?.blogCredits || 0,
+          push: wallet?.pushCredits || 0,
+          api: wallet?.apiCredits || 0,
+        },
+        balance: wallet?.balance ? Number(wallet.balance) : 0
       }
     });
   } catch (error) {

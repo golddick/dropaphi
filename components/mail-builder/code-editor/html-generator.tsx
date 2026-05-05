@@ -56,7 +56,7 @@ const renderElement = (element: EmailElement): string => {
       if (props.width) imgStyle.maxWidth = `${props.width}px`
       if (props.height) imgStyle.height = `${props.height}px`
 
-      return `<img src="${props.src || "/placeholder.svg?height=200&width=400"}" alt="${props.alt || "Email image"}" style="${Object.entries(
+      return `<img src="${props.src || "https://dropaphi.com/placeholder-image.png"}" alt="${props.alt || "Email image"}" style="${Object.entries(
         imgStyle,
       )
         .map(([key, value]) => `${key.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${value}`)
@@ -238,7 +238,7 @@ const renderElement = (element: EmailElement): string => {
       if (props.width) logoStyle.maxWidth = `${props.width}px`
       if (props.height) logoStyle.height = `${props.height}px`
 
-      return `<img src="${props.src || "/placeholder.svg?height=60&width=120"}" alt="Logo" style="${Object.entries(
+      return `<img src="${props.src || "https://dropaphi.com/logo.png"}" alt="Logo" style="${Object.entries(
         logoStyle,
       )
         .map(([key, value]) => `${key.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${value}`)

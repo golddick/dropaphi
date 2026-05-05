@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { UsageService } from "@/lib/billing/usage";
 
 export interface SenderInfo {
   id: string;
@@ -51,10 +52,10 @@ export async function getWorkspaceEmailSender(workspaceId: string): Promise<Send
     // Final fallback to system defaults
     return {
       id: "system",
-      email: process.env.MAIL_FROM || "noreply@dropapi.com",
-      name: process.env.NAME_FROM || "DropAPI",
+      email: process.env.MAIL_FROM || "noreply@dropaphi.com",
+      name: process.env.NAME_FROM || "DropAphi",
       verified: false,
-      replyTo: process.env.MAIL_FROM || "noreply@dropapi.com",
+      replyTo: process.env.MAIL_FROM || "noreply@dropaphi.com",
     };
   } catch (error) {
     console.error("[WORKSPACE_SENDER_ERROR]", error);
@@ -71,25 +72,13 @@ export async function checkWorkspaceOTPLimit(workspaceId: string): Promise<{
   limit: number;
   remaining: number;
 }> {
-  const workspace = await db.workspace.findUnique({
-    where: { id: workspaceId },
-    select: {
-      otpLimit: true,
-      currentOtpSent: true,
-    },
-  });
-
-  if (!workspace) {
-    return { allowed: false, current: 0, limit: 0, remaining: 0 };
-  }
-
-  const remaining = workspace.otpLimit - workspace.currentOtpSent;
+  const status = await UsageService.checkUsage(workspaceId, "otp");
   
   return {
-    allowed: remaining > 0,
-    current: workspace.currentOtpSent,
-    limit: workspace.otpLimit,
-    remaining: Math.max(0, remaining),
+    allowed: status.allowed,
+    current: status.current,
+    limit: status.limit,
+    remaining: status.remaining,
   };
 }
 
@@ -103,24 +92,12 @@ export async function checkWorkspaceEmailLimit(workspaceId: string): Promise<{
   limit: number;
   remaining: number;
 }> {
-  const workspace = await db.workspace.findUnique({
-    where: { id: workspaceId },
-    select: {
-      emailLimit: true,
-      currentEmailsSent: true,
-    },
-  });
-
-  if (!workspace) {
-    return { allowed: false, current: 0, limit: 0, remaining: 0 };
-  }
-
-  const remaining = workspace.emailLimit - workspace.currentEmailsSent;
+  const status = await UsageService.checkUsage(workspaceId, "email");
   
   return {
-    allowed: remaining > 0,
-    current: workspace.currentEmailsSent,
-    limit: workspace.emailLimit,
-    remaining: Math.max(0, remaining),
+    allowed: status.allowed,
+    current: status.current,
+    limit: status.limit,
+    remaining: status.remaining,
   };
 }

@@ -13,7 +13,7 @@ import { ok, serverError, validationError } from "@/lib/respond/response";
 import { requireAuth } from "@/lib/auth/auth-server";
 import { dropid } from "dropid";
 import { z } from "zod";
-import { SubscriptionTier, SubscriptionStatus } from "@/lib/generated/prisma/enums";
+import { SubscriptionTier, SubscriptionStatus } from "@prisma/client";
 import { getPlanByTier } from "@/lib/billing/plan";
 
 // ================= HELPERS =================

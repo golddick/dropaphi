@@ -144,6 +144,19 @@ export async function POST(req: NextRequest) {
       return addCORSHeaders(response);
     }
 
+    // 4. Check workspace storage quota
+    if (workspace.fileLimit > 0 && workspace.currentFilesUsed >= workspace.fileLimit) {
+      const response = NextResponse.json(
+        { 
+          success: false,
+          error: "Storage limit reached",
+          message: `Your workspace has reached its limit of ${workspace.fileLimit} files. Please upgrade your plan to upload more.`
+        },
+        { status: 403 }
+      );
+      return addCORSHeaders(response);
+    }
+
     // 4. Parse form data
     const formData = await req.formData();
     const file = formData.get("file") as File;
@@ -227,7 +240,7 @@ export async function POST(req: NextRequest) {
     // 9. Generate file info
     const fileId = dropid("fil");
     const originalFileName = file.name;
-    const customFileName = 'DROPAPI';
+    const customFileName = 'DROPAPHI';
     const uniqueFileName = generateUniqueFileName(originalFileName, customFileName);
     const storageKey = `${keyInfo.workspaceId}/${uniqueFileName}`;
 
@@ -261,7 +274,7 @@ export async function POST(req: NextRequest) {
       .getPublicUrl(storageKey);
 
     // 12. Generate API URL for the file
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://api.dropapi.com';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://api.dropaphi.com';
     const cdnUrl = `${baseUrl}/api/files/${fileId}`;
 
     // 13. Create file record in database  
@@ -272,7 +285,7 @@ export async function POST(req: NextRequest) {
         name: uniqueFileName,
         originalName: originalFileName,
         mimeType: file.type,
-        size: fileSizeMB,
+        size: file.size, // Store actual bytes as per schema expectation (usually BigInt/Number in bytes)
         storageKey,
         cdnUrl: cdnUrl,
         directUrl: urlData.publicUrl,
@@ -283,6 +296,7 @@ export async function POST(req: NextRequest) {
           apiKeyName: keyInfo.name,
           isTestKey: keyInfo.isTest,
           originalSize: file.size,
+          sizeMB: fileSizeMB,
           folder: (metadata as any).folder,
           tags: (metadata as any).tags,
           description: (metadata as any).description,
@@ -295,7 +309,7 @@ export async function POST(req: NextRequest) {
       where: { id: keyInfo.workspaceId },
       data: {
         currentFilesUsed: {
-          increment: fileSizeMB,
+          increment: 1, // Usually currentFilesUsed refers to count, while storageUsed would be bytes
         },
       },
     });

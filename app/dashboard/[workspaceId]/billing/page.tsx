@@ -1,27 +1,29 @@
 // app/dashboard/settings/billing/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  CreditCard, 
-  Loader2, 
-  Calendar, 
-  CheckCircle, 
-  Tag,
-  Gift,
-  ArrowRight,
-  Building2,
-  AlertCircle,
-  Zap,
-  Crown
+import {
+    CreditCard,
+    Loader2,
+    Calendar,
+    CheckCircle,
+    Tag,
+    Gift,
+    ArrowRight,
+    Building2,
+    AlertCircle,
+    Zap,
+    Crown, MessageSquare, Mail, FileText, Lock
 } from 'lucide-react';
 import { useSubscriptionStore } from '@/lib/stores/subscription';
 import { useWorkspaceStore } from '@/lib/stores/workspace';
+import { useDashboardStore } from '@/lib/stores/dashboard/dashboard';
 import { toast } from 'sonner';
-import { PLANS, getPlanByTier } from '@/lib/billing/plan';
+import { UsageProgress } from '../overview/_component/usage-progress';
+import { TopUpModal } from '../overview/_component/top-up-modal';
 
 export default function BillingPage() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
@@ -29,6 +31,8 @@ export default function BillingPage() {
   const [validatingPromo, setValidatingPromo] = useState(false);
   const [showPromoInput, setShowPromoInput] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [topUpService, setTopUpService] = useState<{ title: string; type: string; unit?: string } | null>(null);
+  const [serviceCosts, setServiceCosts] = useState<any[]>([]);
 
   const {
     subscription,
@@ -48,21 +52,50 @@ export default function BillingPage() {
     clearError,
   } = useSubscriptionStore();
 
+  const { overview, fetchOverview } = useDashboardStore();
+
+console.log( overview , 'usage')
+
   const { currentWorkspace } = useWorkspaceStore();
+
+  const [availablePlans, setAvailablePlans] = useState<any[]>([]);
 
   useEffect(() => {
     if (currentWorkspace?.id) {
       console.log('📊 Loading billing data for workspace:', currentWorkspace.id);
       loadData();
+      fetchAvailablePlans();
+      fetchServiceCosts();
     }
   }, [currentWorkspace?.id]);
 
-  useEffect(() => {
-    if (error) {
-      toast.error(error);
-      clearError();
+  const fetchServiceCosts = async () => {
+    try {
+      const response = await fetch('/api/service-costs');
+      const result = await response.json();
+      if (result.success) {
+        setServiceCosts(result.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch service costs:', error);
     }
-  }, [error, clearError]);
+  };
+
+
+
+  const fetchAvailablePlans = async () => {
+    try {
+      const response = await fetch('/api/plans');
+      const result = await response.json();
+      if (result.success && result.data?.plans) {
+        setAvailablePlans(result.data.plans);
+      }
+    } catch (error) {
+      console.error('Failed to fetch plans:', error);
+    }
+  };
+
+  console.log( serviceCosts, availablePlans, 'billing plan ')
 
   const loadData = async () => {
     try {
@@ -70,11 +103,89 @@ export default function BillingPage() {
         fetchSubscription(),
         fetchInvoices(),
         fetchPromoCodes(),
+        fetchOverview(currentWorkspace?.id || ''),
       ]);
     } catch (error) {
       console.error('❌ Error loading billing data:', error);
     }
   };
+
+  const handleTopUp = (service: any) => {
+    setTopUpService({
+      title: service.title,
+      type: service.statKey || service.type,
+      unit: service.unit
+    });
+  };
+
+  const serviceConfig = [
+    {
+      statKey: 'sms',
+      title: 'SMS ',
+      icon: MessageSquare,
+      color: '#DC143C'
+    },
+    {
+      statKey: 'email',
+      title: 'Email',
+      icon: Mail,
+      color: '#4CAF50'
+    },
+    {
+      statKey: 'otp',
+      title: 'OTP Service',
+      icon: Lock,
+      color: '#FF9800'
+    },
+    {
+      statKey: 'storage',
+      title: 'File Storage',
+      icon: FileText,
+      unit: 'MB',
+      color: '#2196F3'
+    },
+    {
+      statKey: 'blog',
+      title: 'Blog Service',
+      icon: FileText,
+      color: '#9C27B0'
+    },
+    {
+      statKey: 'push',
+      title: 'Push Notifications',
+      icon: MessageSquare,
+      color: '#E91E63'
+    },
+    {
+      statKey: 'api',
+      title: 'API Calls',
+      icon: Zap,
+      color: '#607D8B'
+    },
+    {
+      statKey: 'subscribers',
+      title: 'Newsletter Subscribers',
+      icon: Zap,
+      color: '#607D8B'
+    },
+  ];
+
+  const services = useMemo(() => {
+    if (!serviceCosts.length) return [];
+    
+    return serviceCosts
+      .filter(cost => cost.isActive)
+      .map(cost => {
+        const config = serviceConfig.find(c => c.statKey.toUpperCase() === cost.service.toUpperCase());
+        if (!config) return null;
+        return {
+          ...config,
+          ...cost,
+          title: config.title, // Keep UI title
+        };
+      })
+      .filter(Boolean);
+  }, [serviceCosts]);
 
   const handleValidatePromo = async () => {
     if (!promoInput.trim() || !selectedPlan) return;
@@ -100,7 +211,7 @@ export default function BillingPage() {
     }
 
     if (tier === 'ENTERPRISE') {
-      window.location.href = 'mailto:sales@dropapi.com?subject=Enterprise Plan Inquiry';
+      window.location.href = 'mailto:sales@dropaphi.com?subject=Enterprise Plan Inquiry';
       return;
     }
 
@@ -119,10 +230,12 @@ export default function BillingPage() {
       );
       
       if (appliedPromo) {
-        const plan = getPlanByTier(selectedPlan as any);
+        const dbPlan = availablePlans.find(p => p.tier === selectedPlan);
+        const planPrice = dbPlan ? Number(dbPlan.price) : 0;
+        
         const discount = appliedPromo.discountType === 'PERCENTAGE'
-          ? Math.round((plan?.price || 0) * (appliedPromo.discountValue / 100))
-          : appliedPromo.discountValue;
+          ? Math.round(planPrice * (appliedPromo.discountValue / 100))
+          : (appliedPromo.flatDiscount || appliedPromo.discountValue);
         if (discount > 0) {
           toast.success(`💰 You saved ${formatCurrency(discount)}!`);
         }
@@ -168,36 +281,47 @@ export default function BillingPage() {
       day: 'numeric',
     });
   };
+  
+  
 
   const getPlanPrice = (tier: string) => {
-    const plan = getPlanByTier(tier as any);
-    if (!plan) return 0;
+    // Check availablePlans from DB first
+    const dbPlan = availablePlans.find(p => p.tier === tier);
+    if (!dbPlan) return 0;
+    const planPrice = Number(dbPlan.price);
     
     if (appliedPromo && selectedPlan === tier) {
       const discount = appliedPromo.discountType === 'PERCENTAGE'
-        ? Math.round(plan.price * (appliedPromo.discountValue / 100))
-        : appliedPromo.discountValue;
-      return plan.price - Math.min(discount, plan.price);
+        ? Math.round(planPrice * (appliedPromo.discountValue / 100))
+        : (appliedPromo.flatDiscount || appliedPromo.discountValue);
+      return planPrice - Math.min(discount, planPrice);
     }
-    return plan.price;
+    return planPrice;
   };
 
-  // Get usage data from subscription or workspace
-  const usage = subscription?.usage || {
-    sms: currentWorkspace?.currentSmsSent || 0,
-    email: currentWorkspace?.currentEmailsSent || 0,
-    otp: currentWorkspace?.currentOtpSent || 0,
-    storage: currentWorkspace?.currentFilesUsed || 0,
-    subscribers: currentWorkspace?.currentSubscribers || 0,
+  // Get usage data from dashboard overview (sync with overview page)
+  const usage = overview?.usage || {
+    sms: { used: 0, limit: 0, percentage: 0 },
+    email: { used: 0, limit: 0, percentage: 0 },
+    otp: { used: 0, limit: 0, percentage: 0 },
+    storage: { used: 0, limit: 0, percentage: 0 },
+    blog: { used: 0, limit: 0, percentage: 0 },
+    push: { used: 0, limit: 0, percentage: 0 },
+    api: { used: 0, limit: 0, percentage: 0 },
   };
 
-  const limits = subscription?.limits || {
-    sms: currentWorkspace?.smsLimit || 0,
-    email: currentWorkspace?.emailLimit || 0,
-    otp: currentWorkspace?.otpLimit || 0,
-    storage: currentWorkspace?.fileLimit || 0,
-    subscribers: currentWorkspace?.subscriberLimit || 0,
+  const walletData = overview?.wallet || {
+    balance: 0,
+    smsCredits: 0,
+    emailCredits: 0,
+    otpCredits: 0,
+    storageCredits: 0,
+    blogCredits: 0,
+    pushCredits: 0,
+    apiCredits: 0,
   };
+
+  const walletBalance = walletData.balance || 0;
 
   if (isLoading && !subscription) {
     return (
@@ -227,34 +351,49 @@ export default function BillingPage() {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-lg border border-gray-200 p-4"
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
       >
-        <div className="flex items-center gap-3">
-          <Building2 size={20} className="text-gray-500" />
+        <div className="md:col-span-2 bg-card rounded-lg border border-border p-4 flex items-center gap-3">
+          <Building2 size={20} className="text-muted-foreground" />
           <div>
-            <p className="text-sm text-gray-500">Current Workspace</p>
-            <p className="font-medium">{currentWorkspace.name}</p>
+            <p className="text-sm text-muted-foreground">Current Workspace</p>
+            <p className="font-medium text-foreground">{currentWorkspace.name}</p>
           </div>
           {subscription && (
             <div className="ml-auto flex items-center gap-2">
               <span className={`text-xs px-2 py-1 rounded ${
                 subscription.tier === 'FREE' 
-                  ? 'bg-gray-100 text-gray-700'
-                  : 'bg-green-100 text-green-700'
+                  ? 'bg-muted text-muted-foreground'
+                  : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
               }`}>
                 {subscription.tier} Plan
               </span>
               {subscription.status === 'ACTIVE' ? (
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400 px-2 py-1 rounded">
                   Active
                 </span>
               ) : (
-                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">
+                <span className="text-xs bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400 px-2 py-1 rounded">
                   {subscription.status}
                 </span>
               )}
             </div>
           )}
+        </div>
+
+        <div className="bg-primary/5 rounded-lg border border-primary/20 p-4 flex items-center justify-between">
+           <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-full">
+                <CreditCard size={20} className="text-primary" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground uppercase font-bold tracking-tighter">Wallet Balance</p>
+                <p className="text-2xl font-bold text-foreground">{formatCurrency(walletBalance)}</p>
+              </div>
+           </div>
+           <Button variant="outline" size="sm" className="border-primary text-primary hover:bg-primary/10" onClick={() => handleTopUp({title: 'Wallet', statKey: 'balance', unit: 'funds'})}>
+              Top Up
+           </Button>
         </div>
       </motion.div>
 
@@ -263,10 +402,10 @@ export default function BillingPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1 className="text-3xl font-bold mb-2" style={{ color: '#1A1A1A' }}>
+        <h1 className="text-3xl font-bold mb-2 text-foreground">
           Subscription & Billing
         </h1>
-        <p style={{ color: '#666666' }}>
+        <p className="text-muted-foreground">
           {isFreePlan 
             ? 'You are currently on the Free plan. Upgrade to access more features.'
             : 'Manage your workspace subscription and billing'}
@@ -304,16 +443,67 @@ export default function BillingPage() {
         </motion.div>
       )} */}
 
+      {/* Resource Usage Grid */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="space-y-6"
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-foreground">Resource Usage</h2>
+          <p className="text-sm text-muted-foreground">Monitor and top up your workspace resources</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {services.map((service: any) => {
+            const key = service.statKey as keyof typeof usage;
+            const item = usage[key] || { used: 0, limit: 0, percentage: 0 };
+            const creditsKey = `${key}Credits` as keyof typeof walletData;
+            const credits = (walletData[creditsKey] as number) || 0;
+
+            return (
+              <UsageProgress
+                key={service.statKey}
+                title={service.title}
+                used={item.used}
+                limit={item.limit}
+                percentage={item.percentage}
+                walletCredits={credits}
+                color={service.color}
+                icon={service.icon}
+                unit={service.unit}
+                onTopUp={() => handleTopUp(service)}
+              />
+            );
+          })}
+        </div>
+      </motion.section>
+
+      {/* Top Up Modal */}
+      <TopUpModal
+        isOpen={!!topUpService}
+        onClose={() => setTopUpService(null)}
+        serviceTitle={topUpService?.title || ''}
+        serviceType={topUpService?.type || ''}
+        unit={topUpService?.unit}
+        workspaceId={currentWorkspace?.id || ''}
+        onSuccess={() => {
+          loadData();
+          fetchOverview(currentWorkspace?.id || '');
+        }}
+      />
+
       {/* Current Plan */}
       {subscription && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+          className="bg-card rounded-lg border border-border overflow-hidden"
         >
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold" style={{ color: '#1A1A1A' }}>
+          <div className="p-6 border-b border-border">
+            <h2 className="text-xl font-semibold text-foreground">
               Current Plan
             </h2>
           </div>
@@ -327,19 +517,19 @@ export default function BillingPage() {
                   ) : (
                     <Crown size={24} className="text-yellow-500" />
                   )}
-                  <span className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>
+                  <span className="text-2xl font-bold text-foreground">
                     {subscription.tier} Plan
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-sm" style={{ color: '#666666' }}>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar size={16} />
                   <span>
                     {formatDate(subscription.currentPeriodStart)} - {formatDate(subscription.currentPeriodEnd)}
                   </span>
                 </div>
                 {isFreePlan && (
-                  <p className="text-sm text-gray-500 mt-2">
-                    Free plan includes {limits.sms.toLocaleString()} SMS, {limits.email.toLocaleString()} Emails, and {limits.storage}MB Storage per month
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Free plan includes basic limits for all services. Top up or upgrade for more.
                   </p>
                 )}
               </div>
@@ -348,7 +538,7 @@ export default function BillingPage() {
                 <Button
                   onClick={handleCancelSubscription}
                   variant="outline"
-                  className="border-red-200 text-red-600 hover:bg-red-50"
+                  className="border-destructive/20 text-destructive hover:bg-destructive/10"
                   disabled={processing}
                 >
                   Cancel Subscription
@@ -356,49 +546,16 @@ export default function BillingPage() {
               )}
             </div>
 
-            {/* Usage Meters */}
-            <div className="mt-8">
-              <h3 className="text-sm font-medium mb-4" style={{ color: '#1A1A1A' }}>
-                Usage this period
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {[
-                  { label: 'SMS', used: usage.sms, limit: limits.sms, unit: 'messages' },
-                  { label: 'Email', used: usage.email, limit: limits.email, unit: 'emails' },
-                  { label: 'OTP', used: usage.otp, limit: limits.otp, unit: 'verifications' },
-                  { label: 'Storage', used: usage.storage, limit: limits.storage, unit: 'MB' },
-                  { label: 'Subscribers', used: usage.subscribers, limit: limits.subscribers, unit: 'contacts' },
-                ].map((item) => {
-                  const percentage = item.limit > 0 ? Math.min(Math.round((item.used / item.limit) * 100), 100) : 0;
-                  
-                  if (item.limit === 0) return null; // Skip if no limit
-                  
-                  return (
-                    <div key={item.label} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span style={{ color: '#666666' }}>{item.label}</span>
-                        <span className="font-medium" style={{ color: '#1A1A1A' }}>
-                          {item.used.toLocaleString()} / {item.limit.toLocaleString()} {item.unit}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="h-2 rounded-full transition-all duration-500"
-                          style={{
-                            width: `${percentage}%`,
-                            backgroundColor: percentage > 80 ? '#DC143C' : '#10B981',
-                          }}
-                        />
-                      </div>
-                      {percentage > 80 && (
-                        <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
-                          <AlertCircle size={12} />
-                          {percentage >= 100 ? 'Limit reached' : `${Math.round(100 - percentage)}% remaining`}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
+            {/* Detailed usage is shown in the Resource Usage grid above */}
+            <div className="mt-8 pt-8 border-t border-border">
+              <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold text-foreground">Plan Status</h4>
+                  <p className="text-sm text-muted-foreground">Your subscription is currently {subscription.status.toLowerCase()}.</p>
+                </div>
+                <Button variant="outline" onClick={() => setShowPromoInput(!showPromoInput)}>
+                  Have a promo code?
+                </Button>
               </div>
             </div>
           </div>
@@ -410,24 +567,68 @@ export default function BillingPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+        className="bg-card rounded-lg border border-border overflow-hidden"
       >
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold" style={{ color: '#1A1A1A' }}>
+        <div className="p-6 border-b border-border">
+          <h2 className="text-xl font-semibold text-foreground">
             {isFreePlan ? 'Upgrade Your Plan' : 'Available Plans'}
           </h2>
         </div>
 
         <div className="p-6">
+          {availablePlans.length === 0 && !isLoading && (
+              <div className="text-center py-10 border-2 border-dashed border-border rounded-xl">
+                  <AlertCircle className="mx-auto text-muted-foreground mb-3" size={40} />
+                  <h3 className="text-lg font-medium text-foreground">No plans available</h3>
+                  <p className="text-muted-foreground">Please check back later or contact support.</p>
+              </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {PLANS
-              .filter(p => p.tier !== 'FREE' || !isFreePlan) // Hide FREE if already on FREE
-              .map((plan) => {
+            {availablePlans
+              .filter((p: any) => p.tier !== 'FREE' || !isFreePlan) // Hide FREE if already on FREE
+              .map((plan: any) => {
                 const isSelected = selectedPlan === plan.tier;
                 const finalPrice = getPlanPrice(plan.tier);
                 const hasDiscount = appliedPromo && isSelected && finalPrice < plan.price;
                 const isCurrentPlan = subscription?.tier === plan.tier;
                 
+                const featuresList = (plan: any) => {
+                  const list: string[] = [];
+                  
+                  // Plan Name and Core Limits
+                  if (plan.subscriberLimit) list.push(`${plan.subscriberLimit.toLocaleString()} Subscribers`);
+                  if (plan.emailLimit) list.push(`${plan.emailLimit.toLocaleString()} Emails/mo`);
+                  if (plan.smsLimit) list.push(`${plan.smsLimit.toLocaleString()} SMS/mo`);
+                  if (plan.otpLimit) list.push(`${plan.otpLimit.toLocaleString()} OTPs/mo`);
+                  if (plan.storageLimit) list.push(`${plan.storageLimit >= 1 ? plan.storageLimit : (plan.storageLimit * 1024)} ${plan.storageLimit >= 1 ? 'GB' : 'MB'} Storage`);
+                  
+                  // Service Credits (Signup/One-time)
+                  if (plan.emailCredits > 0) list.push(`${plan.emailCredits.toLocaleString()} Welcome Email Credits`);
+                  if (plan.smsCredits > 0) list.push(`${plan.smsCredits.toLocaleString()} Welcome SMS Credits`);
+                  
+                  // Specific Features from JSON
+                  if (plan.features && typeof plan.features === 'object') {
+                    Object.entries(plan.features).forEach(([k, v]) => {
+                      if (v === true) {
+                        // Convert camelCase to Title Case with spaces
+                        const featureName = k.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
+                        if (!list.some(item => item.includes(featureName))) {
+                          list.push(featureName);
+                        }
+                      } else if (typeof v === 'string') {
+                        list.push(v);
+                      }
+                    });
+                  }
+                  
+                  // Fallback to static features if no numeric limits found
+                  if (list.length <= 1 && Array.isArray(plan.features)) {
+                    return plan.features;
+                  }
+
+                  return list;
+                };
+
                 // Don't show current plan if it's FREE (since we're showing upgrade options)
                 if (isCurrentPlan && plan.tier === 'FREE') return null;
                 
@@ -436,9 +637,11 @@ export default function BillingPage() {
                     key={plan.tier}
                     whileHover={{ scale: 1.02 }}
                     className={`relative p-6 rounded-xl border-2 transition-all ${
-                      isSelected ? 'border-red-500 bg-red-50' : 
-                      isCurrentPlan ? 'border-green-500 bg-green-50' :
-                      'border-gray-200 hover:border-red-200'
+                      isSelected 
+                        ? 'border-primary shadow-lg ring-2 ring-primary/20 bg-primary/5' 
+                        : isCurrentPlan
+                        ? 'border-green-500 bg-green-50/50 dark:bg-green-950/20'
+                        : 'border-border hover:border-muted-foreground'
                     }`}
                   >
                     {plan.tier === 'PROFESSIONAL' && !isCurrentPlan && (
@@ -490,7 +693,7 @@ export default function BillingPage() {
                     </div>
 
                     <ul className="space-y-2 mb-6">
-                      {plan.features.slice(0, 4).map((feature, i) => (
+                      {featuresList(plan).map((feature: string, i: number) => (
                         <li key={i} className="text-sm flex items-start gap-2 text-gray-600">
                           <CheckCircle size={16} className="text-green-500 shrink-0 mt-0.5" />
                           {feature}
@@ -503,9 +706,9 @@ export default function BillingPage() {
                       disabled={processing || isCurrentPlan}
                       className="w-full"
                       style={{
-                        backgroundColor: isSelected ? '#DC143C' : isCurrentPlan ? '#10B981' : '#FFFFFF',
-                        color: isSelected || isCurrentPlan ? '#FFFFFF' : '#1A1A1A',
-                        border: isSelected || isCurrentPlan ? 'none' : '1px solid #E5E5E5',
+                        backgroundColor: isSelected ? 'hsl(var(--primary))' : isCurrentPlan ? 'hsl(var(--success, 142 76% 36%))' : 'hsl(var(--card))',
+                        color: isSelected || isCurrentPlan ? 'hsl(var(--primary-foreground))' : 'hsl(var(--foreground))',
+                        border: isSelected || isCurrentPlan ? 'none' : '1px solid hsl(var(--border))',
                       }}
                     >
                       {isCurrentPlan ? 'Current Plan' : 'Select Plan'}
@@ -522,11 +725,11 @@ export default function BillingPage() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-8 p-6 bg-gray-50 rounded-lg"
+                className="mt-8 p-6 bg-muted rounded-lg"
               >
                 <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                   <div className="flex-1">
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#1A1A1A' }}>
+                    <label className="block text-sm font-medium mb-2 text-foreground">
                       Have a promo code?
                     </label>
                     <div className="flex gap-2">
@@ -541,7 +744,7 @@ export default function BillingPage() {
                         <Button
                           onClick={handleValidatePromo}
                           disabled={!promoInput.trim() || validatingPromo}
-                          style={{ backgroundColor: '#DC143C' }}
+                          className="bg-primary hover:bg-primary/90"
                         >
                           {validatingPromo ? (
                             <Loader2 size={16} className="animate-spin" />
@@ -572,8 +775,7 @@ export default function BillingPage() {
                   <Button
                     onClick={handleProceedToPayment}
                     disabled={processing || !selectedPlan}
-                    className="md:min-w-[200px]"
-                    style={{ backgroundColor: '#DC143C' }}
+                    className="md:min-w-[200px] bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     {processing ? (
                       <Loader2 size={18} className="animate-spin mr-2" />
@@ -596,43 +798,43 @@ export default function BillingPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+          className="bg-card rounded-lg border border-border overflow-hidden"
         >
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold" style={{ color: '#1A1A1A' }}>
+          <div className="p-6 border-b border-border">
+            <h2 className="text-xl font-semibold text-foreground">
               Invoice History
             </h2>
           </div>
 
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-border">
             {invoices.map((invoice) => (
-              <div key={invoice.id} className="p-4 flex items-center justify-between hover:bg-gray-50">
+              <div key={invoice.id} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
                 <div>
-                  <p className="font-medium" style={{ color: '#1A1A1A' }}>
+                  <p className="font-medium text-foreground">
                     {invoice.invoiceNumber}
                   </p>
-                  <p className="text-sm" style={{ color: '#666666' }}>
+                  <p className="text-sm text-muted-foreground">
                     {formatDate(invoice.periodStart)} - {formatDate(invoice.periodEnd)}
                   </p>
                   {invoice.promoCode && (
-                    <p className="text-xs text-green-600 mt-1">
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                       Promo: {invoice.promoCode}
                     </p>
                   )}
                 </div>
                 <div className="text-right">
                   {invoice.discount > 0 && (
-                    <p className="text-sm line-through text-gray-400">
+                    <p className="text-sm line-through text-muted-foreground">
                       {formatCurrency(invoice.amount)}
                     </p>
                   )}
-                  <p className="font-bold" style={{ color: '#1A1A1A' }}>
+                  <p className="font-bold text-foreground">
                     {formatCurrency(invoice.finalAmount)}
                   </p>
                   <span className={`text-xs px-2 py-0.5 rounded ${
-                    invoice.status === 'PAID' 
-                      ? 'bg-green-100 text-green-700' 
-                      : 'bg-yellow-100 text-yellow-700'
+                    invoice.status === 'PAID'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400'
                   }`}>
                     {invoice.status}
                   </span>

@@ -12,6 +12,8 @@ import {
   created,
 } from "@/lib/respond/response";
 import { uploadWorkspaceFile } from "@/lib/supabase/server";
+import { Services } from "@/lib/generated/prisma";
+import { checkServiceStatus } from "@/lib/services/service-status";
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 
@@ -72,6 +74,10 @@ export async function POST(
 ) {
   try {
     const { workspaceId } = await params;
+
+    // Check if storage service is active
+    const serviceStatusError = await checkServiceStatus(Services.STORAGE);
+    if (serviceStatusError) return serviceStatusError;
 
     const auth = await requireAuth();
     if (auth instanceof Response) return auth;

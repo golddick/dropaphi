@@ -2,6 +2,8 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth/auth-server";
+import { updateWorkspaceSchema } from "@/lib/validations/workspace";
+import { WorkspaceRole } from "@prisma/client";
 
 // GET /api/workspace/[workspaceId] - Get single workspace
 export async function GET(
@@ -124,9 +126,22 @@ export async function PATCH(
     console.log(`🚀 PATCH /api/workspace/${workspaceId} - Started`);
     
     const auth = await requireAuth();
-    const body = await req.json();
+    const json = await req.json();
     
-    console.log(`📦 Update data:`, body);
+    // Validate input
+    const parseResult = updateWorkspaceSchema.safeParse(json);
+    if (!parseResult.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid input", 
+          details: parseResult.error.flatten().fieldErrors 
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const body = parseResult.data;
+    console.log(`📦 Validated update data:`, body);
 
     // Check if user has access to workspace
     const member = await db.workspaceMember.findUnique({
@@ -147,26 +162,17 @@ export async function PATCH(
     }
 
     // Check if user has permission to update (OWNER or ADMIN)
-    if (member.role !== "OWNER" && member.role !== "ADMIN") {
+    if (member.role !== WorkspaceRole.OWNER && member.role !== WorkspaceRole.ADMIN) {
       return new Response(
         JSON.stringify({ error: "Only owners and admins can update workspace settings" }),
         { status: 403, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    // Prepare update data
-    const updateData: any = {};
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.website !== undefined) updateData.website = body.website;
-    if (body.industry !== undefined) updateData.industry = body.industry;
-    if (body.teamSize !== undefined) updateData.teamSize = body.teamSize;
-    if (body.description !== undefined) updateData.description = body.description;
-    if (body.timezone !== undefined) updateData.timezone = body.timezone;
-
     // Update workspace
     const updatedWorkspace = await db.workspace.update({
       where: { id: workspaceId },
-      data: updateData,
+      data: body,
       select: {
         id: true,
         name: true,
@@ -233,16 +239,9 @@ export async function DELETE(
       select: { role: true }
     });
 
-    if (!member) {
+    if (!member || member.role !== WorkspaceRole.OWNER) {
       return new Response(
-        JSON.stringify({ error: "You don't have access to this workspace" }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (member.role !== "OWNER") {
-      return new Response(
-        JSON.stringify({ error: "Only workspace owners can delete workspaces" }),
+        JSON.stringify({ error: "Only the workspace owner can delete the workspace" }),
         { status: 403, headers: { 'Content-Type': 'application/json' } }
       );
     }

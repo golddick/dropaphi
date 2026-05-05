@@ -740,9 +740,8 @@ import { NextRequest } from "next/server";
 import crypto from 'crypto';
 import { db } from "@/lib/db";
 import { dropid } from "dropid";
-import { InvoiceStatus, SubscriptionStatus, SubscriptionTier, PlanSubscriptionStatus } from "@/lib/generated/prisma/enums";
+import { InvoiceStatus, SubscriptionStatus, SubscriptionTier, PlanSubscriptionStatus } from "@prisma/client";
 import { NotificationService } from "@/lib/notification.service";
-import { getPlanByTier } from "@/lib/billing/plan";
 
 // Webhook secret for additional security (optional but recommended)
 const WEBHOOK_SECRET = process.env.PAYSTACK_WEBHOOK_SECRET;
@@ -882,12 +881,139 @@ async function handleSuccessfulCharge(data: any, requestId: string) {
     return { processed: false, reason: 'duplicate' };
   }
 
+  // Handle top-ups
+  if (metadata?.type === 'top_up') {
+    return handleTopUpPayment(data, requestId);
+  }
+
   // Handle subscription payments
-  if (metadata?.type === 'subscription_payment' || metadata?.isSubscription) {
+  if (metadata?.type === 'subscription_payment' || metadata?.isSubscription || data.plan) {
     return handleSubscriptionPayment(data, requestId);
   }
 
   return { processed: false, reason: 'unknown_type' };
+}
+
+async function handleTopUpPayment(data: any, requestId: string) {
+  const { metadata, reference, amount, customer, authorization, channel } = data;
+
+  console.log(`[Webhook:${requestId}] Processing top-up payment:`, {
+    workspaceId: metadata?.workspaceId,
+    serviceType: metadata?.serviceType,
+    quantity: metadata?.quantity,
+    amount: amount / 100,
+  });
+
+  if (!metadata?.workspaceId || !metadata?.serviceType || !metadata?.quantity) {
+    console.error(`[Webhook:${requestId}] Missing top-up metadata:`, metadata);
+    return { processed: false, reason: 'missing_metadata' };
+  }
+
+  return await db.$transaction(async (tx) => {
+    // 1. Update invoice
+    await tx.invoice.update({
+      where: { id: metadata.invoiceId },
+      data: {
+        status: InvoiceStatus.PAID,
+        paymentRef: reference,
+        paidAt: new Date(),
+        metadata: {
+          ...metadata,
+          paymentChannel: channel,
+          paidAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    // 2. Map service type to wallet field
+    const walletField = getWalletField(metadata.serviceType);
+
+    // 3. Update wallet
+    if (metadata.serviceType === 'balance') {
+        // Direct balance top-up
+        await tx.wallet.update({
+            where: { workspaceId: metadata.workspaceId },
+            data: {
+                balance: { increment: metadata.amount },
+            },
+        });
+    } else {
+        // Specific service credits top-up
+        await tx.wallet.update({
+            where: { workspaceId: metadata.workspaceId },
+            data: {
+                [walletField]: { increment: metadata.quantity },
+            },
+        });
+    }
+
+    // 4. Create alert
+    await tx.workspaceAlert.create({
+      data: {
+        id: dropid('alt'),
+        workspaceId: metadata.workspaceId,
+        title: "Top-up Successful",
+        message: metadata.serviceType === 'balance' 
+            ? `Successfully topped up your wallet balance with ₦${metadata.amount.toLocaleString()}.`
+            : `Successfully added ${metadata.quantity.toLocaleString()} ${metadata.serviceType} credits to your wallet.`,
+        type: "success"
+      }
+    });
+
+    // 5. Update promo code usage and apply FLAT_CREDIT bonus if applicable
+    if (metadata.promoCode) {
+        const promo = await tx.promoCode.findUnique({
+            where: { code: metadata.promoCode.toUpperCase() }
+        });
+
+        if (promo) {
+            await tx.promoCode.update({
+                where: { id: promo.id },
+                data: { usedCount: { increment: 1 } }
+            });
+
+            // If it's a FLAT_CREDIT bonus, apply it now
+            if (promo.discountType === 'FLAT_CREDIT' && promo.bonusCredits) {
+                const walletField = getWalletField(metadata.serviceType);
+                if (walletField !== 'balance') {
+                    await tx.wallet.update({
+                        where: { workspaceId: metadata.workspaceId },
+                        data: {
+                            [walletField]: { increment: promo.bonusCredits },
+                        },
+                    });
+
+                    // Update alert message
+                    await tx.workspaceAlert.updateMany({
+                        where: { 
+                            workspaceId: metadata.workspaceId,
+                            title: "Top-up Successful",
+                            createdAt: { gte: new Date(Date.now() - 5000) } // Find the alert just created
+                        },
+                        data: {
+                            message: `Successfully added ${metadata.quantity.toLocaleString()} ${metadata.serviceType} credits to your wallet plus ${promo.bonusCredits.toLocaleString()} bonus credits!`
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    return { processed: true, reference };
+  });
+}
+
+function getWalletField(service: string): string {
+  const mapping: Record<string, string> = {
+    email: "emailCredits",
+    sms: "smsCredits",
+    otp: "otpCredits",
+    blog: "blogCredits",
+    push: "pushCredits",
+    api: "apiCredits",
+    storage: "storageCredits",
+  };
+  return mapping[service] || service;
 }
 
 async function handleSubscriptionPayment(data: any, requestId: string) {
@@ -919,10 +1045,13 @@ async function handleSubscriptionPayment(data: any, requestId: string) {
       },
     });
 
-    // Get plan limits from imported plans
-    const plan = getPlanByTier(metadata.tier);
-    if (!plan) {
-      throw new Error(`Plan not found for tier: ${metadata.tier}`);
+    // Get plan details from database
+    const dbPlan = await tx.plan.findFirst({
+      where: { tier: metadata.tier, isArchived: false },
+    });
+
+    if (!dbPlan) {
+      throw new Error(`Plan not found in database for tier: ${metadata.tier}`);
     }
 
     // Update or create workspace subscription
@@ -932,6 +1061,7 @@ async function handleSubscriptionPayment(data: any, requestId: string) {
       },
       update: {
         tier: metadata.tier,
+        planId: dbPlan.id,
         status: SubscriptionStatus.ACTIVE,
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
@@ -943,6 +1073,7 @@ async function handleSubscriptionPayment(data: any, requestId: string) {
         id: dropid('sub'),
         workspaceId: metadata.workspaceId,
         tier: metadata.tier,
+        planId: dbPlan.id,
         status: SubscriptionStatus.ACTIVE,
         monthlyPrice: metadata.originalAmount,
         currentPeriodStart: new Date(),
@@ -957,14 +1088,28 @@ async function handleSubscriptionPayment(data: any, requestId: string) {
       data: {
         plan: metadata.tier,
         planSubscriptionStatus: PlanSubscriptionStatus.ACTIVE,
-        subscriberLimit: plan.limits.subscribers,
-        emailLimit: plan.limits.email,
-        smsLimit: plan.limits.sms,
-        otpLimit: plan.limits.otp,
-        fileLimit: plan.limits.storage,
+        subscriberLimit: dbPlan.subscriberLimit,
+        emailLimit: dbPlan.emailLimit,
+        smsLimit: dbPlan.smsLimit,
+        otpLimit: dbPlan.otpLimit,
+        fileLimit: Math.floor(dbPlan.storageLimit), // storageLimit is float in Plan, int in Workspace
         updatedAt: new Date(),
       },
     });
+
+    // Update Wallet credits based on the plan
+    const wallet = await tx.wallet.findUnique({ where: { workspaceId: metadata.workspaceId } });
+    if (wallet) {
+      await tx.wallet.update({
+        where: { workspaceId: metadata.workspaceId },
+        data: {
+          emailCredits: dbPlan.rollOverCredits ? { increment: dbPlan.emailCredits } : dbPlan.emailCredits,
+          smsCredits: dbPlan.rollOverCredits ? { increment: dbPlan.smsCredits } : dbPlan.smsCredits,
+          otpCredits: dbPlan.rollOverCredits ? { increment: dbPlan.otpCredits } : dbPlan.otpCredits,
+          storageCredits: dbPlan.rollOverCredits ? { increment: dbPlan.storageCredits } : dbPlan.storageCredits,
+        }
+      });
+    }
 
     // Reset usage counts for new billing period (optional - based on your business logic)
     // Uncomment if you want to reset usage at the start of each billing period
@@ -1040,7 +1185,13 @@ async function handleSubscriptionPayment(data: any, requestId: string) {
           bank: authorization?.bank,
           last4: authorization?.last4,
           customerEmail: customer?.email,
-          limits: plan.limits, // Store the limits for reference
+          limits: {
+            subscribers: dbPlan.subscriberLimit,
+            email: dbPlan.emailLimit,
+            sms: dbPlan.smsLimit,
+            otp: dbPlan.otpLimit,
+            storage: dbPlan.storageLimit
+          },
         },
       },
     });
@@ -1075,13 +1226,19 @@ async function handleSubscriptionPayment(data: any, requestId: string) {
           amount: (amount / 100).toLocaleString(),
           plan: metadata.tier,
           email: customer?.email,
-          limits: `Subscribers: ${plan.limits.subscribers}, SMS: ${plan.limits.sms}, Email: ${plan.limits.email}`,
+          limits: `Subscribers: ${dbPlan.subscriberLimit}, SMS: ${dbPlan.smsLimit}, Email: ${dbPlan.emailLimit}`,
         },
         metadata: {
           transactionId: transaction.id,
           subscriptionId: subscription.id,
           invoiceId: invoice.id,
-          limits: plan.limits,
+          limits: {
+            subscribers: dbPlan.subscriberLimit,
+            email: dbPlan.emailLimit,
+            sms: dbPlan.smsLimit,
+            otp: dbPlan.otpLimit,
+            storage: dbPlan.storageLimit
+          },
         },
         actionUrl: `/dashboard/${member.workspaceId}/billing`,
       });
@@ -1093,7 +1250,13 @@ async function handleSubscriptionPayment(data: any, requestId: string) {
       transactionId: transaction.id,
       amount: amount / 100,
       tier: metadata.tier,
-      limits: plan.limits,
+      limits: {
+        subscribers: dbPlan.subscriberLimit,
+        email: dbPlan.emailLimit,
+        sms: dbPlan.smsLimit,
+        otp: dbPlan.otpLimit,
+        storage: dbPlan.storageLimit
+      },
     });
 
     return { 
@@ -1102,7 +1265,13 @@ async function handleSubscriptionPayment(data: any, requestId: string) {
       subscriptionId: subscription.id,
       transactionId: transaction.id,
       tier: metadata.tier,
-      limits: plan.limits,
+      limits: {
+        subscribers: dbPlan.subscriberLimit,
+        email: dbPlan.emailLimit,
+        sms: dbPlan.smsLimit,
+        otp: dbPlan.otpLimit,
+        storage: dbPlan.storageLimit
+      },
     };
   });
 }
@@ -1128,19 +1297,24 @@ async function handleSubscriptionCreate(data: any, requestId: string) {
   }
 
   const tier = mapPlanCodeToTier(plan.plan_code);
-  const planConfig = getPlanByTier(tier);
   
-  if (!planConfig) {
-    throw new Error(`Plan not found for tier: ${tier}`);
-  }
-
   return await db.$transaction(async (tx) => {
+    // Get plan details from database - NO HARDCODED FALLBACK
+    const dbPlan = await tx.plan.findFirst({
+      where: { tier, isArchived: false },
+    });
+
+    if (!dbPlan) {
+      throw new Error(`Plan not found in database for tier: ${tier}. Please ensure plans are seeded.`);
+    }
+
     const subscription = await tx.workspaceSubscription.upsert({
       where: { workspaceId: member.workspaceId },
       create: {
         id: dropid('sub'),
         workspaceId: member.workspaceId,
         tier: tier,
+        planId: dbPlan.id,
         status: SubscriptionStatus.ACTIVE,
         monthlyPrice: (amount || plan.amount) / 100,
         currentPeriodStart: new Date(),
@@ -1149,6 +1323,7 @@ async function handleSubscriptionCreate(data: any, requestId: string) {
       },
       update: {
         tier: tier,
+        planId: dbPlan.id,
         status: SubscriptionStatus.ACTIVE,
         monthlyPrice: (amount || plan.amount) / 100,
         currentPeriodStart: new Date(),
@@ -1163,11 +1338,11 @@ async function handleSubscriptionCreate(data: any, requestId: string) {
       data: {
         plan: tier,
         planSubscriptionStatus: PlanSubscriptionStatus.ACTIVE,
-        subscriberLimit: planConfig.limits.subscribers,
-        emailLimit: planConfig.limits.email,
-        smsLimit: planConfig.limits.sms,
-        otpLimit: planConfig.limits.otp,
-        fileLimit: planConfig.limits.storage,
+        subscriberLimit: dbPlan.subscriberLimit,
+        emailLimit: dbPlan.emailLimit,
+        smsLimit: dbPlan.smsLimit,
+        otpLimit: dbPlan.otpLimit,
+        fileLimit: Math.floor(dbPlan.storageLimit),
         updatedAt: new Date(),
       },
     });
@@ -1187,7 +1362,13 @@ async function handleSubscriptionCreate(data: any, requestId: string) {
           planCode: plan.plan_code,
           customerEmail: customer.email,
           event: 'subscription.create',
-          limits: planConfig.limits,
+          limits: {
+            subscribers: dbPlan.subscriberLimit,
+            email: dbPlan.emailLimit,
+            sms: dbPlan.smsLimit,
+            otp: dbPlan.otpLimit,
+            storage: dbPlan.storageLimit
+          },
         },
       },
     });
@@ -1200,12 +1381,18 @@ async function handleSubscriptionCreate(data: any, requestId: string) {
         plan: tier,
         workspace: member.workspace.name,
         email: customer.email,
-        limits: `Subscribers: ${planConfig.limits.subscribers}, SMS: ${planConfig.limits.sms}, Email: ${planConfig.limits.email}`,
+        limits: `Subscribers: ${dbPlan.subscriberLimit}, SMS: ${dbPlan.smsLimit}, Email: ${dbPlan.emailLimit}`,
       },
       metadata: {
         subscriptionId: subscription.id,
         transactionId: transaction.id,
-        limits: planConfig.limits,
+        limits: {
+          subscribers: dbPlan.subscriberLimit,
+          email: dbPlan.emailLimit,
+          sms: dbPlan.smsLimit,
+          otp: dbPlan.otpLimit,
+          storage: dbPlan.storageLimit
+        },
       },
       actionUrl: `/dashboard/${member.workspaceId}/billing`,
     });
@@ -1215,14 +1402,26 @@ async function handleSubscriptionCreate(data: any, requestId: string) {
       subscriptionId: subscription.id,
       transactionId: transaction.id,
       tier,
-      limits: planConfig.limits,
+      limits: {
+        subscribers: dbPlan.subscriberLimit,
+        email: dbPlan.emailLimit,
+        sms: dbPlan.smsLimit,
+        otp: dbPlan.otpLimit,
+        storage: dbPlan.storageLimit
+      },
     });
 
     return { 
       processed: true, 
       subscriptionId: subscription.id,
       transactionId: transaction.id,
-      limits: planConfig.limits,
+      limits: {
+        subscribers: dbPlan.subscriberLimit,
+        email: dbPlan.emailLimit,
+        sms: dbPlan.smsLimit,
+        otp: dbPlan.otpLimit,
+        storage: dbPlan.storageLimit
+      },
     };
   });
 }
@@ -1252,13 +1451,16 @@ async function handleSubscriptionRenewal(data: any, requestId: string) {
     include: { user: true },
   });
 
-  const planConfig = getPlanByTier(subscription.tier);
-  
-  if (!planConfig) {
-    throw new Error(`Plan not found for tier: ${subscription.tier}`);
-  }
-
   return await db.$transaction(async (tx) => {
+    // Get plan details from database - NO HARDCODED FALLBACK
+    const dbPlan = await tx.plan.findFirst({
+      where: { tier: subscription.tier, isArchived: false },
+    });
+
+    if (!dbPlan) {
+      throw new Error(`Plan not found in database for tier: ${subscription.tier}. Please ensure plans are seeded.`);
+    }
+
     const invoice = await tx.invoice.create({
       data: {
         id: dropid('inv'),
@@ -1329,7 +1531,13 @@ async function handleSubscriptionRenewal(data: any, requestId: string) {
           amount: amount / 100,
           nextPaymentDate: next_payment_date,
           customerEmail: customer?.email,
-          limits: planConfig.limits,
+          limits: {
+            subscribers: dbPlan.subscriberLimit,
+            email: dbPlan.emailLimit,
+            sms: dbPlan.smsLimit,
+            otp: dbPlan.otpLimit,
+            storage: dbPlan.storageLimit
+          },
         },
       },
     });
@@ -1341,13 +1549,19 @@ async function handleSubscriptionRenewal(data: any, requestId: string) {
         variables: {
           plan: subscription.tier,
           amount: (amount / 100).toLocaleString(),
-          limits: `Subscribers: ${planConfig.limits.subscribers}, SMS: ${planConfig.limits.sms}`,
+          limits: `Subscribers: ${dbPlan.subscriberLimit}, SMS: ${dbPlan.smsLimit}`,
         },
         metadata: {
           subscriptionId: subscription.id,
           transactionId: transaction.id,
           invoiceId: invoice.id,
-          limits: planConfig.limits,
+          limits: {
+            subscribers: dbPlan.subscriberLimit,
+            email: dbPlan.emailLimit,
+            sms: dbPlan.smsLimit,
+            otp: dbPlan.otpLimit,
+            storage: dbPlan.storageLimit
+          },
         },
         actionUrl: `/dashboard/${subscription.workspaceId}/billing/invoices/${invoice.id}`,
       });
@@ -1358,15 +1572,27 @@ async function handleSubscriptionRenewal(data: any, requestId: string) {
       subscriptionId: subscription.id,
       transactionId: transaction.id,
       tier: subscription.tier,
-      limits: planConfig.limits,
+      limits: {
+        subscribers: dbPlan.subscriberLimit,
+        email: dbPlan.emailLimit,
+        sms: dbPlan.smsLimit,
+        otp: dbPlan.otpLimit,
+        storage: dbPlan.storageLimit
+      },
       newPeriodEnd: next_payment_date,
     });
 
     return { 
       processed: true, 
-      subscriptionId: subscription.id,
-      transactionId: transaction.id,
-      limits: planConfig.limits,
+      subscriptionId: subscription.id, 
+      transactionId: transaction.id, 
+      limits: {
+        subscribers: dbPlan.subscriberLimit,
+        email: dbPlan.emailLimit,
+        sms: dbPlan.smsLimit,
+        otp: dbPlan.otpLimit,
+        storage: dbPlan.storageLimit
+      },
     };
   });
 }
@@ -1388,14 +1614,16 @@ async function handleSubscriptionDisable(data: any, requestId: string) {
     return { processed: false, reason: 'subscription_not_found' };
   }
 
-  // Get FREE plan limits for fallback
-  const freePlan = getPlanByTier(SubscriptionTier.FREE);
-  
-  if (!freePlan) {
-    throw new Error('FREE plan not found');
-  }
-
   const result = await db.$transaction(async (tx) => {
+    // Get FREE plan limits from database - NO HARDCODED FALLBACK
+    const dbPlan = await tx.plan.findFirst({
+      where: { tier: SubscriptionTier.FREE, isArchived: false },
+    });
+
+    if (!dbPlan) {
+      throw new Error('FREE plan not found in database. Please ensure plans are seeded.');
+    }
+
     // Update subscription
     const updatedSub = await tx.workspaceSubscription.update({
       where: { id: subscription.id },
@@ -1411,17 +1639,19 @@ async function handleSubscriptionDisable(data: any, requestId: string) {
       data: {
         plan: SubscriptionTier.FREE,
         planSubscriptionStatus: PlanSubscriptionStatus.INACTIVE,
-        subscriberLimit: freePlan.limits.subscribers,
-        emailLimit: freePlan.limits.email,
-        smsLimit: freePlan.limits.sms,
-        otpLimit: freePlan.limits.otp,
-        fileLimit: freePlan.limits.storage,
+        subscriberLimit: dbPlan.subscriberLimit,
+        emailLimit: dbPlan.emailLimit,
+        smsLimit: dbPlan.smsLimit,
+        otpLimit: dbPlan.otpLimit,
+        fileLimit: Math.floor(dbPlan.storageLimit),
         updatedAt: new Date(),
       },
     });
 
-    return updatedSub;
+    return { updatedSub, dbPlan };
   });
+
+  const { dbPlan } = result;
 
   const member = await db.workspaceMember.findFirst({
     where: { workspaceId: subscription.workspaceId, role: 'OWNER' },
@@ -1436,13 +1666,19 @@ async function handleSubscriptionDisable(data: any, requestId: string) {
         plan: subscription.tier,
         endDate: subscription.currentPeriodEnd.toLocaleDateString(),
         newPlan: 'FREE',
-        limits: `New limits: Subscribers: ${freePlan.limits.subscribers}`,
+        limits: `New limits: Subscribers: ${dbPlan.subscriberLimit}`,
       },
       metadata: {
         subscriptionId: subscription.id,
         oldTier: subscription.tier,
         newTier: SubscriptionTier.FREE,
-        limits: freePlan.limits,
+        limits: {
+          subscribers: dbPlan.subscriberLimit,
+          email: dbPlan.emailLimit,
+          sms: dbPlan.smsLimit,
+          otp: dbPlan.otpLimit,
+          storage: dbPlan.storageLimit
+        },
       },
       actionUrl: `/dashboard/${subscription.workspaceId}/billing`,
     });
@@ -1451,7 +1687,13 @@ async function handleSubscriptionDisable(data: any, requestId: string) {
   console.log(`[Webhook:${requestId}] Subscription disabled and workspace downgraded to FREE:`, {
     subscription_code,
     oldTier: subscription.tier,
-    newLimits: freePlan.limits,
+    newLimits: {
+      subscribers: dbPlan.subscriberLimit,
+      email: dbPlan.emailLimit,
+      sms: dbPlan.smsLimit,
+      otp: dbPlan.otpLimit,
+      storage: dbPlan.storageLimit
+    },
   });
 
   return { processed: true };
@@ -1474,14 +1716,16 @@ async function handleSubscriptionCancel(data: any, requestId: string) {
     return { processed: false, reason: 'subscription_not_found' };
   }
 
-  // Get FREE plan limits for fallback
-  const freePlan = getPlanByTier(SubscriptionTier.FREE);
-  
-  if (!freePlan) {
-    throw new Error('FREE plan not found');
-  }
-
   const result = await db.$transaction(async (tx) => {
+    // Get FREE plan limits from database - NO HARDCODED FALLBACK
+    const dbPlan = await tx.plan.findFirst({
+      where: { tier: SubscriptionTier.FREE, isArchived: false },
+    });
+
+    if (!dbPlan) {
+      throw new Error('FREE plan not found in database. Please ensure plans are seeded.');
+    }
+
     // Update subscription
     const updatedSub = await tx.workspaceSubscription.update({
       where: { id: subscription.id },
@@ -1497,17 +1741,19 @@ async function handleSubscriptionCancel(data: any, requestId: string) {
       data: {
         plan: SubscriptionTier.FREE,
         planSubscriptionStatus: PlanSubscriptionStatus.INACTIVE,
-        subscriberLimit: freePlan.limits.subscribers,
-        emailLimit: freePlan.limits.email,
-        smsLimit: freePlan.limits.sms,
-        otpLimit: freePlan.limits.otp,
-        fileLimit: freePlan.limits.storage,
+        subscriberLimit: dbPlan.subscriberLimit,
+        emailLimit: dbPlan.emailLimit,
+        smsLimit: dbPlan.smsLimit,
+        otpLimit: dbPlan.otpLimit,
+        fileLimit: Math.floor(dbPlan.storageLimit),
         updatedAt: new Date(),
       },
     });
 
-    return updatedSub;
+    return { updatedSub, dbPlan };
   });
+
+  const { dbPlan } = result;
 
   const member = await db.workspaceMember.findFirst({
     where: { workspaceId: subscription.workspaceId, role: 'OWNER' },
@@ -1522,13 +1768,19 @@ async function handleSubscriptionCancel(data: any, requestId: string) {
         plan: subscription.tier,
         endDate: subscription.currentPeriodEnd.toLocaleDateString(),
         newPlan: 'FREE',
-        limits: `New limits: Subscribers: ${freePlan.limits.subscribers}`,
+        limits: `New limits: Subscribers: ${dbPlan.subscriberLimit}`,
       },
       metadata: {
         subscriptionId: subscription.id,
         oldTier: subscription.tier,
         newTier: SubscriptionTier.FREE,
-        limits: freePlan.limits,
+        limits: {
+          subscribers: dbPlan.subscriberLimit,
+          email: dbPlan.emailLimit,
+          sms: dbPlan.smsLimit,
+          otp: dbPlan.otpLimit,
+          storage: dbPlan.storageLimit
+        },
       },
       actionUrl: `/dashboard/${subscription.workspaceId}/billing`,
     });
@@ -1537,7 +1789,13 @@ async function handleSubscriptionCancel(data: any, requestId: string) {
   console.log(`[Webhook:${requestId}] Subscription cancelled and workspace downgraded to FREE:`, {
     subscription_code,
     oldTier: subscription.tier,
-    newLimits: freePlan.limits,
+    newLimits: {
+      subscribers: dbPlan.subscriberLimit,
+      email: dbPlan.emailLimit,
+      sms: dbPlan.smsLimit,
+      otp: dbPlan.otpLimit,
+      storage: dbPlan.storageLimit
+    },
   });
 
   return { processed: true };

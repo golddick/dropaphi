@@ -2,7 +2,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth/auth-server";
-import { ApiKeyStatus } from "@/lib/generated/prisma/enums";
+import { ApiKeyStatus } from "@prisma/client";
 import { ok, err, serverError } from "@/lib/respond/response";
 
 export async function POST(

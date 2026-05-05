@@ -71,10 +71,14 @@ export async function POST(req: NextRequest) {
     }
 
     return ok({
+      id: promoCode.id,
       code: promoCode.code,
       description: promoCode.description,
       discountType: promoCode.discountType,
       discountValue: promoCode.discountValue,
+      bonusCredits: promoCode.bonusCredits,
+      flatDiscount: promoCode.flatDiscount,
+      expiryDate: promoCode.expiryDate,
     });
   } catch (error) {
     console.error("[VALIDATE_PROMO]", error);

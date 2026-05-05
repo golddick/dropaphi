@@ -19,8 +19,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Disable font optimization for all Next.js versions
-  optimizeFonts: false,
   // For Turbopack (Next.js 13+)
   turbopack: {
     resolveExtensions: ['.tsx', '.ts', '.jsx', '.js'],

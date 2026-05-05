@@ -14,6 +14,9 @@ import {
   serverError,
 } from "@/lib/respond/response";
 import { mailSender } from "@/lib/email/service/transporter";
+import { BillingService } from "@/lib/billing/billing-service";
+import { Services } from "@/lib/generated/prisma";
+import { checkServiceStatus } from "@/lib/services/service-status";
 
 // ========================================
 // Validation Schema
@@ -76,6 +79,10 @@ export async function POST(
   try {
     const { workspaceId } = await params;
 
+    // Check if EMAIL service is active
+    const serviceStatusError = await checkServiceStatus(Services.EMAIL);
+    if (serviceStatusError) return serviceStatusError;
+
     // Authenticate user
     const auth = await requireAuth();
     if (auth instanceof Response) return auth;
@@ -113,17 +120,17 @@ export async function POST(
       scheduledAt,
     } = parsed.data;
 
-    // Get workspace with limits
-    const workspace = await db.workspace.findUnique({
-      where: { id: workspaceId },
-      select: {
-        emailLimit: true,
-        currentEmailsSent: true,
-        name: true,
-      },
-    });
+    // Check email limit using BillingService
+    const limitCheck = await BillingService.checkLimit(workspaceId, Services.EMAIL, 1);
 
-    if (!workspace) return notFound("Workspace not found");
+    if (!limitCheck.success) {
+      return err(
+        "Email limit exceeded",
+        403,
+        "LIMIT_EXCEEDED",
+        "Please upgrade your plan or top up your wallet to send more emails."
+      );
+    }
 
     // Check if subscriber exists
     const subscriber = await db.subscriber.findFirst({
@@ -138,16 +145,6 @@ export async function POST(
         status: true,
       },
     });
-
-    // Check email limit
-    if (workspace.currentEmailsSent + 1 > workspace.emailLimit) {
-      return err(
-        "Email limit exceeded",
-        403,
-        "LIMIT_EXCEEDED",
-        `Used ${workspace.currentEmailsSent}/${workspace.emailLimit} emails`
-      );
-    }
 
     // Get sender details
     const sender = await getWorkspaceSender(workspaceId);
@@ -167,8 +164,8 @@ export async function POST(
       "{{name}}": subscriber?.name || "there",
       "{{email}}": recipientEmail,
       "{{subscriber_id}}": subscriber?.id || "",
-      "{{workspace_name}}": workspace.name || "",
-      "{{unsubscribe_url}}": `${process.env.NEXTAUTH_URL || "https://app.dropaphi.com"}/unsubscribe?email=${encodeURIComponent(recipientEmail)}&workspace=${workspaceId}`,
+      "{{workspace_name}}": sender.name || "Workspace",
+      "{{unsubscribe_url}}": `${process.env.NEXTAUTH_URL || "https://dropaphi.xyz"}/unsubscribe?email=${encodeURIComponent(recipientEmail)}&workspace=${workspaceId}`,
     };
 
     Object.entries(replacements).forEach(([placeholder, value]) => {
@@ -240,13 +237,8 @@ export async function POST(
         },
       });
 
-      // Update workspace email count
-      await db.workspace.update({
-        where: { id: workspaceId },
-        data: {
-          currentEmailsSent: { increment: 1 },
-        },
-      });
+      // Deduct credits (handles bundle, wallet, and cumulative counters)
+      await BillingService.deductCredits(workspaceId, Services.EMAIL, 1);
 
       // Update campaign stats if campaignId provided
       if (campaignId) {

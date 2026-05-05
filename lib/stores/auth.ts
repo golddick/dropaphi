@@ -442,7 +442,9 @@ export const useAuthStore = create<AuthState>()(
         id: session.id,
         device: session.userAgent ? parseUserAgent(session.userAgent) : 'Unknown device',
         location: session.ipAddress ? `IP: ${session.ipAddress}` : 'Unknown location',
-        current: session.id === get().user?.Session?.id, // You'll need to store current sessionId
+        // Prisma schema does not embed a Session inside User; API should flag current session.
+        // Until backend exposes that, default to false.
+        current: Boolean(session.current ?? false),
         lastActive: session.lastActiveAt 
           ? formatDistanceToNow(new Date(session.lastActiveAt), { addSuffix: true })
           : 'Unknown',

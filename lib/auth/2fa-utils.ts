@@ -75,7 +75,7 @@ export async function verifyOTP(email: string, code: string): Promise<boolean> {
 // Send OTP via email
 export async function sendOTPEmail(email: string, otp: string, name: string): Promise<void> {
   const mailOptions = {
-    from: `"Drop-APHI Security" <${process.env.MAIL_FROM || 'security@dropapi.com'}>`,
+    from: `"Drop-APHI Security" <${process.env.MAIL_FROM || 'security@dropaphi.com'}>`,
     to: email,
     subject: 'Your Two-Factor Authentication Code',
     html: `

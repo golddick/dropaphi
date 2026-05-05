@@ -9,21 +9,29 @@
 
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { createHash } from "crypto";
+import { createHash, randomInt } from "crypto";
 import { err, ok, serverError, validationError } from "@/lib/respond/response";
 import { db } from "@/lib/db";
 import { sendOtpEmail } from "@/lib/email/auth/email";
 import { dropid } from "dropid";
-import { generateOtp } from "@/lib/auth/auth-client";
-import { EXPIRY, requireAuth } from "@/lib/auth/auth-server";
+import {EXPIRY, getOptionalSession} from "@/lib/auth/auth-server";
 
 function hashOtp(otp: string): string {
   return createHash("sha256").update(otp).digest("hex");
 }
 
 const OTP_VALIDITY_MINS = 10;
-const MAX_ATTEMPTS = 3;
+const DEFAULT_MAX_ATTEMPTS = 3;
 const COOLDOWN_MS = 60 * 1000; // 60s between sends
+
+// Generate a numeric OTP on the server (avoid importing any client code)
+function generateNumericOtp(length = 6): string {
+  let code = "";
+  for (let i = 0; i < length; i++) {
+    code += randomInt(0, 10).toString();
+  }
+  return code;
+}
 
 // ---- POST /api/auth/otp/send --------------------------------
 export async function POST(req: NextRequest) {
@@ -36,18 +44,38 @@ export async function POST(req: NextRequest) {
   return err("Unknown action. Use ?action=send or ?action=verify", 400);
 }
 
+const sendSchema = z
+  .object({ email: z.string().email().optional() })
+  .optional();
+
 // ---- Send OTP -----------------------------------------------
 async function handleSend(req: NextRequest) {
   try {
-    const auth = await requireAuth();
-    if (auth instanceof Response) return auth;
+    const session = await getOptionalSession();
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const parsed = sendSchema.safeParse(body);
+    const emailFromBody = parsed.success ? parsed.data?.email : undefined;
 
+    // Accept unauthenticated requests for signup flow; require email in body when unauthenticated
+    const email = emailFromBody;
+    if (!email) {
+      return validationError(
+        new z.ZodError([
+          {
+            code: z.ZodIssueCode.custom,
+            message: "email is required",
+            path: ["email"],
+          },
+        ])
+      );
+    }
+
+    const ip = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || undefined;
 
     // Rate limit: check last OTP request
-    const lastOtp = await db.otpRequest.findFirst({
+    const lastOtp = await db.authOtp.findFirst({
       where: {
-        recipient: auth.email,
-        channel: "EMAIL",
+        email: email,
         status: "PENDING",
       },
       orderBy: { createdAt: "desc" },
@@ -62,54 +90,27 @@ async function handleSend(req: NextRequest) {
     }
 
     // Generate OTP
-    const otp = generateOtp(6);
+    const otp = generateNumericOtp(6);
     const otpHash = hashOtp(otp);
     const expiresAt = EXPIRY.otp(OTP_VALIDITY_MINS);
 
-    // Find workspaceId — use first workspace the user belongs to
-    // For auth OTPs we use a system workspace
-    const member = await db.workspaceMember.findFirst({
-      where: { userId: auth.userId },
+    // Persist OTP request
+    await db.authOtp.create({
+      data: {
+        id: dropid("aotp"),
+        email: email,
+        otpHash: otpHash,
+        expiresAt,
+        ipAddress: ip,
+      },
     });
 
-    if (!member) {
-      // Create minimal OTP record without workspace
-      // In production you'd have a system workspace
-      await db.otpRequest.create({
-        data: {
-          workspaceId: dropid('ws'), // Replace with actual system workspace ID
-          channel: "EMAIL",
-          recipient: auth.email,
-          otpHash,
-          validityMins: OTP_VALIDITY_MINS,
-          expiresAt,
-          creditsUsed: 0,
-          source: "auth",
-          status: "PENDING",
-        },
-      });
-    } else {
-      await db.otpRequest.create({
-        data: {
-          workspaceId: member.workspaceId,
-          channel: "EMAIL",
-          recipient: auth.email,
-          otpHash,
-          validityMins: OTP_VALIDITY_MINS,
-          expiresAt,
-          creditsUsed: 0,
-          source: "auth",
-          status: "PENDING",
-        },
-      });
-    }
-
     // Send email (non-blocking)
-    sendOtpEmail(auth.email, otp, OTP_VALIDITY_MINS).catch(console.error);
+    sendOtpEmail(email, otp, OTP_VALIDITY_MINS).catch(console.error);
 
     return ok(
       { expiresIn: OTP_VALIDITY_MINS * 60 },
-      `OTP sent to ${auth.email}`
+      `OTP sent to ${email}`
     );
   } catch (error) {
     console.error("[OTP_SEND]", error);
@@ -118,24 +119,23 @@ async function handleSend(req: NextRequest) {
 }
 
 // ---- Verify OTP ---------------------------------------------
-const verifySchema = z.object({ code: z.string().length(6) });
+const verifySchema = z.object({
+  email: z.string().email(),
+  code: z.string().regex(/^\d{6}$/),
+});
 
 async function handleVerify(req: NextRequest) {
   try {
-    const auth = await requireAuth();
-    if (auth instanceof Response) return auth;
-
     const body = await req.json();
     const parsed = verifySchema.safeParse(body);
     if (!parsed.success) return validationError(parsed.error);
 
-    const { code } = parsed.data;
+    const { code, email } = parsed.data;
 
     // Find the most recent pending OTP
-    const otpRecord = await db.otpRequest.findFirst({
+    const otpRecord = await db.authOtp.findFirst({
       where: {
-        recipient: auth.email,
-        channel: "EMAIL",
+        email: email,
         status: "PENDING",
         expiresAt: { gt: new Date() },
       },
@@ -147,24 +147,28 @@ async function handleVerify(req: NextRequest) {
     }
 
     // Check attempt limit
-    if (otpRecord.attempts >= MAX_ATTEMPTS) {
-      await db.otpRequest.update({
+    const maxAttempts = otpRecord.maxAttempts;
+    if (otpRecord.attempts >= maxAttempts) {
+      await db.authOtp.update({
         where: { id: otpRecord.id },
         data: { status: "FAILED" },
       });
       return err("Too many attempts. Please request a new code.", 400, "MAX_ATTEMPTS");
     }
 
-    // Increment attempts
-    await db.otpRequest.update({
-      where: { id: otpRecord.id },
-      data: { attempts: { increment: 1 } },
-    });
+    // Prepare attempt count post-increment
+    const nextAttempts = otpRecord.attempts + 1;
 
     // Verify hash
     const inputHash = hashOtp(code);
     if (inputHash !== otpRecord.otpHash) {
-      const remaining = MAX_ATTEMPTS - (otpRecord.attempts + 1);
+      const updates: any = { attempts: nextAttempts };
+      if (nextAttempts >= maxAttempts) {
+        updates.status = "FAILED";
+      }
+      await db.authOtp.update({ where: { id: otpRecord.id }, data: updates });
+
+      const remaining = Math.max(0, maxAttempts - nextAttempts);
       return err(
         `Invalid code. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining.`,
         400,
@@ -173,7 +177,7 @@ async function handleVerify(req: NextRequest) {
     }
 
     // Mark as verified
-    await db.otpRequest.update({
+    await db.authOtp.update({
       where: { id: otpRecord.id },
       data: { status: "VERIFIED", verifiedAt: new Date() },
     });

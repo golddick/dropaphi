@@ -1,5 +1,5 @@
 // components/notifications/NotificationTemplate.tsx
-import { NotificationType, NotificationPriority } from "@/lib/generated/prisma/enums";
+import { NotificationType, NotificationPriority } from "@prisma/client";
 
 export interface NotificationTemplate {
   type: NotificationType;

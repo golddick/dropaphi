@@ -264,7 +264,7 @@ export function getInvitationEmailHtml(props: InvitationEmailProps): string {
             &copy; ${new Date().getFullYear()} Drop APHI. All rights reserved.
           </p>
           <p style="color: #999999; font-size: 11px; text-align: center; margin-top: 16px;">
-            Need help? <a href="mailto:support@dropapi.com" style="color: #DC143C; text-decoration: none;">Contact Support</a>
+            Need help? <a href="mailto:support@dropaphi.com" style="color: #DC143C; text-decoration: none;">Contact Support</a>
           </p>
         </div>
       </div>
@@ -326,7 +326,7 @@ If you weren't expecting this invitation, you can safely ignore
 this email. No account will be created unless you accept.
 
 © ${new Date().getFullYear()} Drop APHI. All rights reserved.
-Need help? Contact support@dropapi.com
+Need help? Contact support@dropaphi.com
   `;
 }
 

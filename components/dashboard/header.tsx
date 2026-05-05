@@ -13,8 +13,7 @@ export function DashboardHeader({
   const { user } = useAuthStore();
   return (
     <header
-      className="border-b px-4 sm:px-6 lg:px-8 py-4"
-      style={{ borderColor: '#E5E5E5', backgroundColor: '#FFFFFF' }}
+      className="border-b px-4 sm:px-6 lg:px-8 py-4 bg-background border-border"
     >
       <div className="flex items-center justify-between">
         {/* Left Side */}
@@ -54,10 +53,10 @@ export function DashboardHeader({
             style={{ borderColor: '#E5E5E5' }}
           >
             <div className="hidden sm:flex flex-col items-end text-right">
-              <p className="text-sm font-medium capitalize" style={{ color: '#1A1A1A' }}>
+              <p className="text-sm font-medium capitalize text-foreground">
                 {user?.fullName || 'User'}
               </p>
-              <p className="text-xs" style={{ color: '#999999' }}>
+              <p className="text-xs text-muted-foreground">
                 {user?.email || 'user@example.com'}
               </p>
             </div>

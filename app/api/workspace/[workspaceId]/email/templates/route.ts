@@ -217,7 +217,7 @@ import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth/auth-server";
 import { dropid } from "dropid";
 import { z } from "zod";
-import { Prisma } from "@/lib/generated/prisma/client";
+import { Prisma } from "@prisma/client";
 import { generateEmailHTML } from "@/lib/email/generator/email-renderer-server";
 
 // ========================================

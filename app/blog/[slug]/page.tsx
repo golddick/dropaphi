@@ -65,7 +65,7 @@ function CodeBlock({ code, lang = 'javascript' }: { code: string; lang?: string 
                   .replace(/(\/\/.*)/g, '<span style="color:#444">$1</span>')
                   .replace(/\b(const|let|var|import|from|await|async|return|new)\b/g, '<span style="color:#C792EA">$1</span>')
                   .replace(/\b(drop|client)\b/g, '<span style="color:#82AAFF">$1</span>')
-                  .replace(/\b(DropAPI|send|verify|upload)\b/g, '<span style="color:#FFCB6B">$1</span>')
+                  .replace(/\b(DropAPHI|send|verify|upload)\b/g, '<span style="color:#FFCB6B">$1</span>')
                   .replace(/\b(sms|email|otp|storage|push)\b/g, '<span style="color:#C3E88D">$1</span>')
               }} 
             />
@@ -229,9 +229,9 @@ export default function BlogPostPage() {
               The beauty is that none of this complexity surfaces in the API. You write one line to send an SMS, and the routing intelligence runs silently underneath.
             </p>
 
-            <CodeBlock lang="javascript" code={`import { DropAPI } from '@dropaphi/sdk'
+            <CodeBlock lang="javascript" code={`import { DropAPHI } from '@dropaphi/sdk'
 
-const drop = new DropAPI({ apiKey: process.env.DROP_API_KEY })
+const drop = new DropAPHI({ apiKey: process.env.DROP_API_KEY })
 
 // Drop APHI automatically routes via the optimal
 // carrier path for this destination number
@@ -255,7 +255,7 @@ console.log(result.carrier)       // 'MTN Nigeria'
               Beyond SMS, the same principle applies to every channel. Instead of three separate SDKs with three different authentication patterns, three different webhook schemas, and three separate dashboards — everything lives under one API key:
             </p>
 
-            <CodeBlock lang="javascript" code={`const drop = new DropAPI({ apiKey: 'sk_live_...' })
+            <CodeBlock lang="javascript" code={`const drop = new DropAPHI({ apiKey: 'sk_live_...' })
 
 // SMS - direct carrier routing
 await drop.sms.send({ to, message })

@@ -64,7 +64,7 @@ function CodeBlock({ code, lang = 'javascript' }: { code: string; lang?: string 
                   .replace(/(\/\/.*)/g, '<span class="text-gray-600">$1</span>')
                   .replace(/\b(const|let|var|import|from|await|async|return|new)\b/g, '<span class="text-purple-400">$1</span>')
                   .replace(/\b(drop|client)\b/g, '<span class="text-blue-400">$1</span>')
-                  .replace(/\b(DropAPI|send|verify|upload)\b/g, '<span class="text-yellow-400">$1</span>')
+                  .replace(/\b(DropAPHI|send|verify|upload)\b/g, '<span class="text-yellow-400">$1</span>')
                   .replace(/\b(sms|email|otp|storage|push)\b/g, '<span class="text-green-300">$1</span>')
               }} 
             />

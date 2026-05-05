@@ -14,7 +14,7 @@ export async function GET(
     const { workspaceId } = await params;
 
     if (!workspaceId){
-        err('no workspace id')
+        return err('no workspace id', 400)
     }
 
     // Check if user has access to this workspace
@@ -26,7 +26,7 @@ export async function GET(
       include: {
         workspace: {
           include: {
-            subscription: true,
+            subscription: { include: { plan: true } },
           },
         },
       },
@@ -101,32 +101,55 @@ export async function GET(
     });
 
     // Calculate usage percentages
+    // Compute storage limit from plan.features.storageQuotaGb when available (GB -> MB)
+    const features: any = membership.workspace.subscription?.plan?.features || {};
+    const storageLimitFromFeatures = typeof features.storageQuotaGb === 'number'
+      ? Math.floor(features.storageQuotaGb * 1024) // GB to MB
+      : undefined;
+
+    const resolvedFileLimit = storageLimitFromFeatures ?? membership.workspace.fileLimit;
+
     const usage = {
       sms: {
         used: workspace.currentSmsSent,
         limit: workspace.smsLimit,
-        percentage: Math.min(Math.round((workspace.currentSmsSent / workspace.smsLimit) * 100), 100),
+        percentage: workspace.smsLimit > 0 ? Math.min(Math.round((workspace.currentSmsSent / workspace.smsLimit) * 100), 100) : 0,
       },
       email: {
         used: workspace.currentEmailsSent,
         limit: workspace.emailLimit,
-        percentage: Math.min(Math.round((workspace.currentEmailsSent / workspace.emailLimit) * 100), 100),
+        percentage: workspace.emailLimit > 0 ? Math.min(Math.round((workspace.currentEmailsSent / workspace.emailLimit) * 100), 100) : 0,
       },
       otp: {
         used: workspace.currentOtpSent,
         limit: workspace.otpLimit,
-        percentage: Math.min(Math.round((workspace.currentOtpSent / workspace.otpLimit) * 100), 100),
+        percentage: workspace.otpLimit > 0 ? Math.min(Math.round((workspace.currentOtpSent / workspace.otpLimit) * 100), 100) : 0,
       },
       storage: {
-        used: Math.round(workspace.currentFilesUsed / 1024), // Convert to MB
-        limit: workspace.fileLimit,
-        percentage: Math.min(Math.round((workspace.currentFilesUsed / workspace.fileLimit) * 100), 100),
+        used: Math.round(workspace.currentFilesUsed * 100) / 100, // MB
+        limit: resolvedFileLimit,
+        percentage: resolvedFileLimit > 0 ? Math.min(Math.round((workspace.currentFilesUsed / resolvedFileLimit) * 100), 100) : 0,
       },
       subscribers: {
         used: workspace.currentSubscribers,
         limit: workspace.subscriberLimit,
-        percentage: Math.min(Math.round((workspace.currentSubscribers / workspace.subscriberLimit) * 100), 100),
+        percentage: workspace.subscriberLimit > 0 ? Math.min(Math.round((workspace.currentSubscribers / workspace.subscriberLimit) * 100), 100) : 0,
       },
+      blog: {
+        used: workspace.currentBlogsCount,
+        limit: workspace.blogLimit,
+        percentage: workspace.blogLimit > 0 ? Math.min(Math.round((workspace.currentBlogsCount / workspace.blogLimit) * 100), 100) : 0,
+      },
+      push: {
+        used: workspace.currentPushSent,
+        limit: workspace.pushLimit,
+        percentage: workspace.pushLimit > 0 ? Math.min(Math.round((workspace.currentPushSent / workspace.pushLimit) * 100), 100) : 0,
+      },
+      api: {
+        used: workspace.currentApiCalls,
+        limit: workspace.apiLimit,
+        percentage: workspace.apiLimit > 0 ? Math.min(Math.round((workspace.currentApiCalls / workspace.apiLimit) * 100), 100) : 0,
+      }
     };
 
     // Get success rates
@@ -181,6 +204,11 @@ export async function GET(
       },
     });
 
+    // Get wallet
+    const wallet = await db.wallet.findUnique({
+      where: { workspaceId }
+    });
+
     return ok({
       workspace: {
         id: workspace.id,
@@ -194,8 +222,11 @@ export async function GET(
         sms: workspace.smsLimit,
         email: workspace.emailLimit,
         otp: workspace.otpLimit,
-        storage: workspace.fileLimit,
+        storage: resolvedFileLimit,
         subscribers: workspace.subscriberLimit,
+        blog: workspace.blogLimit,
+        push: workspace.pushLimit,
+        api: workspace.apiLimit,
       },
       usage,
       stats: {
@@ -203,6 +234,9 @@ export async function GET(
           sms: workspace.currentSmsSent,
           email: workspace.currentEmailsSent,
           otp: workspace.currentOtpSent,
+          blogs: workspace.currentBlogsCount,
+          push: workspace.currentPushSent,
+          api: workspace.currentApiCalls,
           files: fileStats._count || 0,
           storage: Number(fileStats._sum?.size || 0),
           subscribers: workspace.currentSubscribers,
@@ -212,6 +246,9 @@ export async function GET(
           sms: workspace.currentSmsSent,
           email: workspace.currentEmailsSent,
           otp: workspace.currentOtpSent,
+          blog: workspace.currentBlogsCount,
+          push: workspace.currentPushSent,
+          api: workspace.currentApiCalls,
         },
         success: {
           sms: smsTotal > 0 ? Math.round((smsSuccess / smsTotal) * 100) : 0,
@@ -239,8 +276,28 @@ export async function GET(
         tier: workspace.subscription.tier,
         status: workspace.subscription.status,
         currentPeriodEnd: workspace.subscription.currentPeriodEnd,
-        monthlyPrice: workspace.subscription.monthlyPrice.toNumber(),
+        monthlyPrice: Number(workspace.subscription.monthlyPrice),
+        gracePeriodEnd: workspace.subscription.gracePeriodEnd,
       } : null,
+      wallet: wallet ? {
+        balance: Number(wallet.balance),
+        emailCredits: wallet.emailCredits,
+        smsCredits: wallet.smsCredits,
+        otpCredits: wallet.otpCredits,
+        blogCredits: wallet.blogCredits,
+        pushCredits: wallet.pushCredits,
+        apiCredits: wallet.apiCredits,
+        storageCredits: wallet.storageCredits,
+      } : { 
+        balance: 0, 
+        emailCredits: 0,
+        smsCredits: 0, 
+        otpCredits: 0,
+        blogCredits: 0,
+        pushCredits: 0,
+        apiCredits: 0,
+        storageCredits: 0
+      },
     });
   } catch (error) {
     console.error("[WORKSPACE_OVERVIEW]", error);

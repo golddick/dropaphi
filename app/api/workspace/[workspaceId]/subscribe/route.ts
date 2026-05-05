@@ -11,6 +11,9 @@ import {
 } from "@/lib/respond/response";
 import { dropid } from "dropid";
 import { welcomeEmail } from "@/lib/email/service/newsletter-welcome-email.service";
+import { checkServiceStatus, checkWorkspaceStatus } from "@/lib/services/service-status";
+import { Services } from "@/lib/generated/prisma";
+import {BillingService} from "@/lib/billing/billing-service";
 
 const subscribeSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -69,25 +72,29 @@ export async function POST(
   try {
     const { workspaceId } = await params;
 
-    // Check if workspace exists
-    const workspace = await db.workspace.findUnique({
-      where: { id: workspaceId },
-      select: {
-        id: true,
-        name: true,
-        subscriberLimit: true,
-        currentSubscribers: true,
-      }
-    });
+    // Check if SUBSCRIBERS service is active
+    const serviceStatusError = await checkServiceStatus(Services.SUBSCRIBERS);
+    if (serviceStatusError) return serviceStatusError;
 
-    if (!workspace) {
-      return notFound("Workspace not found");
-    }
+    // Check if workspace exists and is active
+    const { workspace, errorResponse } = await checkWorkspaceStatus(workspaceId);
+    if (errorResponse) return errorResponse;
 
     // Check if workspace has reached subscriber limit
-    if (workspace.currentSubscribers >= workspace.subscriberLimit) {
-      return err("Workspace has reached its subscriber limit");
+    // Check subscribers limit using BillingService
+    const limitCheck = await BillingService.checkLimit(workspaceId, Services.SUBSCRIBERS, 1);
+
+    if (!limitCheck.success) {
+      return err(
+          "Subscribers limit exceeded",
+          403,
+          "LIMIT_EXCEEDED",
+          "Please upgrade your plan or top up your wallet "
+      );
     }
+    // if (workspace.currentSubscribers >= workspace.subscriberLimit) {
+    //   return err("Workspace has reached its subscriber limit");
+    // }
 
     // Parse and validate request body
     const body = await req.json();
@@ -126,15 +133,18 @@ export async function POST(
           },
         });
 
+        // Deduct credits (handles bundle, wallet, and cumulative counters)
+        await BillingService.deductCredits(workspaceId, Services.SUBSCRIBERS, 1);
+
         // Increment workspace subscriber count
-        await db.workspace.update({
-          where: { id: workspaceId },
-          data: {
-            currentSubscribers: {
-              increment: 1
-            }
-          }
-        });
+        // await db.workspace.update({
+        //   where: { id: workspaceId },
+        //   data: {
+        //     currentSubscribers: {
+        //       increment: 1
+        //     }
+        //   }
+        // });
 
         // Send welcome email on reactivation (fire and forget - don't await)
         sendWelcomeEmail({ 

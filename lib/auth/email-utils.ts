@@ -64,7 +64,7 @@ export async function sendEmailVerificationOTP(
     
     // Send email using central transporter
     const info = await transporter.sendMail({
-      from: `"Drop-APHI Security" <${process.env.MAIL_FROM || 'noreply@dropapi.com'}>`,
+      from: `"Drop-APHI " <${process.env.MAIL_FROM || 'noreply@dropaphi.xyz'}>`,
       to: email,
       subject: `Your ${displayContext} Code`,
       html: `
@@ -169,7 +169,7 @@ export async function sendEmailVerificationOTP(
               
               <p style="margin-top: 30px;">
                 If you didn't request this verification, please ignore this email or 
-                <a href="mailto:support@dropapi.com" style="color: #DC143C;">contact support</a> 
+                <a href="mailto:dropaphi.hq@gmail.com" style="color: #DC143C;">contact HQ</a>
                 if you have concerns.
               </p>
             </div>

@@ -112,7 +112,7 @@ export function SocialElement({ id, properties = {}, isSelected, onSelect, onUpd
               return (
                 <div key={link.id} className="space-y-2 p-2 bg-muted rounded">
                   <div className="flex items-center gap-2">
-                    {platform && (
+                    {platform && socialIconSVGs[platform.id as keyof typeof socialIconSVGs] && (
                       <div 
                         className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
                         style={{ backgroundColor: link.backgroundColor || platform.color }}
@@ -214,7 +214,7 @@ export function SocialElement({ id, properties = {}, isSelected, onSelect, onUpd
         <div className={`flex ${alignmentClass} gap-${properties.spacing || 2} flex-wrap`}>
           {links.map((link) => {
             const platform = socialPlatforms.find((p) => p.id === link.platform)
-            if (!platform) return null
+            if (!platform || !socialIconSVGs[platform.id as keyof typeof socialIconSVGs]) return null
 
             const buttonStyle = {
               backgroundColor: link.backgroundColor || platform.color,

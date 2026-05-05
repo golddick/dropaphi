@@ -1,7 +1,7 @@
 // lib/services/notification.service.ts
 import { db } from "@/lib/db";
 import { dropid } from "dropid";
-import { NotificationType, NotificationPriority, NotificationChannel } from "@/lib/generated/prisma/enums";
+import { NotificationType, NotificationPriority, NotificationChannel } from "@prisma/client";
 import { notificationTemplates } from "@/components/notification/notification-template";
 
 export interface CreateNotificationParams {

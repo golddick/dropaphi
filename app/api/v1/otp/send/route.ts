@@ -8,6 +8,8 @@ import { checkWorkspaceOTPLimit, getWorkspaceEmailSender } from "@/lib/v1-api/wo
 import { generateOTP, encryptOTP, getDefaultOTPTemplate, getDefaultTextTemplate } from "@/lib/v1-api/otp/utils";
 import { handleCORS, addCORSHeaders } from "@/lib/cors";
 import { emailSender } from "@/lib/v1-api/email/OtpTransporter";
+import { checkServiceStatus } from "@/lib/services/service-status";
+import { Services } from "@prisma/client";
 
 // Helper function to get start of day
 function getStartOfDay(date: Date = new Date()): Date {
@@ -36,6 +38,12 @@ export async function OPTIONS(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    // 0. Check if OTP service is active
+    const serviceStatusError = await checkServiceStatus(Services.OTP);
+    if (serviceStatusError) {
+      return addCORSHeaders(serviceStatusError);
+    }
+
     // 1. Validate API key
     const validation = await validateApiKey(req);
     if (!validation.valid) {
@@ -93,7 +101,37 @@ export async function POST(req: NextRequest) {
       return addCORSHeaders(response);
     }
 
-    // 4. CRITICAL: Check for ANY existing active OTP for this email
+    // 5. Rate limiting: Check for RECENT OTP for this email
+    const recentOTP = await db.otpRequest.findFirst({
+      where: {
+        workspaceId: keyInfo.workspaceId,
+        recipient: email,
+        createdAt: { gt: new Date(Date.now() - 60 * 1000) } // Last 60 seconds
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (recentOTP) {
+      const secondsSinceLast = Math.ceil((Date.now() - recentOTP.createdAt.getTime()) / 1000);
+      const waitSeconds = 60 - secondsSinceLast;
+      
+      if (waitSeconds > 0) {
+        const response = NextResponse.json(
+          {
+            success: false,
+            error: "Please wait before requesting another code",
+            details: {
+              message: `You can request another code in ${waitSeconds} seconds`,
+              nextAttemptIn: waitSeconds,
+            },
+          },
+          { status: 429 }
+        );
+        return addCORSHeaders(response);
+      }
+    }
+
+    // 6. CRITICAL: Check for ANY existing active OTP for this email
     const existingActiveOTP = await db.otpRequest.findFirst({
       where: {
         workspaceId: keyInfo.workspaceId,
@@ -123,7 +161,7 @@ export async function POST(req: NextRequest) {
       return addCORSHeaders(response);
     }
 
-    // 5. Check workspace OTP limit
+    // 7. Check workspace OTP limit
     const limitCheck = await checkWorkspaceOTPLimit(keyInfo.workspaceId);
     if (!limitCheck.allowed) {
       const response = NextResponse.json(
@@ -139,12 +177,12 @@ export async function POST(req: NextRequest) {
       return addCORSHeaders(response);
     }
 
-    // 6. Generate OTP
+    // 8. Generate OTP
     const otp = generateOTP(length);
     const otpEncrypted = encryptOTP(otp);
     const expiresAt = new Date(Date.now() + expiry * 60 * 1000);
 
-    // 7. Create OTP record
+    // 9. Create OTP record
     const otpId = dropid("otp");
     const otpRecord = await db.otpRequest.create({
       data: {
@@ -269,13 +307,25 @@ export async function POST(req: NextRequest) {
       return addCORSHeaders(response);
     }
 
-    // 10. Update workspace OTP count
-    await db.workspace.update({
+    // 10. Update workspace OTP count or wallet credits
+    const workspace = await db.workspace.findUnique({
       where: { id: keyInfo.workspaceId },
-      data: {
-        currentOtpSent: { increment: 1 },
-      },
+      include: { wallet: true }
     });
+
+    if (workspace?.wallet && workspace.wallet.otpCredits > 0) {
+      await db.wallet.update({
+        where: { workspaceId: keyInfo.workspaceId },
+        data: { otpCredits: { decrement: 1 } }
+      });
+    } else {
+      await db.workspace.update({
+        where: { id: keyInfo.workspaceId },
+        data: {
+          currentOtpSent: { increment: 1 },
+        },
+      });
+    }
 
     // 11. Track successful API usage
     const today = getStartOfDay();

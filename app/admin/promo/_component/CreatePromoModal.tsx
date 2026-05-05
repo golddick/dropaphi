@@ -46,8 +46,8 @@ export function CreatePromoModal({ isOpen, onClose, onSuccess }: Props) {
         discountType: formData.discountType,
         discountValue: parseInt(formData.discountValue),
         maxUses: formData.maxUses ? parseInt(formData.maxUses) : undefined,
-        validFrom: new Date(formData.validFrom),
-        validUntil: new Date(formData.validUntil),
+        validFrom: new Date(formData.validFrom).toISOString(),
+        validUntil: new Date(formData.validUntil).toISOString(),
         firstTimeOnly: formData.firstTimeOnly,
         appliesToPlans: selectedPlans.length > 0 ? selectedPlans : undefined,
       });

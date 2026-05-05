@@ -221,6 +221,9 @@ export interface WorkspaceOverview {
     otp: number;
     storage: number;
     subscribers: number;
+    blog: number;
+    push: number;
+    api: number;
   };
   usage: {
     sms: { used: number; limit: number; percentage: number };
@@ -228,6 +231,9 @@ export interface WorkspaceOverview {
     otp: { used: number; limit: number; percentage: number };
     storage: { used: number; limit: number; percentage: number };
     subscribers: { used: number; limit: number; percentage: number };
+    blog: { used: number; limit: number; percentage: number };
+    push: { used: number; limit: number; percentage: number };
+    api: { used: number; limit: number; percentage: number };
   };
   stats: {
     total: {
@@ -271,6 +277,17 @@ export interface WorkspaceOverview {
     status: string;
     currentPeriodEnd: string;
     monthlyPrice: number;
+    gracePeriodEnd?: string;
+  } | null;
+  wallet: {
+    balance: number;
+    emailCredits: number;
+    smsCredits: number;
+    otpCredits: number;
+    blogCredits: number;
+    pushCredits: number;
+    apiCredits: number;
+    storageCredits: number;
   } | null;
 }
 

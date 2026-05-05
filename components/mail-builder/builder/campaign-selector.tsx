@@ -70,7 +70,7 @@ export function CampaignSelector({
                     }}
                     className={`w-full text-left p-3 rounded-lg border transition-colors ${
                       selectedCampaignId === campaign.id
-                        ? "border-red-400 bg-accent/10"
+                        ? "border-primary bg-primary/10"
                         : "border-border hover:bg-muted"
                     }`}
                   >
@@ -82,7 +82,7 @@ export function CampaignSelector({
                         </p>
                       </div>
                       {selectedCampaignId === campaign.id && (
-                        <Check className="w-4 h-4 text-accent shrink-0 mt-1" />
+                        <Check className="w-4 h-4 text-primary shrink-0 mt-1" />
                       )}
                     </div>
                   </button>
@@ -97,7 +97,7 @@ export function CampaignSelector({
             <Button
               variant="default"
               onClick={() => setShowCreateNew(true)}
-              className="w-full"
+              className="w-full bg-primary hover:bg-primary/90"
             >
               <Plus className="w-4 h-4 mr-2" />
               Create New Campaign
@@ -136,7 +136,7 @@ export function CampaignSelector({
             <Button
               onClick={handleCreateCampaign}
               disabled={!newCampaignName.trim() || isLoading}
-              className="bg-red-500 hover:bg-red-600 text-white"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isLoading ? "Creating..." : "Create"}
             </Button>

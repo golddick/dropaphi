@@ -1,9 +1,16 @@
-// app/api/billing/subscription/verify/route.ts
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { verifyTransaction } from "@/lib/paystack";
 import { err, ok, serverError } from "@/lib/respond/response";
 import { dropid } from "dropid";
+import { 
+  InvoiceStatus, 
+  SubscriptionStatus, 
+  PlanSubscriptionStatus, 
+  SubscriptionTier,
+  SubscriptionTransactionType,
+  TransactionStatus
+} from "@/lib/generated/prisma";
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,19 +18,24 @@ export async function GET(req: NextRequest) {
     const reference = searchParams.get('reference');
     const trxref = searchParams.get('trxref'); // Paystack sometimes uses this
 
-    console.log('🔵 [VERIFY_SUBSCRIPTION] Callback received:', { reference, trxref });
+    console.log('🔵 [VERIFY_PAYMENT] Callback received:', { reference, trxref });
 
     const transactionRef = reference || trxref;
     
     if (!transactionRef) {
-      console.log('🔴 [VERIFY_SUBSCRIPTION] No reference provided');
+      console.log('🔴 [VERIFY_PAYMENT] No reference provided');
       return err('No transaction reference provided', 400);
     }
 
     // Verify the transaction with Paystack
     const verificationResult = await verifyTransaction(transactionRef);
     
-    console.log('📊 [VERIFY_SUBSCRIPTION] Verification result:', {
+    if (!verificationResult || !verificationResult.status) {
+        console.log('🔴 [VERIFY_PAYMENT] Verification failed:', transactionRef);
+        return err('Transaction verification failed', 400);
+    }
+
+    console.log('📊 [VERIFY_PAYMENT] Verification result:', {
       status: verificationResult.data.status,
       amount: verificationResult.data.amount / 100,
       customer: verificationResult.data.customer?.email,
@@ -34,8 +46,11 @@ export async function GET(req: NextRequest) {
     const metadata = verificationResult.data.metadata || {};
     const { 
       workspaceId, 
-      tier, 
       invoiceId, 
+      type, // 'subscription_payment' or 'top_up'
+      tier, 
+      serviceType,
+      quantity,
       promoCode, 
       discount, 
       originalAmount, 
@@ -43,192 +58,252 @@ export async function GET(req: NextRequest) {
       workspaceName 
     } = metadata;
 
-    if (!workspaceId || !tier || !invoiceId) {
-      console.log('🔴 [VERIFY_SUBSCRIPTION] Missing metadata:', { workspaceId, tier, invoiceId });
+    if (!workspaceId || !invoiceId) {
+      console.log('🔴 [VERIFY_PAYMENT] Missing critical metadata:', { workspaceId, invoiceId });
       return err('Invalid transaction metadata', 400);
     }
 
-    // Check if transaction was successful
-    if (verificationResult.data.status !== 'success') {
-      console.log('🔴 [VERIFY_SUBSCRIPTION] Transaction not successful:', verificationResult.data.status);
-      
-      // Update invoice status
-      await db.invoice.update({
-        where: { id: invoiceId },
-        data: { status: 'FAILED' }
-      });
-
-      // Redirect to failure page
-      const failureUrl = new URL('/dashboard/billing?status=failed', process.env.NEXT_PUBLIC_APP_URL);
-      return Response.redirect(failureUrl.toString());
-    }
-
-    // Calculate final amount (use discounted amount from metadata)
-    const paidAmount = originalAmount - (discount || 0);
-    const paystackAmount = verificationResult.data.amount / 100;
-
-    // Verify that the amount paid matches what we expected
-    if (Math.abs(paidAmount - paystackAmount) > 1) { // Allow 1 naira difference for rounding
-      console.log('⚠️ [VERIFY_SUBSCRIPTION] Amount mismatch:', {
-        expected: paidAmount,
-        actual: paystackAmount,
-        originalAmount,
-        discount
-      });
-      // Don't fail, just log it
-    }
-
     // Start a transaction to update all related records
+    // We do this BEFORE checking Paystack status to handle the "FAILED" case gracefully in DB
     const result = await db.$transaction(async (tx) => {
-      // 1. Update invoice
-      const invoice = await tx.invoice.update({
-        where: { id: invoiceId },
-        data: {
-          status: 'PAID',
-          paidAt: new Date(),
-          paymentRef: transactionRef,
-          finalAmount: paidAmount, // Update with actual paid amount
-          metadata: {
-            ...(metadata as any),
-            paystackResponse: verificationResult.data,
-            amountVerified: true,
-            expectedAmount: originalAmount,
-            discountApplied: discount || 0,
-            paidAmount,
-          },
-        },
-      });
-
-      // 2. Update or create workspace subscription
-      const subscription = await tx.workspaceSubscription.upsert({
-        where: {
-          workspaceId: workspaceId,
-        },
-        update: {
-          tier: tier,
-          status: 'ACTIVE',
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-          monthlyPrice: originalAmount, // Store the original price (before discount)
-          paymentRef: transactionRef,
-          updatedAt: new Date(),
-          // Store discount info in metadata if you have a field
-        },
-        create: {
-          id: dropid('sub'),
-          workspaceId: workspaceId,
-          tier: tier,
-          status: 'ACTIVE',
-          monthlyPrice: originalAmount,
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          paymentRef: transactionRef,
-        },
-      });
-
-      // 3. If promo code was used, record redemption
-      if (promoCode) {
-        const promo = await tx.promoCode.findUnique({
-          where: { code: promoCode.toUpperCase() },
+        // 1. Fetch current invoice to check status (Idempotency)
+        const currentInvoice = await tx.invoice.findUnique({
+            where: { id: invoiceId }
         });
 
-        if (promo) {
-          // Check if redemption already exists (prevent duplicates)
-          const existingRedemption = await tx.promoRedemption.findFirst({
-            where: {
-              promoCodeId: promo.id,
-              workspaceId: workspaceId,
-              invoiceId: invoice.id,
-            },
-          });
-
-          if (!existingRedemption) {
-            await tx.promoRedemption.create({
-              data: {
-                id: dropid('red'),
-                promoCodeId: promo.id,
-                workspaceId: workspaceId,
-                invoiceId: invoice.id,
-                discountAmount: discount || 0,
-              },
-            });
-
-            // Increment used count
-            await tx.promoCode.update({
-              where: { id: promo.id },
-              data: { usedCount: { increment: 1 } },
-            });
-
-            console.log('🎫 Promo redemption recorded:', promo.code);
-          }
+        if (!currentInvoice) {
+            throw new Error(`Invoice not found: ${invoiceId}`);
         }
-      }
 
-      // 4. Create subscription transaction
-      const transaction = await tx.subscriptionTransaction.create({
-        data: {
-          id: dropid('stxn'),
-          workspaceId,
-          subscriptionId: subscription.id,
-          type: discount ? 'SUBSCRIPTION_PAYMENT' : 'SUBSCRIPTION_PAYMENT', // You could add a separate type for discounted payments
-          status: 'COMPLETED',
-          amount: paidAmount, // Use the discounted amount
-          description: discount 
-            ? `Subscription payment for ${tier} plan (${discount} discount applied)`
-            : `Subscription payment for ${tier} plan`,
-          referenceId: transactionRef,
-          invoiceId: invoice.id,
-          metadata: {
-            tier,
-            planAmount: originalAmount,
-            discount: discount || 0,
-            finalAmount: paidAmount,
-            promoCode: promoCode || null,
-            workspaceName,
-            paymentMethod: verificationResult.data.authorization?.channel || 'unknown',
-            cardType: verificationResult.data.authorization?.card_type || null,
-            bank: verificationResult.data.authorization?.bank || null,
-          },
-        },
-      });
+        if (currentInvoice.status === InvoiceStatus.PAID) {
+            console.log('ℹ️ [VERIFY_PAYMENT] Invoice already processed:', invoiceId);
+            return { alreadyProcessed: true };
+        }
 
-      console.log('💳 Subscription transaction created:', transaction.id);
+        // 2. Check if Paystack says it failed
+        if (verificationResult.data.status !== 'success') {
+            console.log('🔴 [VERIFY_PAYMENT] Transaction not successful:', verificationResult.data.status);
+            
+            await tx.invoice.update({
+                where: { id: invoiceId },
+                data: { status: InvoiceStatus.FAILED }
+            });
 
-      return { invoice, subscription, transaction };
+            return { failed: true };
+        }
+
+        // 3. Process based on type
+        const isSubscription = type === 'subscription_payment' || !!tier;
+        const isTopUp = type === 'top_up';
+
+        // --- SHARED: Update Invoice to PAID ---
+        const invoice = await tx.invoice.update({
+            where: { id: invoiceId },
+            data: {
+                status: InvoiceStatus.PAID,
+                paidAt: new Date(),
+                paymentRef: transactionRef,
+                metadata: {
+                    ...(metadata as any),
+                    paystackResponse: verificationResult.data,
+                    verifiedAt: new Date().toISOString(),
+                },
+            },
+        });
+
+        if (isSubscription) {
+            // --- SUBSCRIPTION LOGIC ---
+            console.log('💎 Processing Subscription Sync for:', workspaceId);
+
+            // Fetch Plan details from DB (Admin-defined)
+            const dbPlan = await tx.plan.findFirst({
+                where: { tier: tier as SubscriptionTier, isArchived: false },
+            });
+
+            if (!dbPlan) {
+                throw new Error(`Plan not found for tier: ${tier}`);
+            }
+
+            // Update or create workspace subscription
+            const subscription = await tx.workspaceSubscription.upsert({
+                where: { workspaceId: workspaceId },
+                update: {
+                    tier: tier as SubscriptionTier,
+                    planId: dbPlan.id,
+                    status: SubscriptionStatus.ACTIVE,
+                    currentPeriodStart: new Date(),
+                    currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                    monthlyPrice: originalAmount || Number(dbPlan.price),
+                    paymentRef: transactionRef,
+                    updatedAt: new Date(),
+                },
+                create: {
+                    id: dropid('sub'),
+                    workspaceId: workspaceId,
+                    tier: tier as SubscriptionTier,
+                    planId: dbPlan.id,
+                    status: SubscriptionStatus.ACTIVE,
+                    monthlyPrice: originalAmount || Number(dbPlan.price),
+                    currentPeriodStart: new Date(),
+                    currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                    paymentRef: transactionRef,
+                },
+            });
+
+            // Update Workspace limits and status
+            await tx.workspace.update({
+                where: { id: workspaceId },
+                data: {
+                    plan: tier as SubscriptionTier,
+                    planSubscriptionStatus: PlanSubscriptionStatus.ACTIVE,
+                    subscriberLimit: dbPlan.subscriberLimit,
+                    emailLimit: dbPlan.emailLimit,
+                    smsLimit: dbPlan.smsLimit,
+                    otpLimit: dbPlan.otpLimit,
+                    fileLimit: Math.floor(dbPlan.storageLimit),
+                    // Reset usage for new period
+                    currentEmailsSent: 0,
+                    currentSmsSent: 0,
+                    currentOtpSent: 0,
+                    currentFilesUsed: 0,
+                    updatedAt: new Date(),
+                },
+            });
+
+            // Update Wallet credits based on Plan
+            await tx.wallet.update({
+                where: { workspaceId: workspaceId },
+                data: {
+                    emailCredits: dbPlan.rollOverCredits ? { increment: dbPlan.emailCredits } : dbPlan.emailCredits,
+                    smsCredits: dbPlan.rollOverCredits ? { increment: dbPlan.smsCredits } : dbPlan.smsCredits,
+                    otpCredits: dbPlan.rollOverCredits ? { increment: dbPlan.otpCredits } : dbPlan.otpCredits,
+                    storageCredits: dbPlan.rollOverCredits ? { increment: dbPlan.storageCredits } : dbPlan.storageCredits,
+                }
+            });
+
+            // Create Alert
+            await tx.workspaceAlert.create({
+                data: {
+                    id: dropid('alt'),
+                    workspaceId,
+                    title: "Subscription Activated",
+                    message: `Your ${tier} plan is now active. Limits and credits have been updated.`,
+                    type: "success"
+                }
+            });
+
+            // Log Transaction
+            const transaction = await tx.subscriptionTransaction.create({
+                data: {
+                    id: dropid('stxn'),
+                    workspaceId,
+                    subscriptionId: subscription.id,
+                    type: SubscriptionTransactionType.SUBSCRIPTION_PAYMENT,
+                    status: TransactionStatus.COMPLETED,
+                    amount: verificationResult.data.amount / 100,
+                    description: `Subscription payment for ${tier} plan`,
+                    referenceId: transactionRef,
+                    invoiceId: invoice.id,
+                    metadata: { tier, planId: dbPlan.id }
+                }
+            });
+
+            return { success: true, type: 'subscription', invoiceId: invoice.id, workspaceId };
+
+        } else if (isTopUp) {
+            // --- TOP-UP LOGIC ---
+            console.log('💰 Processing Top-up Sync for:', workspaceId);
+
+            // Fetch current subscription for transaction logging (REQUIRED field)
+            const currentSub = await tx.workspaceSubscription.findUnique({
+                where: { workspaceId }
+            });
+
+            if (!currentSub) {
+                throw new Error(`Workspace subscription not found for top-up: ${workspaceId}`);
+            }
+
+            const walletFieldMap: Record<string, string> = {
+                sms: "smsCredits",
+                email: "emailCredits",
+                otp: "otpCredits",
+                storage: "storageCredits",
+                api: "apiCredits"
+            };
+
+            const walletField = walletFieldMap[serviceType] || "balance";
+            
+            if (walletField === "balance") {
+                await tx.wallet.update({
+                    where: { workspaceId },
+                    data: { balance: { increment: verificationResult.data.amount / 100 } }
+                });
+            } else {
+                await tx.wallet.update({
+                    where: { workspaceId },
+                    data: { [walletField]: { increment: quantity || 0 } }
+                });
+            }
+
+            // Create Alert
+            await tx.workspaceAlert.create({
+                data: {
+                    id: dropid('alt'),
+                    workspaceId,
+                    title: "Top-up Successful",
+                    message: walletField === "balance" 
+                        ? `Successfully topped up your wallet balance.`
+                        : `Successfully added ${quantity} ${serviceType} credits to your wallet.`,
+                    type: "success"
+                }
+            });
+
+            // Log Transaction
+            await tx.subscriptionTransaction.create({
+                data: {
+                    id: dropid('stxn'),
+                    workspaceId,
+                    subscriptionId: currentSub.id,
+                    type: SubscriptionTransactionType.TOPUP,
+                    status: TransactionStatus.COMPLETED,
+                    amount: verificationResult.data.amount / 100,
+                    description: `Top-up for ${serviceType}`,
+                    referenceId: transactionRef,
+                    invoiceId: invoice.id,
+                    metadata: { serviceType, quantity }
+                }
+            });
+
+            return { success: true, type: 'topup', invoiceId: invoice.id, workspaceId };
+        }
+
+        return { success: true, type: 'unknown', invoiceId: invoice.id, workspaceId };
     });
 
-    console.log('✅ [VERIFY_SUBSCRIPTION] Subscription activated successfully:', {
-      workspaceId,
-      tier,
-      invoiceId: result.invoice.id,
-      subscriptionId: result.subscription.id,
-      transactionId: result.transaction.id,
-      amountPaid: result.transaction.amount,
-      discount: discount || 0,
-    });
+    if (result.failed) {
+        const failureUrl = new URL(`/dashboard/${workspaceId}/billing`, process.env.NEXT_PUBLIC_APP_URL);
+        failureUrl.searchParams.set('status', 'failed');
+        return Response.redirect(failureUrl.toString());
+    }
 
-    // Redirect to success page with query params
-    const successUrl = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
+    // Redirect to success page
+    const successUrl = new URL(`/dashboard/${workspaceId}/billing`, process.env.NEXT_PUBLIC_APP_URL);
     successUrl.searchParams.set('status', 'success');
     successUrl.searchParams.set('reference', transactionRef);
-    if (discount) {
-      successUrl.searchParams.set('discount', discount.toString());
-    }
+    if (result.type) successUrl.searchParams.set('type', result.type);
     
     return Response.redirect(successUrl.toString());
 
   } catch (error: any) {
-    console.error('🔴 [VERIFY_SUBSCRIPTION] Error:', {
-      message: error.message,
-      stack: error.stack,
-      response: error.response?.data
-    });
-
-    // Redirect to error page
-    const errorUrl = new URL('/dashboard', process.env.NEXT_PUBLIC_APP_URL);
-    errorUrl.searchParams.set('status', 'error');
-    errorUrl.searchParams.set('message', 'Payment verification failed');
+    console.error('🔴 [VERIFY_PAYMENT] Error:', error);
     
+    // Attempt to extract workspaceId from error or params if possible for better redirect
+    const workspaceIdParam = req.nextUrl.searchParams.get('workspaceId') || '';
+    const redirectPath = workspaceIdParam ? `/dashboard/${workspaceIdParam}/billing` : '/dashboard';
+    
+    const errorUrl = new URL(redirectPath, process.env.NEXT_PUBLIC_APP_URL);
+    errorUrl.searchParams.set('status', 'error');
+    errorUrl.searchParams.set('message', error.message || 'Payment verification failed');
     return Response.redirect(errorUrl.toString());
   }
 }

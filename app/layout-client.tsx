@@ -15,7 +15,7 @@ export function RootLayoutClient({ children }: RootLayoutClientProps) {
   useEffect(() => {
     setMounted(true);
     // Check if user has already seen splash
-    const hasSeen = localStorage.getItem('dropapi-splash-shown');
+    const hasSeen = localStorage.getItem('dropaphi-splash-shown');
     if (hasSeen) {
       setShowSplash(false);
     }
@@ -23,7 +23,7 @@ export function RootLayoutClient({ children }: RootLayoutClientProps) {
 
   const handleSplashComplete = () => {
     setShowSplash(false);
-    localStorage.setItem('dropapi-splash-shown', 'true');
+    localStorage.setItem('dropaphi-splash-shown', 'true');
   };
 
   if (!mounted) {

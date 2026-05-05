@@ -2,6 +2,7 @@
 import { db } from "@/lib/db";
 import { NextRequest } from "next/server";
 import { isValidKeyFormat, getKeyEnvironment } from "./utils";
+import { UsageService } from "@/lib/billing/usage";
 
 export interface ApiKeyInfo {
   id: string;
@@ -19,19 +20,16 @@ export async function validateApiKey(req: NextRequest): Promise<{
   status?: number;
 }> {
   try {
-    // Get API key from X-API-Key header (this is what your client sends)
+    // Get API key from X-API-Key header
     const apiKey = req.headers.get("x-api-key");
     
     if (!apiKey) {
-      console.log('No X-API-Key header found');
       return { 
         valid: false, 
         error: "Missing API key. Provide via X-API-Key header",
         status: 401
       };
     }
-
-    console.log('API Key received:', apiKey.substring(0, 10) + '...');
 
     // Validate key format first
     if (!isValidKeyFormat(apiKey)) {
@@ -52,10 +50,10 @@ export async function validateApiKey(req: NextRequest): Promise<{
       };
     }
 
-    // Find the API key in database using the raw key field
+    // Find the API key in database
     const keyRecord = await db.apiKey.findFirst({
       where: { 
-        key: apiKey, // Look up by raw key
+        key: apiKey,
         status: 'ACTIVE'
       },
       include: {
@@ -63,8 +61,6 @@ export async function validateApiKey(req: NextRequest): Promise<{
           select: {
             id: true,
             name: true,
-            fileLimit: true,
-            currentFilesUsed: true,
             subscription: {
               select: {
                 tier: true,
@@ -77,7 +73,6 @@ export async function validateApiKey(req: NextRequest): Promise<{
     });
 
     if (!keyRecord) {
-      console.log('API key not found in database:', apiKey.substring(0, 10) + '...');
       return { 
         valid: false, 
         error: "Invalid API key",
@@ -109,7 +104,7 @@ export async function validateApiKey(req: NextRequest): Promise<{
       };
     }
 
-    // Check workspace subscription status
+    // 1. Check workspace subscription status
     if (!keyRecord.workspace.subscription || keyRecord.workspace.subscription.status !== 'ACTIVE') {
       return { 
         valid: false, 
@@ -118,14 +113,27 @@ export async function validateApiKey(req: NextRequest): Promise<{
       };
     }
 
-    // Update last used timestamp and increment usage count
-    await db.apiKey.update({
-      where: { id: keyRecord.id },
-      data: { 
-        lastUsedAt: new Date(),
-        usageCount: { increment: 1 }
-      }
-    });
+    // 2. Check API Usage Limits (PLAN + WALLET)
+    const usageCheck = await UsageService.checkUsage(keyRecord.workspaceId, "api");
+    if (!usageCheck.allowed) {
+      return {
+        valid: false,
+        error: "API usage limit reached. Please upgrade your plan or top up your wallet.",
+        status: 429
+      };
+    }
+
+    // 3. Consume API usage and update key record
+    await Promise.all([
+      UsageService.consumeUsage(keyRecord.workspaceId, "api"),
+      db.apiKey.update({
+        where: { id: keyRecord.id },
+        data: { 
+          lastUsedAt: new Date(),
+          usageCount: { increment: 1 }
+        }
+      })
+    ]);
 
     return {
       valid: true,

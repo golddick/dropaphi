@@ -113,6 +113,65 @@ export interface CreateWorkspaceData {
   description?: string;
 }
 
+// ==============================================
+// Auth store types used by lib/stores/auth.ts
+// ==============================================
+
+// Mirrors prisma model UserSession
+export interface Session {
+  id: string;               // ses_<nanoid>
+  userId: string;           // foreign key
+  ipAddress: string | null;
+  userAgent: string | null;
+  deviceInfo?: any | null;
+  isActive: boolean;
+  lastActiveAt: string | Date;
+  expiresAt: string | Date;
+  createdAt: string | Date | null;
+}
+
+// Prisma enums for User
+export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING_VERIFICATION';
+export type UserRole = 'OWNER' | 'ADMIN' | 'USER' | 'VIEWER';
+
+// Mirrors prisma model User (projected to fields used by the store/UI)
+export interface AuthUser {
+  id: string;                  // usr_<nanoid>
+  email: string;
+  fullName: string;            // non-null in schema
+  passwordHash?: string | null;
+  avatarUrl: string | null;
+  phone?: string | null;
+  bio?: string | null;
+  location?: string | null;
+  phoneVerified: boolean;
+  emailVerified: boolean;
+  status: UserStatus;
+  timezone: string;
+  language: string;
+  twoFactorEnabled: boolean;
+  twoFactorSecret?: string | null;
+  twoFactorBackupCodes?: string | null;
+  googleId?: string | null;
+  githubId?: string | null;
+  notifyEmail: boolean;
+  notifySms: boolean;
+  lastLoginAt?: string | Date | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  role: UserRole;
+}
+
+export interface PasswordChangeData {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ProfileUpdateData {
+  fullName?: string;
+  avatarUrl?: string | null;
+}
+
 export interface UpdateWorkspaceData {
   name?: string;
   website?: string | null;
@@ -165,21 +224,43 @@ export interface Subscription {
   createdAt: string;
   updatedAt: string;
   
-  // Add these for UI convenience
+  // Add limits from plan/workspace
   limits?: {
     sms: number;
     email: number;
     otp: number;
     storage: number;
     subscribers: number;
+    blog: number;
+    push: number;
+    api: number;
   };
+
+  // Add usage from workspace
   usage?: {
     sms: number;
     email: number;
     otp: number;
     storage: number;
     subscribers: number;
+    blog: number;
+    push: number;
+    api: number;
   };
+  
+  // Add wallet credits
+  credits?: {
+    sms: number;
+    email: number;
+    otp: number;
+    storage: number;
+    subscribers: number;
+    blog: number;
+    push: number;
+    api: number;
+    ai: number;
+  };
+  balance?: number;
 }
 
 export interface Invoice {
@@ -200,10 +281,14 @@ export interface Invoice {
 }
 
 export interface PromoCode {
+  id?: string;
   code: string;
   description: string;
-  discountType: 'PERCENTAGE' | 'FIXED';
+  discountType: 'PERCENTAGE' | 'FLAT_AMOUNT' | 'FLAT_CREDIT';
   discountValue: number;
+  bonusCredits?: number;
+  flatDiscount?: number;
+  expiryDate?: string;
   validUntil?: string;
 }
 

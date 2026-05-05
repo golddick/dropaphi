@@ -71,19 +71,12 @@ export default function ApiKeysPage() {
 
   const { currentWorkspace } = useWorkspaceStore();
   const { subscription } = useSubscriptionStore();
-  const spaceid = useWorkspaceID()
-
-  console.log(spaceid, 'workspace ID from hook')
-  // Get workspace ID from currentWorkspace
-  const workspaceId =  spaceid;
+  const workspaceId = useWorkspaceID();
 
 
   useEffect(() => {
     if (workspaceId) {
-      console.log('Loading API keys for workspace:', workspaceId);
       loadData();
-    } else {
-      console.log('No workspace ID available yet');
     }
   }, [workspaceId]);
 
@@ -143,13 +136,6 @@ export default function ApiKeysPage() {
     }
 
     try {
-      console.log('Creating API key with:', {
-        workspaceId,
-        name: formData.name,
-        environment: formData.environment,
-        expiresIn
-      });
-
       const newKey = await createApiKey(
         {
           name: formData.name,

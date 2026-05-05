@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Gift,
+  Building2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -27,9 +28,19 @@ const adminMenuItems = [
     href: '/admin/users',
   },
   {
+    label: 'Workspaces',
+    icon: Building2,
+    href: '/admin/workspaces',
+  },
+  {
     label: 'Transactions',
     icon: TrendingUp,
     href: '/admin/transactions',
+  },
+  {
+    label: 'Plans',
+    icon: Settings,
+    href: '/admin/plans',
   },
   {
     label: 'Promo Codes',

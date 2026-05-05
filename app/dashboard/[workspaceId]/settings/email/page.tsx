@@ -436,7 +436,7 @@ export default function EmailSettingsPage() {
 // export default function EmailSettingsPage() {
 //   const [emailSettings, setEmailSettings] = useState({
 //     fromName: 'Drop API Team',
-//     replyTo: 'reply@dropapi.com',
+//     replyTo: 'reply@dropaphi.com',
 //   });
 
 //   const [emailVerification, setEmailVerification] = useState<EmailVerification>({

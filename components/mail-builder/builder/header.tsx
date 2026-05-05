@@ -20,6 +20,7 @@ interface EmailBuilderHeaderProps {
   onSend?: () => void
   onSelectCampaign?: () => void
   selectedCampaign?: { id: string; name: string }
+  isMobile?: boolean
 }
 
 export function EmailBuilderHeader({
@@ -37,9 +38,10 @@ export function EmailBuilderHeader({
   onSend,
   onSelectCampaign,
   selectedCampaign,
+  isMobile,
 }: EmailBuilderHeaderProps) {
   return (
-    <header className="w-full bg-white border-none sticky top-0 z-10">
+    <header className="w-full bg-background border-b border-border sticky top-0 z-10">
       <div className="flex flex-col w-full gap-3  sm:p-4 md:flex-row md:items-center md:justify-between">
 
         {/* Center section: Subject Input */}
@@ -84,16 +86,18 @@ export function EmailBuilderHeader({
 
           {/* Mode toggle buttons */}
           <div className="flex gap-1 border-r border-border pr-2">
-            <Button
-              size="sm"
-              variant={mode === "visual" ? "default" : "ghost"}
-              onClick={() => onModeChange("visual")}
-              title="Visual Editor"
-              className="h-8 px-2 text-xs"
-            >
-              <Layout className="w-4 h-4 mr-1" />
-              <span className=" ">Visual</span>
-            </Button>
+            {!isMobile && (
+              <Button
+                size="sm"
+                variant={mode === "visual" ? "default" : "ghost"}
+                onClick={() => onModeChange("visual")}
+                title="Visual Editor"
+                className="h-8 px-2 text-xs"
+              >
+                <Layout className="w-4 h-4 mr-1" />
+                <span className=" ">Visual</span>
+              </Button>
+            )}
             <Button
               size="sm"
               variant={mode === "text" ? "default" : "ghost"}
@@ -104,16 +108,18 @@ export function EmailBuilderHeader({
               <Type className="w-4 h-4 mr-1" />
               <span className=" ">Text</span>
             </Button>
-            <Button
-              size="sm"
-              variant={mode === "code" ? "default" : "ghost"}
-              onClick={() => onModeChange("code")}
-              title="Code Editor"
-              className="h-8 px-2 text-xs hidden md:flex"
-            >
-              <Code className="w-4 h-4 mr-1" />
-              <span className="hidden sm:inline">Code</span>
-            </Button>
+            {!isMobile && (
+              <Button
+                size="sm"
+                variant={mode === "code" ? "default" : "ghost"}
+                onClick={() => onModeChange("code")}
+                title="Code Editor"
+                className="h-8 px-2 text-xs hidden md:flex"
+              >
+                <Code className="w-4 h-4 mr-1" />
+                <span className="hidden sm:inline">Code</span>
+              </Button>
+            )}
           </div>
 
           {/* Action buttons */}
@@ -174,7 +180,7 @@ export function EmailBuilderHeader({
                 variant="default"
                 onClick={onSend}
                 title="Send Email"
-                className="h-8 px-2 text-xs bg-red-500 hover:bg-red-600"
+                className="h-8 px-2 text-xs bg-primary hover:bg-primary/90"
               >
                 <Send className="w-4 h-4 mr-1" />
                 <span className="hidden lg:inline">Send</span>

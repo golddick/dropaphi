@@ -1,5 +1,6 @@
 // lib/email/services/email-sender.service.ts
 import nodemailer from "nodemailer";
+import { transporter } from "@/lib/transport";
 
 export interface EmailOptions {
   to: string | string[];
@@ -33,29 +34,8 @@ class EmailSenderService {
   private transporter: nodemailer.Transporter;
 
   constructor() {
-    // FORCE PRODUCTION SMTP - ignore NODE_ENV
-    console.log('📧 Initializing email sender with PRODUCTION SMTP');
-    
-    // Validate SMTP settings
-    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      throw new Error('SMTP configuration missing');
-    }
-
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || "465"),
-      secure: process.env.SMTP_SECURE === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      pool: true,
-      maxConnections: 5,
-      maxMessages: 100,
-      tls: { rejectUnauthorized: false },
-      logger: true,
-      debug: true,
-    });
+    // Use the shared transporter
+    this.transporter = transporter;
   }
 
   async sendEmail(options: EmailOptions): Promise<EmailResult> {
@@ -121,7 +101,7 @@ class EmailSenderService {
 
       // Send email
       const mailOptions: nodemailer.SendMailOptions = {
-        // from: `"Drop-APHI" <${process.env.MAIL_FROM || 'security@dropapi.com'}>`,
+        // from: `"Drop-APHI" <${process.env.MAIL_FROM || 'security@dropaphi.com'}>`,
         from: `"${fromName}" <${process.env.MAIL_FROM}>` || 'noreply@thenews.africa',
         to: recipients,
         bcc,

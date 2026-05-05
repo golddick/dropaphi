@@ -5,7 +5,6 @@ import { requireAuth } from "@/lib/auth/auth-server";
 import { db } from "@/lib/db";
 import { err, ok, serverError, validationError } from "@/lib/respond/response";
 import { generateOTP, sendEmailVerificationOTP, storeOTP } from "@/lib/auth/email-utils";
-// import { generateOTP, storeOTP, sendEmailVerificationOTP } from "@/lib/auth/email-utils";
 
 const sendSchema = z.object({
   email: z.string().email(),

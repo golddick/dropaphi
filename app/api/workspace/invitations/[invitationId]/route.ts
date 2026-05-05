@@ -6,12 +6,12 @@ import { requireAuth } from "@/lib/auth/auth-server";
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { invitationId: string } }
+  { params }: { params: Promise<{ invitationId: string }> }
 ) {
   try {
     const auth = await requireAuth();
     if (auth instanceof Response) return auth;
-    const { invitationId } = params;
+    const { invitationId } = await params;
 
     const invitation = await db.teamInvitation.findUnique({
       where: { id: invitationId }

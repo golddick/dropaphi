@@ -134,46 +134,45 @@ export default function SubscriberDetailPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button
-              onClick={() => setShowSendModal(true)}
-              size="sm"
-              className="flex gap-2 items-center"
-              style={{ backgroundColor: '#DC143C' }}
-            >
-              <Mail size={16} />
-              Send Email
-            </Button>
-            <Button
-              onClick={handleDelete}
-              size="sm"
-              variant="outline"
-              className="flex gap-2 items-center text-red-600 hover:text-red-700"
-            >
-              <Trash2 size={16} />
-              Delete
-            </Button>
-          </div>
+              <Button
+                onClick={() => setShowSendModal(true)}
+                size="sm"
+                className="flex gap-2 items-center bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                <Mail size={16} />
+                Send Email
+              </Button>
+              <Button
+                onClick={handleDelete}
+                size="sm"
+                variant="outline"
+                className="flex gap-2 items-center text-destructive hover:text-destructive/90 border-destructive/20"
+              >
+                <Trash2 size={16} />
+                Delete
+              </Button>
+            </div>
         </div>
       </motion.div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b" style={{ borderColor: '#E5E5E5' }}>
+      <div className="flex gap-2 border-b border-border">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
+          className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
             activeTab === 'overview'
-              ? 'text-red-600 border-b-2 border-red-600'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'text-primary border-primary'
+              : 'text-muted-foreground hover:text-foreground border-transparent'
           }`}
         >
           Overview
         </button>
         <button
           onClick={() => setActiveTab('history')}
-          className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-1 ${
+          className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-1 border-b-2 ${
             activeTab === 'history'
-              ? 'text-red-600 border-b-2 border-red-600'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'text-primary border-primary'
+              : 'text-muted-foreground hover:text-foreground border-transparent'
           }`}
         >
           <History size={14} />
@@ -191,38 +190,36 @@ export default function SubscriberDetailPage() {
         >
           {/* Info Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 border rounded-lg" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E5E5' }}>
-              <p className="text-xs font-bold mb-1" style={{ color: '#666666' }}>EMAIL</p>
-              <p className="font-bold" style={{ color: '#1A1A1A' }}>{subscriber.email}</p>
+            <div className="p-4 border rounded-lg bg-card border-border">
+              <p className="text-xs font-bold mb-1 text-muted-foreground uppercase tracking-wider tracking-wider">EMAIL</p>
+              <p className="font-bold text-foreground">{subscriber.email}</p>
             </div>
-            <div className="p-4 border rounded-lg" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E5E5' }}>
-              <p className="text-xs font-bold mb-1" style={{ color: '#666666' }}>SUBSCRIBED</p>
-              <p className="font-bold" style={{ color: '#1A1A1A' }}>{new Date(subscriber.createdAt).toLocaleDateString()}</p>
+            <div className="p-4 border rounded-lg bg-card border-border">
+              <p className="text-xs font-bold mb-1 text-muted-foreground uppercase tracking-wider">SUBSCRIBED</p>
+              <p className="font-bold text-foreground">{new Date(subscriber.createdAt).toLocaleDateString()}</p>
             </div>
           </div>
 
           {/* Status and Segments */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 border rounded-lg" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E5E5' }}>
-              <p className="text-xs font-bold mb-3" style={{ color: '#666666' }}>STATUS</p>
+            <div className="p-4 border rounded-lg bg-card border-border">
+              <p className="text-xs font-bold mb-3 text-muted-foreground uppercase tracking-wider">STATUS</p>
               <div className="flex items-center gap-2">
                 <span 
-                  className="w-3 h-3 rounded-full"
-                  style={{ 
-                    backgroundColor: 
-                      subscriber.status === 'ACTIVE' ? '#00A86B' :
-                      subscriber.status === 'UNSUBSCRIBED' ? '#666666' : '#DC143C'
-                  }}
+                  className={`w-3 h-3 rounded-full ${
+                    subscriber.status === 'ACTIVE' ? 'bg-green-500' :
+                    subscriber.status === 'UNSUBSCRIBED' ? 'bg-muted-foreground' : 'bg-destructive'
+                  }`}
                 />
-                <span className="font-bold" style={{ color: '#1A1A1A' }}>
+                <span className="font-bold text-foreground">
                   {subscriber.status}
                 </span>
               </div>
             </div>
 
-            <div className="p-4 border rounded-lg" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E5E5' }}>
+            <div className="p-4 border rounded-lg bg-card border-border">
               <div className="flex justify-between items-center mb-3">
-                <p className="text-xs font-bold" style={{ color: '#666666' }}>SEGMENTS</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">SEGMENTS</p>
                 {!isEditing ? (
                   <Button
                     size="sm"
@@ -270,13 +267,12 @@ export default function SubscriberDetailPage() {
                     {editSegments.map((segment) => (
                       <span
                         key={segment}
-                        className="px-2 py-1 rounded text-xs font-bold flex items-center gap-1"
-                        style={{ backgroundColor: '#FFF5F5', color: '#DC143C' }}
+                        className="px-2 py-1 rounded text-xs font-bold flex items-center gap-1 bg-primary/10 text-primary"
                       >
                         {segment}
                         <button
                           onClick={() => removeSegment(segment)}
-                          className="hover:text-red-800"
+                          className="hover:text-primary/80"
                         >
                           <X size={12} />
                         </button>
@@ -290,14 +286,13 @@ export default function SubscriberDetailPage() {
                     subscriber.segments.map((segment) => (
                       <span
                         key={segment}
-                        className="px-2 py-1 rounded text-xs font-bold"
-                        style={{ backgroundColor: '#FFF5F5', color: '#DC143C' }}
+                        className="px-2 py-1 rounded text-xs font-bold bg-primary/10 text-primary"
                       >
                         {segment}
                       </span>
                     ))
                   ) : (
-                    <p className="text-sm" style={{ color: '#999999' }}>No segments</p>
+                    <p className="text-sm text-muted-foreground">No segments</p>
                   )}
                 </div>
               )}
@@ -306,13 +301,13 @@ export default function SubscriberDetailPage() {
 
           {/* Custom Fields */}
           {subscriber.customFields && Object.keys(subscriber.customFields).length > 0 && (
-            <div className="p-4 border rounded-lg" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E5E5' }}>
-              <p className="text-xs font-bold mb-3" style={{ color: '#666666' }}>CUSTOM FIELDS</p>
+            <div className="p-4 border rounded-lg bg-card border-border">
+              <p className="text-xs font-bold mb-3 text-muted-foreground uppercase tracking-wider">CUSTOM FIELDS</p>
               <div className="grid grid-cols-2 gap-4">
                 {Object.entries(subscriber.customFields).map(([key, value]) => (
                   <div key={key}>
-                    <p className="text-xs font-bold" style={{ color: '#666666' }}>{key}</p>
-                    <p className="text-sm" style={{ color: '#1A1A1A' }}>{String(value)}</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{key}</p>
+                    <p className="text-sm text-foreground">{String(value)}</p>
                   </div>
                 ))}
               </div>

@@ -60,7 +60,7 @@ export interface CreatePromoData {
   maxUses?: number;
   validFrom: string;
   validUntil: string;
-  minPlanTier?: 'STARTER' | 'PROFESSIONAL' | 'BUSINESS' | 'ENTERPRISE';
+  minPlanTier?: 'FREE' | 'STARTER' | 'PROFESSIONAL' | 'BUSINESS';
   appliesToPlans?: string[];
   firstTimeOnly?: boolean;
 }

@@ -43,13 +43,13 @@ import { NotificationService } from "@/lib/notification.service";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
         const auth = await requireAdmin();
     if (auth instanceof Response) return auth;
 
-    const { userId } = params;
+    const { userId } = await params;
     const { status } = await req.json();
 
     if (!status) {

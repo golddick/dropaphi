@@ -23,11 +23,14 @@ export async function POST(req: NextRequest) {
     if (auth instanceof Response) return auth;
 
     const body = await req.json();
-    const { workspaceId, invitations } = body;
-
-    if (!workspaceId || !invitations || !Array.isArray(invitations)) {
-      return forbidden("Workspace ID and invitations array are required");
+    
+    // Validate input
+    const parseResult = sendInvitationsSchema.safeParse(body);
+    if (!parseResult.success) {
+      return forbidden("Invalid input: " + JSON.stringify(parseResult.error.flatten().fieldErrors));
     }
+    
+    const { workspaceId, invitations } = parseResult.data;
 
     // Verify user has access to workspace and get workspace details
     const member = await db.workspaceMember.findUnique({
