@@ -13,6 +13,7 @@ import {
   X,
   Gift,
   Building2,
+  PenTool,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -46,6 +47,11 @@ const adminMenuItems = [
     label: 'Promo Codes',
     icon: Gift,
     href: '/admin/promo',
+  },
+  {
+    label: 'Blog Management',
+    icon: PenTool,
+    href: '/admin/blog',
   },
   {
     label: 'Settings',

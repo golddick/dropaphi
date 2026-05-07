@@ -1,4 +1,5 @@
 // lib/auth/dns-utils.ts
+import 'server-only';
 import dns from 'dns/promises';
 
 /**
@@ -42,9 +43,25 @@ export async function checkSPFRecord(domain: string, expectedValue?: string): Pr
  * @param selector The DKIM selector (default is 'default').
  * @param expectedValue Optional exact value to match (usually the public key).
  */
-export async function checkDKIMRecord(domain: string, selector: string = 'default', expectedValue?: string): Promise<VerificationResult> {
+export async function checkDKIMRecord(domain: string, selector: string = 'dropaphi', expectedValue?: string): Promise<VerificationResult> {
   try {
-    const records = await dns.resolveTxt(`${selector}._domainkey.${domain}`);
+    // If we use CNAME for DKIM, we should check for CNAME record
+    const host = `${selector}._domainkey.${domain}`;
+    
+    try {
+      const cnameRecords = await dns.resolveCname(host);
+      if (cnameRecords.length > 0) {
+        const value = cnameRecords[0];
+        if (expectedValue) {
+          return { valid: value === expectedValue, foundValue: value };
+        }
+        return { valid: true, foundValue: value };
+      }
+    } catch (e) {
+      // Not a CNAME, maybe it's a TXT record
+    }
+
+    const records = await dns.resolveTxt(host);
     if (records.length === 0) return { valid: false, error: 'DKIM record not found' };
     
     const value = records[0].join('');
@@ -97,10 +114,10 @@ export function generateDNSRecords(domain: string) {
       status_key: 'spf'
     },
     {
-      type: 'TXT',
-      host: `${dkimSelector}._domainkey`,
-      value: `v=DKIM1; k=rsa; p=${dkimPublicKey}`,
-      description: 'DKIM Record',
+      type: 'CNAME',
+      host: `dropaphi._domainkey`,
+      value: `dkim.dropaphi.xyz`,
+      description: 'DKIM Record (CNAME)',
       status_key: 'dkim'
     },
     {

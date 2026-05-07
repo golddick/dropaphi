@@ -7,8 +7,9 @@ import { dropid } from "dropid";
 import { err, ok, serverError, validationError } from "@/lib/respond/response";
 
 const createSenderSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(1), // Can be email or domain
   name: z.string().min(1).max(100),
+  isDomain: z.boolean().default(false),
 });
 
 // GET /api/workspace/[workspaceId]/email-senders - List all senders
@@ -75,12 +76,15 @@ export async function POST(
     const parsed = createSenderSchema.safeParse(body);
     if (!parsed.success) return validationError(parsed.error);
 
+    const isDomain = parsed.data.isDomain || !parsed.data.email.includes('@');
+    const emailValue = isDomain ? parsed.data.email : parsed.data.email.toLowerCase();
+
     // Check if sender already exists
     const existing = await db.emailSender.findUnique({
       where: {
         workspaceId_email: {
           workspaceId,
-          email: parsed.data.email,
+          email: emailValue,
         },
       },
     });
@@ -93,9 +97,13 @@ export async function POST(
       data: {
         id: dropid('esd'),
         workspaceId,
-        email: parsed.data.email,
+        email: emailValue,
         name: parsed.data.name,
         verified: false,
+        isDomain: isDomain,
+        // If it's a domain, we might want to pre-fill the tokens/records
+        dkimTokens: isDomain ? ['dropaphi'] : [], 
+        spfRecord: isDomain ? 'v=spf1 include:_spf.dropaphi.xyz ~all' : null,
       },
     });
 

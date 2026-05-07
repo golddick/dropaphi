@@ -37,10 +37,14 @@ const sendToSubscriberSchema = z.object({
 // ========================================
 
 async function getWorkspaceSender(workspaceId: string) {
+  // First try to get any verified identity (email or domain)
   const sender = await db.emailSender.findFirst({
     where: {
       workspaceId,
-      verified: true,
+      OR: [
+        { verified: true },
+        { isDomain: true, domainVerified: true }
+      ]
     },
     orderBy: { createdAt: "desc" },
   });

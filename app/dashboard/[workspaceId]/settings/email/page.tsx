@@ -15,11 +15,47 @@ import {
   Loader2,
   Plus,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Globe,
+  Copy,
+  Info
 } from 'lucide-react';
 import { useWorkspaceID } from '@/lib/id/workspace';
 import { toast } from 'sonner';
-import { useEmailSenderStore } from '@/lib/stores/email-sender-store';
+import { useEmailSenderStore, EmailSender } from '@/lib/stores/email-sender-store';
+
+/**
+ * Generates the expected DNS records for a user to add.
+ * This is a client-side copy of the generation logic to avoid importing Node.js 'dns' module.
+ */
+function generateDNSRecords(domain: string) {
+  const dkimSelector = 'dropaphi';
+  const dkimPublicKey = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...'; // Match lib/auth/dns-utils.ts
+
+  return [
+    {
+      type: 'TXT',
+      host: '@',
+      value: 'v=spf1 include:_spf.dropaphi.xyz ~all',
+      description: 'SPF Record',
+      status_key: 'spf'
+    },
+    {
+      type: 'CNAME',
+      host: `dropaphi._domainkey`,
+      value: `dkim.dropaphi.xyz`,
+      description: 'DKIM Record (CNAME)',
+      status_key: 'dkim'
+    },
+    {
+      type: 'TXT',
+      host: '_dmarc',
+      value: `v=DMARC1; p=none; rua=mailto:dmarc-reports@${domain}`,
+      description: 'DMARC Record',
+      status_key: 'dmarc'
+    }
+  ];
+}
 
 export default function EmailSettingsPage() {
   const workspaceId = useWorkspaceID();
@@ -41,10 +77,11 @@ export default function EmailSettingsPage() {
   } = useEmailSenderStore();
 
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newSender, setNewSender] = useState({ email: '', name: '' });
+  const [newSender, setNewSender] = useState({ email: '', name: '', isDomain: false });
   const [otpModal, setOtpModal] = useState(false);
+  const [dnsModal, setDnsModal] = useState(false);
   const [otpValue, setOtpValue] = useState('');
-  const [verifyingSender, setVerifyingSender] = useState<{ id: string; email: string } | null>(null);
+  const [verifyingSender, setVerifyingSender] = useState<EmailSender | null>(null);
 
   useEffect(() => {
     if (workspaceId) {
@@ -68,20 +105,30 @@ export default function EmailSettingsPage() {
     try {
       const sender = await addSender(workspaceId, newSender);
       setShowAddForm(false);
-      setNewSender({ email: '', name: '' });
+      setNewSender({ email: '', name: '', isDomain: false });
       toast.success('Email sender added successfully');
       
-      // Start verification
-      initiateVerification(sender);
+      // Start verification based on type
+      if (sender.isDomain) {
+        setVerifyingSender(sender);
+        setDnsModal(true);
+      } else {
+        initiateVerification(sender);
+      }
     } catch (err: any) {
       toast.error(err.message);
     }
   };
 
-  const initiateVerification = (sender: any) => {
-    setVerifyingSender({ id: sender.id, email: sender.email });
+  const initiateVerification = (sender: EmailSender) => {
+    setVerifyingSender(sender);
     setOtpModal(true);
     setOtpValue('');
+  };
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard');
   };
 
   const handleSendOTP = async () => {
@@ -117,7 +164,12 @@ export default function EmailSettingsPage() {
   const handleDNSCheck = async (senderId: string) => {
     try {
       const result = await checkDNSRecords(senderId);
-      toast.success(`SPF: ${result.spf ? '✓' : '✗'}, DKIM: ${result.dkim ? '✓' : '✗'}`);
+      if (result.spf && result.dkim) {
+        toast.success('All DNS records verified!');
+        if (dnsModal) setDnsModal(false);
+      } else {
+        toast.info(`SPF: ${result.spf ? '✓' : '✗'}, DKIM: ${result.dkim ? '✓' : '✗'}`);
+      }
     } catch (err: any) {
       toast.error(err.message);
     }
@@ -174,27 +226,50 @@ export default function EmailSettingsPage() {
           {showAddForm && (
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">
               <h3 className="font-medium mb-3" style={{ color: '#1A1A1A' }}>
-                Add New Email Sender
+                Add New Email Identity
               </h3>
-              <div className="space-y-3">
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 p-2 bg-white rounded border border-gray-200">
+                  <button
+                    onClick={() => setNewSender({ ...newSender, isDomain: false })}
+                    className={`flex-1 py-2 px-4 rounded text-sm font-medium transition-colors ${!newSender.isDomain ? 'bg-red-50 text-red-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    Individual Email
+                  </button>
+                  <button
+                    onClick={() => setNewSender({ ...newSender, isDomain: true })}
+                    className={`flex-1 py-2 px-4 rounded text-sm font-medium transition-colors ${newSender.isDomain ? 'bg-red-50 text-red-600' : 'text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    Full Domain
+                  </button>
+                </div>
+
                 <Input
-                  placeholder="Sender Name (e.g., Support Team)"
+                  placeholder="Identity Name (e.g., Support Team)"
                   value={newSender.name}
                   onChange={(e) => setNewSender({ ...newSender, name: e.target.value })}
                 />
                 <Input
-                  type="email"
-                  placeholder="Email Address"
+                  type={newSender.isDomain ? "text" : "email"}
+                  placeholder={newSender.isDomain ? "domain.com (e.g. acme.com)" : "email@domain.com"}
                   value={newSender.email}
                   onChange={(e) => setNewSender({ ...newSender, email: e.target.value })}
                 />
-                <div className="flex gap-2">
+                
+                {newSender.isDomain && (
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <Info size={12} />
+                    Verifying a domain allows you to send from any email under that domain.
+                  </p>
+                )}
+
+                <div className="flex gap-2 pt-2">
                   <Button
                     onClick={handleAddSender}
                     disabled={isLoading}
                     style={{ backgroundColor: '#DC143C' }}
                   >
-                    {isLoading ? 'Adding...' : 'Add Sender'}
+                    {isLoading ? 'Adding...' : 'Add Identity'}
                   </Button>
                   <Button
                     onClick={() => setShowAddForm(false)}
@@ -223,13 +298,23 @@ export default function EmailSettingsPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
+                        {sender.isDomain ? (
+                          <Globe size={16} className="text-gray-400" />
+                        ) : (
+                          <Mail size={16} className="text-gray-400" />
+                        )}
                         <span className="font-medium" style={{ color: '#1A1A1A' }}>
                           {sender.name}
                         </span>
-                        {sender.verified && (
+                        {(sender.verified || sender.domainVerified) && (
                           <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
                             <CheckCircle2 size={12} />
                             Verified
+                          </span>
+                        )}
+                        {sender.isDomain && (
+                          <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 uppercase font-bold">
+                            Domain
                           </span>
                         )}
                       </div>
@@ -239,27 +324,33 @@ export default function EmailSettingsPage() {
                       
                       {/* DNS Status */}
                       <div className="flex items-center gap-3 mt-2">
-                        <span className="text-xs flex items-center gap-1">
-                          SPF: {sender.spfVerified ? (
-                            <span className="text-green-600">✓</span>
-                          ) : (
-                            <span className="text-gray-400">○</span>
-                          )}
+                        <span className={`text-xs flex items-center gap-1 ${sender.spfVerified ? 'text-green-600' : 'text-gray-400'}`}>
+                          {sender.spfVerified ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
+                          SPF
                         </span>
-                        <span className="text-xs flex items-center gap-1">
-                          DKIM: {sender.dkimVerified ? (
-                            <span className="text-green-600">✓</span>
-                          ) : (
-                            <span className="text-gray-400">○</span>
-                          )}
+                        <span className={`text-xs flex items-center gap-1 ${sender.dkimVerified ? 'text-green-600' : 'text-gray-400'}`}>
+                          {sender.dkimVerified ? <CheckCircle2 size={10} /> : <AlertCircle size={10} />}
+                          DKIM
                         </span>
                         <button
                           onClick={() => handleDNSCheck(sender.id)}
                           className="text-xs text-red-600 hover:underline flex items-center gap-1"
                         >
-                          <RefreshCw size={12} />
-                          Check DNS
+                          <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
+                          Verify DNS
                         </button>
+                        {sender.isDomain && (
+                          <button
+                            onClick={() => {
+                              setVerifyingSender(sender);
+                              setDnsModal(true);
+                            }}
+                            className="text-xs text-gray-500 hover:underline flex items-center gap-1"
+                          >
+                            <Info size={12} />
+                            Setup Guide
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -302,28 +393,117 @@ export default function EmailSettingsPage() {
           <Shield size={20} className="text-red-600 shrink-0" />
           <div>
             <h3 className="font-semibold mb-2" style={{ color: '#DC143C' }}>
-              Email Authentication
+              Email Authentication & Fallback
             </h3>
             <p className="text-sm mb-3" style={{ color: '#666666' }}>
-              To improve deliverability and prevent spoofing, verify your email senders and configure DNS records:
+              To ensure high deliverability, verify your domain identities. If a domain is unverified, emails will automatically fall back to <strong>no-reply@dropaphi.xyz</strong>.
             </p>
             <ul className="text-sm space-y-2" style={{ color: '#666666' }}>
               <li className="flex items-start gap-2">
-                <span className="font-medium text-red-600">1.</span>
-                Add and verify your sender email (we'll send a code)
+                <span className="font-medium text-red-600">Individual:</span>
+                Quick verification via OTP code. Best for personal emails.
               </li>
               <li className="flex items-start gap-2">
-                <span className="font-medium text-red-600">2.</span>
-                Add SPF record to authorize our servers
+                <span className="font-medium text-red-600">Domain:</span>
+                Verify your whole domain via DNS. Best for organizations (e.g., any @company.com).
               </li>
-              <li className="flex items-start gap-2">
-                <span className="font-medium text-red-600">3.</span>
-                Add DKIM signature for email signing
+              <li className="flex items-start gap-2 text-xs italic bg-white p-2 rounded mt-2 border border-red-100">
+                <Info size={14} className="shrink-0" />
+                Fallback emails preserve your name and set "Reply-To" to your original email.
               </li>
             </ul>
           </div>
         </div>
       </motion.div>
+
+      {/* DNS Configuration Modal */}
+      {dnsModal && verifyingSender && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 overflow-hidden flex flex-col max-h-[90vh]"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>
+                  DNS Configuration: {verifyingSender.email}
+                </h3>
+                <p className="text-sm text-gray-500">Add these records to your DNS provider (Cloudflare, GoDaddy, etc.)</p>
+              </div>
+              <button
+                onClick={() => {
+                  setDnsModal(false);
+                  setVerifyingSender(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 p-2"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+              <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg flex gap-3">
+                <Info size={20} className="text-blue-600 shrink-0" />
+                <p className="text-sm text-blue-800">
+                  Verification can take up to 48 hours to propagate, but usually happens within minutes.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {generateDNSRecords(verifyingSender.email).map((record, i) => (
+                  <div key={i} className="p-4 border border-gray-200 rounded-lg space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-sm text-gray-700 uppercase">{record.description}</span>
+                      <span className="text-[10px] bg-gray-100 px-2 py-0.5 rounded font-mono">{record.type}</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-gray-400 uppercase font-bold">Host / Name</label>
+                        <div className="flex items-center gap-2 bg-gray-50 p-2 rounded border border-gray-200 group">
+                          <code className="text-xs break-all flex-1">{record.host}</code>
+                          <button onClick={() => handleCopy(record.host)} className="text-gray-400 hover:text-red-600 transition-colors">
+                            <Copy size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-gray-400 uppercase font-bold">Value / Points To</label>
+                        <div className="flex items-center gap-2 bg-gray-50 p-2 rounded border border-gray-200">
+                          <code className="text-xs break-all flex-1">{record.value}</code>
+                          <button onClick={() => handleCopy(record.value)} className="text-gray-400 hover:text-red-600 transition-colors">
+                            <Copy size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-8 flex gap-3">
+              <Button
+                className="flex-1"
+                onClick={() => handleDNSCheck(verifyingSender.id)}
+                disabled={isLoading}
+                style={{ backgroundColor: '#DC143C' }}
+              >
+                {isLoading ? <RefreshCw className="animate-spin mr-2" size={16} /> : null}
+                Verify Records
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setDnsModal(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       {/* OTP Modal */}
       {otpModal && verifyingSender && (
@@ -411,361 +591,3 @@ export default function EmailSettingsPage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-// 'use client';
-
-// import { useState } from 'react';
-// import { motion } from 'framer-motion';
-// import { Button } from '@/components/ui/button';
-// import { Input } from '@/components/ui/input';
-// import { Mail, CheckCircle2, Clock, X, Shield, AlertCircle } from 'lucide-react';
-
-// interface EmailVerification {
-//   fromName: { verified: boolean; timestamp: Date | null };
-//   replyTo: { verified: boolean; timestamp: Date | null };
-// }
-
-// export default function EmailSettingsPage() {
-//   const [emailSettings, setEmailSettings] = useState({
-//     fromName: 'Drop API Team',
-//     replyTo: 'reply@dropaphi.com',
-//   });
-
-//   const [emailVerification, setEmailVerification] = useState<EmailVerification>({
-//     fromName: { verified: true, timestamp: new Date() },
-//     replyTo: { verified: false, timestamp: null },
-//   });
-
-//   const [verifyingEmail, setVerifyingEmail] = useState<'fromName' | 'replyTo' | null>(null);
-//   const [otpModal, setOtpModal] = useState(false);
-//   const [otpValue, setOtpValue] = useState('');
-//   const [otpSent, setOtpSent] = useState(false);
-//   const [otpCountdown, setOtpCountdown] = useState(0);
-
-//   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-//     const { name, value } = e.target;
-//     setEmailSettings((prev) => ({ ...prev, [name]: value }));
-//   };
-
-//   const initiateEmailVerification = (field: 'fromName' | 'replyTo') => {
-//     setVerifyingEmail(field);
-//     setOtpModal(true);
-//     setOtpSent(true);
-//     setOtpCountdown(60);
-    
-//     const interval = setInterval(() => {
-//       setOtpCountdown((prev) => {
-//         if (prev <= 1) {
-//           clearInterval(interval);
-//           return 0;
-//         }
-//         return prev - 1;
-//       });
-//     }, 1000);
-//   };
-
-//   const verifyOTP = () => {
-//     if (!otpValue || otpValue.length !== 6) return;
-    
-//     if (verifyingEmail) {
-//       setEmailVerification((prev) => ({
-//         ...prev,
-//         [verifyingEmail]: { verified: true, timestamp: new Date() },
-//       }));
-//       setOtpModal(false);
-//       setOtpValue('');
-//       setOtpSent(false);
-//     }
-//   };
-
-//   const unverifyEmail = (field: 'fromName' | 'replyTo') => {
-//     setEmailVerification((prev) => ({
-//       ...prev,
-//       [field]: { verified: false, timestamp: null },
-//     }));
-//   };
-
-//   return (
-//     <div className="space-y-6">
-//       <motion.div
-//         initial={{ opacity: 0, y: -20 }}
-//         animate={{ opacity: 1, y: 0 }}
-//       >
-//         <h1 className="text-3xl font-bold mb-2" style={{ color: '#1A1A1A' }}>
-//           Email Settings
-//         </h1>
-//         <p style={{ color: '#666666' }}>
-//           Configure your email sender details and verification
-//         </p>
-//       </motion.div>
-
-//       {/* Email Configuration */}
-//       <motion.div
-//         initial={{ opacity: 0 }}
-//         animate={{ opacity: 1 }}
-//         transition={{ delay: 0.1 }}
-//         className="bg-white rounded-lg border border-gray-200 overflow-hidden"
-//       >
-//         <div className="p-6 border-b border-gray-200">
-//           <div className="flex items-center gap-3">
-//             <Mail size={20} style={{ color: '#DC143C' }} />
-//             <h2 className="text-xl font-semibold" style={{ color: '#1A1A1A' }}>
-//               Email Sender Configuration
-//             </h2>
-//           </div>
-//         </div>
-
-//         <div className="p-6 space-y-6">
-//           {/* From Name */}
-//           <div>
-//             <label className="block text-sm font-medium mb-2" style={{ color: '#1A1A1A' }}>
-//               From Name
-//             </label>
-//             <div className="flex gap-3">
-//               <Input
-//                 name="fromName"
-//                 value={emailSettings.fromName}
-//                 onChange={handleEmailChange}
-//                 placeholder="e.g., Drop API Team"
-//                 disabled={emailVerification.fromName.verified}
-//                 className="flex-1"
-//               />
-//               {emailVerification.fromName.verified ? (
-//                 <Button variant="outline" disabled className="bg-green-50 text-green-700 border-green-200">
-//                   <CheckCircle2 size={18} className="mr-2" />
-//                   Verified
-//                 </Button>
-//               ) : (
-//                 <Button
-//                   onClick={() => initiateEmailVerification('fromName')}
-//                   style={{ backgroundColor: '#DC143C' }}
-//                 >
-//                   Verify
-//                 </Button>
-//               )}
-//             </div>
-//             {emailVerification.fromName.verified && (
-//               <div className="flex items-center justify-between mt-2 p-2 bg-green-50 rounded">
-//                 <span className="text-xs text-green-700">
-//                   ✓ Verified on {emailVerification.fromName.timestamp?.toLocaleDateString()}
-//                 </span>
-//                 <button
-//                   onClick={() => unverifyEmail('fromName')}
-//                   className="text-xs text-red-600 hover:underline"
-//                 >
-//                   Unverify
-//                 </button>
-//               </div>
-//             )}
-//           </div>
-
-//           {/* Reply To */}
-//           <div>
-//             <label className="block text-sm font-medium mb-2" style={{ color: '#1A1A1A' }}>
-//               Reply-To Email
-//             </label>
-//             <div className="flex gap-3">
-//               <Input
-//                 name="replyTo"
-//                 type="email"
-//                 value={emailSettings.replyTo}
-//                 onChange={handleEmailChange}
-//                 placeholder="e.g., reply@example.com"
-//                 disabled={emailVerification.replyTo.verified}
-//                 className="flex-1"
-//               />
-//               {emailVerification.replyTo.verified ? (
-//                 <Button variant="outline" disabled className="bg-green-50 text-green-700 border-green-200">
-//                   <CheckCircle2 size={18} className="mr-2" />
-//                   Verified
-//                 </Button>
-//               ) : (
-//                 <Button
-//                   onClick={() => initiateEmailVerification('replyTo')}
-//                   style={{ backgroundColor: '#DC143C' }}
-//                 >
-//                   Verify
-//                 </Button>
-//               )}
-//             </div>
-//             {emailVerification.replyTo.verified && (
-//               <div className="flex items-center justify-between mt-2 p-2 bg-green-50 rounded">
-//                 <span className="text-xs text-green-700">
-//                   ✓ Verified on {emailVerification.replyTo.timestamp?.toLocaleDateString()}
-//                 </span>
-//                 <button
-//                   onClick={() => unverifyEmail('replyTo')}
-//                   className="text-xs text-red-600 hover:underline"
-//                 >
-//                   Unverify
-//                 </button>
-//               </div>
-//             )}
-//           </div>
-
-//           {/* Info Box */}
-//           <div className="p-4 bg-red-50 rounded-lg">
-//             <div className="flex gap-2">
-//               <Shield size={18} className="text-red-600 shrink-0" />
-//               <div>
-//                 <p className="text-sm font-medium text-red-800 mb-1">
-//                   Why verify your email addresses?
-//                 </p>
-//                 <p className="text-xs red-blue-600">
-//                   Verified email addresses improve deliverability and prevent spoofing. 
-//                   We'll send a verification code to confirm ownership.
-//                 </p>
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       </motion.div>
-
-//       {/* Email Templates */}
-//       <motion.div
-//         initial={{ opacity: 0 }}
-//         animate={{ opacity: 1 }}
-//         transition={{ delay: 0.2 }}
-//         className="bg-white rounded-lg border border-gray-200 p-6"
-//       >
-//         <h2 className="text-lg font-semibold mb-4" style={{ color: '#1A1A1A' }}>
-//           Email Templates
-//         </h2>
-        
-//         <div className="space-y-3">
-//           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-//             <div>
-//               <p className="font-medium" style={{ color: '#1A1A1A' }}>
-//                 Welcome Email
-//               </p>
-//               <p className="text-sm" style={{ color: '#666666' }}>
-//                 Sent to new users after signup
-//               </p>
-//             </div>
-//             <Button variant="outline" size="sm">Edit</Button>
-//           </div>
-
-//           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-//             <div>
-//               <p className="font-medium" style={{ color: '#1A1A1A' }}>
-//                 Password Reset
-//               </p>
-//               <p className="text-sm" style={{ color: '#666666' }}>
-//                 Sent when users request password reset
-//               </p>
-//             </div>
-//             <Button variant="outline" size="sm">Edit</Button>
-//           </div>
-
-//           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-//             <div>
-//               <p className="font-medium" style={{ color: '#1A1A1A' }}>
-//                 Email Verification
-//               </p>
-//               <p className="text-sm" style={{ color: '#666666' }}>
-//                 OTP verification emails
-//               </p>
-//             </div>
-//             <Button variant="outline" size="sm">Edit</Button>
-//           </div>
-//         </div>
-//       </motion.div>
-
-//       {/* OTP Modal */}
-//       {otpModal && (
-//         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-//           <motion.div
-//             initial={{ opacity: 0, scale: 0.95 }}
-//             animate={{ opacity: 1, scale: 1 }}
-//             className="bg-white rounded-lg p-8 max-w-md w-full mx-4"
-//           >
-//             <div className="flex justify-between items-center mb-4">
-//               <h3 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>
-//                 Verify {verifyingEmail === 'fromName' ? 'From Name' : 'Reply-To Email'}
-//               </h3>
-//               <button
-//                 onClick={() => {
-//                   setOtpModal(false);
-//                   setOtpValue('');
-//                 }}
-//                 className="text-gray-500 hover:text-gray-700"
-//               >
-//                 <X size={20} />
-//               </button>
-//             </div>
-
-//             {!otpSent ? (
-//               <div>
-//                 <p className="text-sm mb-6" style={{ color: '#666666' }}>
-//                   We'll send an OTP to {verifyingEmail === 'fromName' ? emailSettings.fromName : emailSettings.replyTo}
-//                 </p>
-//                 <Button
-//                   onClick={() => {
-//                     setOtpSent(true);
-//                     setOtpCountdown(60);
-//                   }}
-//                   className="w-full"
-//                   style={{ backgroundColor: '#DC143C' }}
-//                 >
-//                   Send OTP
-//                 </Button>
-//               </div>
-//             ) : (
-//               <div>
-//                 <p className="text-sm mb-4" style={{ color: '#666666' }}>
-//                   Enter the 6-digit code sent to your email
-//                 </p>
-//                 <Input
-//                   type="text"
-//                   value={otpValue}
-//                   onChange={(e) => setOtpValue(e.target.value.replace(/\D/g, '').slice(0, 6))}
-//                   placeholder="000000"
-//                   maxLength={6}
-//                   className="text-center text-xl font-mono tracking-widest mb-4"
-//                 />
-                
-//                 {otpCountdown > 0 && (
-//                   <div className="text-center mb-4 text-sm" style={{ color: '#999999' }}>
-//                     <Clock size={16} className="inline mr-2" />
-//                     Resend in {otpCountdown}s
-//                   </div>
-//                 )}
-
-//                 <div className="flex gap-3">
-//                   <Button
-//                     onClick={verifyOTP}
-//                     disabled={otpValue.length !== 6}
-//                     className="flex-1"
-//                     style={{ 
-//                       backgroundColor: otpValue.length === 6 ? '#DC143C' : '#CCCCCC',
-//                     }}
-//                   >
-//                     Verify
-//                   </Button>
-//                   <Button
-//                     onClick={() => {
-//                       setOtpSent(false);
-//                       setOtpValue('');
-//                     }}
-//                     variant="outline"
-//                     className="flex-1"
-//                   >
-//                     Back
-//                   </Button>
-//                 </div>
-//               </div>
-//             )}
-//           </motion.div>
-//         </div>
-//       )}
-//     </div>
-//   );
-// }

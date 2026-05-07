@@ -37,6 +37,7 @@ model User {
   refreshTokens          RefreshToken[]
   sessions               UserSession[]
   workspaceMembers       WorkspaceMember[]
+  blogPosts              BlogPost[]
 
   @@map("users")
 }
@@ -240,10 +241,14 @@ model EmailSender {
   verified       Boolean     @default(false)
   spfVerified    Boolean     @default(false) @map("spf_verified")
   dkimVerified   Boolean     @default(false) @map("dkim_verified")
+  dmarcVerified  Boolean     @default(false) @map("dmarc_verified")
+  dkimTokens     String[]    @default([]) @map("dkim_tokens")
+  spfRecord      String?     @map("spf_record")
   verifiedAt     DateTime?   @map("verified_at")
   createdAt      DateTime    @default(now()) @map("created_at")
   updatedAt      DateTime    @updatedAt @map("updated_at")
   domainVerified Boolean     @default(false) @map("domain_verified")
+  isDomain       Boolean     @default(false) @map("is_domain")
   workspace      Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   emails         Email[]
   otps           SenderOTP[]
@@ -571,6 +576,8 @@ model BlogPost {
   tags        String[]       @default([])
   seoTitle    String?        @map("seo_title")
   seoDesc     String?        @map("seo_desc")
+  isFeatured  Boolean        @default(false) @map("is_featured")
+  isApproved  Boolean        @default(false) @map("is_approved")
   status      BlogPostStatus @default(DRAFT)
   publishedAt DateTime?      @map("published_at")
   scheduledAt DateTime?      @map("scheduled_at")
@@ -578,6 +585,7 @@ model BlogPost {
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
   workspace   Workspace      @relation(fields: [workspaceId], references: [id])
+  author      User           @relation(fields: [authorId], references: [id])
 
   @@unique([workspaceId, slug])
   @@index([workspaceId])

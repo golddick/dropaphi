@@ -22,24 +22,29 @@ export async function GET(
       return err("Sender not found", 404);
     }
 
-    // Check DNS records (implement these functions)
-    const [spfValid, dkimValid] = await Promise.all([
-      checkSPFRecord(sender.email),
-      checkDKIMRecord(sender.email),
+    const domain = sender.isDomain ? sender.email : sender.email.split('@')[1];
+
+    // Check DNS records
+    const [spfRes, dkimRes] = await Promise.all([
+      checkSPFRecord(domain, sender.spfRecord || undefined),
+      checkDKIMRecord(domain, 'dropaphi', 'dkim.dropaphi.xyz'), 
     ]);
 
     // Update sender with DNS verification status
     const updated = await db.emailSender.update({
       where: { id: senderId },
       data: {
-        // spfVerified: spfValid,
-        // dkimVerified: dkimValid,
+        spfVerified: spfRes.valid,
+        dkimVerified: dkimRes.valid,
+        domainVerified: spfRes.valid && dkimRes.valid,
       },
     });
 
     return ok({
-      spf: spfValid,
-      dkim: dkimValid,
+      spf: spfRes.valid,
+      dkim: dkimRes.valid,
+      spfDetail: spfRes,
+      dkimDetail: dkimRes,
       sender: updated,
     });
   } catch (error) {

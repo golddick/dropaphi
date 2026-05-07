@@ -12,6 +12,11 @@ export interface EmailSender {
   verifiedAt?: string | null;
   spfVerified?: boolean;
   dkimVerified?: boolean;
+  dmarcVerified?: boolean;
+  domainVerified?: boolean;
+  isDomain?: boolean;
+  dkimTokens?: string[];
+  spfRecord?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,7 +68,7 @@ interface EmailSenderStore {
 
   // Actions
   fetchSenders: (workspaceId: string) => Promise<void>;
-  addSender: (workspaceId: string, data: { email: string; name: string }) => Promise<EmailSender>;
+  addSender: (workspaceId: string, data: { email: string; name: string; isDomain?: boolean }) => Promise<EmailSender>;
   updateSender: (workspaceId: string, id: string, data: Partial<EmailSender>) => Promise<EmailSender>;
   deleteSender: (id: string) => Promise<void>;
   sendVerificationCode: (workspaceId: string, email: string) => Promise<void>;
@@ -114,7 +119,7 @@ export const useEmailSenderStore = create<EmailSenderStore>()(
       },
 
       // Add new sender
-      addSender: async (workspaceId: string, data: { email: string; name: string }) => {
+      addSender: async (workspaceId: string, data: { email: string; name: string; isDomain?: boolean }) => {
         if (!workspaceId) {
           const error = 'No workspace ID provided';
           set({ error });
@@ -340,23 +345,29 @@ export const useEmailSenderStore = create<EmailSenderStore>()(
           throw new Error('Sender not found');
         }
 
-        // This is a mock implementation - replace with actual DNS checking
-        // You would need to implement a real DNS check API endpoint
-        const mockResult = {
-          spf: Math.random() > 0.5,
-          dkim: Math.random() > 0.5,
-        };
+        set({ isLoading: true, error: null });
 
-        // Update sender with DNS status
-        set((state) => ({
-          senders: state.senders.map((s) =>
-            s.id === senderId
-              ? { ...s, spfVerified: mockResult.spf, dkimVerified: mockResult.dkim }
-              : s
-          ),
-        }));
-
-        return mockResult;
+        try {
+          const response = await apiFetch(`/api/email-senders/${senderId}/dns-check`);
+          
+          if (response.success && response.data?.sender) {
+            const updatedSender = response.data.sender;
+            set((state) => ({
+              senders: state.senders.map((s) => (s.id === senderId ? updatedSender : s)),
+              currentSender: state.currentSender?.id === senderId ? updatedSender : state.currentSender,
+            }));
+            return { spf: updatedSender.spfVerified, dkim: updatedSender.dkimVerified };
+          }
+          throw new Error('Failed to check DNS records');
+        } catch (error) {
+          console.error('❌ Check DNS error:', error);
+          const errorMessage = (error as Error).message;
+          set({ error: errorMessage });
+          toast.error(errorMessage);
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
       },
 
       // Set current sender

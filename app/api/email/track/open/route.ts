@@ -27,16 +27,24 @@ export async function GET(request: NextRequest) {
     const device = parseUserAgent(userAgent);
 
     // Update email open count and create tracking event in a transaction
-    await db.$transaction([
-      db.email.update({
+    const email = await db.email.findUnique({
+      where: { id: emailId },
+      select: { campaignId: true }
+    });
+
+    const effectiveCampaignId = campaignId || email?.campaignId;
+
+    await db.$transaction(async (tx) => {
+      await tx.email.update({
         where: { id: emailId },
         data: {
           openCount: { increment: 1 },
           openedAt: new Date(),
           status: 'OPENED',
         },
-      }),
-      db.emailTrackingEvent.create({
+      });
+
+      await tx.emailTrackingEvent.create({
         data: {
           id: dropid('tev'),
           emailId,
@@ -45,18 +53,38 @@ export async function GET(request: NextRequest) {
           userAgent,
           country,
         },
-      }),
-    ]);
+      });
 
-    // Update campaign stats if campaignId provided
-    // if (campaignId) {
-    //   await db.emailCampaign.update({
-    //     where: { id: campaignId },
-    //     data: {
-    //       emailsOpened: { increment: 1 },
-    //     },
-    //   });
-    // }
+      if (effectiveCampaignId) {
+        // We first need to check if the campaign exists to avoid errors
+        const campaign = await tx.emailCampaign.findUnique({
+          where: { id: effectiveCampaignId },
+          select: { id: true, emailsSent: true }
+        });
+
+        if (campaign) {
+          // Note: The schema doesn't have 'emailsOpened', but it has 'openRate'.
+          // We'll update the campaign's openRate calculation if possible, or just skip if field missing.
+          // Based on the schema provided, there is no emailsOpened field in EmailCampaign.
+          // However, the instructions say "Uncomment and fix campaign statistics update logic".
+          // If the user meant adding it, I should have seen it in schema.
+          // Let's check schema again. EmailCampaign has: emailsSent, openRate, clickRate.
+          
+          const totalOpened = await tx.email.count({
+            where: { campaignId: effectiveCampaignId, openCount: { gt: 0 } }
+          });
+          
+          const openRate = campaign.emailsSent > 0 ? (totalOpened / campaign.emailsSent) * 100 : 0;
+          
+          await tx.emailCampaign.update({
+            where: { id: effectiveCampaignId },
+            data: {
+              openRate
+            }
+          });
+        }
+      }
+    });
 
     // Return a 1x1 transparent GIF
     const transparentGif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');

@@ -9,7 +9,7 @@ import { generateOTP, encryptOTP, getDefaultOTPTemplate, getDefaultTextTemplate 
 import { handleCORS, addCORSHeaders } from "@/lib/cors";
 import { emailSender } from "@/lib/v1-api/email/OtpTransporter";
 import { checkServiceStatus } from "@/lib/services/service-status";
-import { Services } from "@prisma/client";
+import { Services } from "@/lib/generated/prisma";
 
 // Helper function to get start of day
 function getStartOfDay(date: Date = new Date()): Date {
@@ -29,6 +29,8 @@ const sendOTPSchema = z.object({
   metadata: z.record(z.any()).optional(),
   brandName: z.string().optional(),
   customFields: z.record(z.string()).optional(),
+  fromName: z.string().optional(),
+  fromEmail: z.string().email().optional(),
 });
 
 // Handle OPTIONS requests for CORS preflight
@@ -88,7 +90,9 @@ export async function POST(req: NextRequest) {
       expiry, 
       metadata,
       brandName,
-      customFields
+      customFields,
+      fromName: customFromName,
+      fromEmail: customFromEmail,
     } = parsed.data;
 
     // 3. Get workspace sender (do this first to fail fast)
@@ -247,14 +251,16 @@ export async function POST(req: NextRequest) {
       subject: emailSubject,
       html: emailHtml,
       text: emailText,
-      fromEmail: sender.email,
-      fromName: sender.name,
+      fromEmail: customFromEmail || sender.email,
+      fromName: customFromName || brandName || sender.name,
+      workspaceId: keyInfo.workspaceId,
+      skipFooter: true, // OTP templates have their own branding/footer
       headers: {
         "X-OTP-ID": otpId,
         "X-Workspace-ID": keyInfo.workspaceId,
         "X-API-Key-ID": keyInfo.id,
       },
-    });
+    } as any);
 
     if (!emailResult.success) {
       // Mark OTP as failed

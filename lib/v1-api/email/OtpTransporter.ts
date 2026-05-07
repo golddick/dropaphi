@@ -1,6 +1,7 @@
 // lib/email/services/email-sender.service.ts
 
 import { transporter } from "@/lib/transport";
+import { mailSender as globalEmailSender } from "@/lib/email/service/transporter";
 
 export interface EmailOptions {
   to: string | string[];
@@ -17,6 +18,8 @@ export interface EmailOptions {
   }>;
   headers?: Record<string, string>;
   skipFooter?: boolean; // Option to skip footer if needed
+  workspaceId?: string;
+  campaignId?: string;
 }
 
 export interface EmailResult {
@@ -60,58 +63,12 @@ const injectFooter = (html: string, footer: string): string => {
 };
 
 export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
-  try {
-    const {
-      to,
-      subject,
-      html,
-      text,
-      fromEmail,
-      fromName,
-      replyTo,
-      attachments,
-      headers,
-      skipFooter = false,
-    } = options;
-
-    // Format recipients
-    const recipients = Array.isArray(to) ? to.join(', ') : to;
-
-    // Add footer to HTML (unless skipped)
-    let finalHtml = html;
-    if (!skipFooter) {
-      const appName = 'DropAphi';
-      const footer = getFooter(appName);
-      finalHtml = injectFooter(html, footer);
-    }
-
-    // Prepare email options
-    const mailOptions: any = {
-      from: fromName ? `"${fromName}" <${process.env.SMTP_USER}>` : (fromEmail || process.env.SMTP_USER),
-      to: recipients,
-      subject,
-      html: finalHtml,
-      ...(text && { text }),
-      ...(attachments && { attachments }),
-      ...(headers && { headers }),
-    };
-
-    // Send email using transporter
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`[EMAIL_SENDER] Email sent: ${info.messageId}`);
-    
-    return {
-      success: true,
-      messageId: info.messageId,
-    };
-
-  } catch (error) {
-    console.error('[EMAIL_SENDER] Failed to send:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'EMAIL_SEND_FAILED' 
-    };
-  }
+  // Use the new global email sender service which handles identity resolution and fallbacks
+  // We don't add footer here anymore, let globalEmailSender handle it or not
+  return globalEmailSender.sendEmail({
+    ...options,
+    skipFooter: options.skipFooter ?? false
+  } as any);
 }
 
 // Export as object for backward compatibility
@@ -138,24 +95,15 @@ export const emailSender = {
 };
 
 // Simple function export for direct use
-export async function send3rdPartyOTPEmail(to: string, subject: string, html: string, appName: string) {
-  try {
-    // Add footer to the HTML
-    const footer = getFooter(appName);
-    const htmlWithFooter = injectFooter(html, footer);
-    
-    const info = await transporter.sendMail({
-      from: `${appName} <${process.env.SMTP_USER}>`,
-      to,
-      subject,
-      html: htmlWithFooter,
-    });
-    console.log("Email sent:", info.messageId);
-    return { success: true };
-  } catch (err) {
-    console.error("Error sending email:", err);
-    return { success: false, error: "EMAIL_SEND_FAILED" };
-  }
+export async function send3rdPartyOTPEmail(to: string, subject: string, html: string, appName: string, workspaceId?: string) {
+  return sendEmail({
+    to,
+    subject,
+    html,
+    fromName: appName,
+    workspaceId,
+    skipFooter: false, // For 3rd party OTP, we might want the platform footer or let sendEmail handle it
+  });
 }
 
 

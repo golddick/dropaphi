@@ -21,6 +21,8 @@ export interface EmailOptions {
     contentType?: string;
   }>;
   headers?: Record<string, string>;
+  skipFooter?: boolean;
+  workspaceId?: string;
 }
  
 export interface EmailResult {
@@ -52,29 +54,92 @@ class EmailSenderService {
         };
       }
 
-      const {
+      let {
         to,
         subject,
         html,
         text,
-        fromEmail = process.env.MAIL_FROM || 'mailby@dropaphi.xyz',
-        fromName = process.env.NAME_FROM || 'DropAphi',
+        fromEmail,
+        fromName,
         replyTo,
         attachments,
         headers,
+        workspaceId,
       } = options;
+
+      // Identity Resolution & Fallback Logic
+      const platformDomain = 'dropaphi.xyz';
+      const platformSender = `no-reply@${platformDomain}`;
+    
+      let finalFromEmail = process.env.SMTP_USER || platformSender;
+      let finalFromName = fromName || process.env.NAME_FROM || 'DropAphi';
+      let finalReplyTo = replyTo || fromEmail;
+
+      if (fromEmail) {
+        const domain = fromEmail.split('@')[1];
+      
+        // Check if there's a verified sender record for this exact email OR the domain
+        const sender = await db.emailSender.findFirst({
+          where: {
+            OR: [
+              { email: fromEmail, verified: true },
+              { email: domain, isDomain: true, domainVerified: true }
+            ]
+          }
+        });
+
+        if (sender) {
+          // Identity is verified (either exact email or entire domain)
+          finalFromName = fromName || sender.name;
+          finalFromEmail = fromEmail; 
+        } else {
+          // Fallback to platform domain
+          let fallbackName = fromName;
+          
+          if (!fallbackName && workspaceId) {
+            const workspace = await db.workspace.findUnique({
+              where: { id: workspaceId },
+              select: { name: true }
+            });
+            if (workspace) {
+              fallbackName = workspace.name;
+            }
+          }
+
+          finalFromName = `${fallbackName || 'User'} via ${platformDomain}`;
+          finalFromEmail = platformSender;
+          finalReplyTo = fromEmail; // Ensure replies go to the original sender
+        }
+      }
+
+      // Add footer if not skipped
+      if (!(options as any).skipFooter) {
+        const year = new Date().getFullYear();
+        const footer = `
+          <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eaeaea; text-align: center; font-family: Arial, sans-serif; font-size: 12px; color: #666666;">
+            <p style="margin: 5px 0;">
+              © ${year} DropAphi. All rights reserved.
+            </p>
+          </div>
+        `;
+        if (html.includes('</body>')) {
+          html = html.replace('</body>', footer + '</body>');
+        } else {
+          html += footer;
+        }
+      }
 
       // Format recipients
       const recipients = Array.isArray(to) ? to.join(', ') : to;
 
       // Prepare email options
       const mailOptions: nodemailer.SendMailOptions = {
-        from: fromName ? `"${fromName}" <${process.env.SMTP_USER}>` : fromEmail,
+        from: `"${finalFromName}" <${finalFromEmail}>`,
         to: recipients,
         subject,
         html,
         text: text || this.generatePlainText(html),
-        replyTo,
+        replyTo: finalReplyTo,
         attachments: attachments?.map(att => ({
           filename: att.filename,
           content: att.content,

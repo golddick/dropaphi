@@ -20,6 +20,7 @@ import {
   X,
   Sun,
   Moon,
+  PenTool,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -87,14 +88,16 @@ export function DashboardSidebar({
     items: [
       // { label: 'SMS', icon: MessageSquare, href: `/dashboard/${workspaceId}/sms` },
       { label: 'Email', icon: Mail, href: `/dashboard/${workspaceId}/email` },
+      { label: 'Blog', icon: PenTool, href: `/dashboard/${workspaceId}/blog/new` },
       // { label: 'OTP', icon: Lock, href: `/dashboard/${workspaceId}/otp` },
     ],
   },
   {
     label: 'Management',
     items: [
-      { label: 'Subscribers', icon: Users, href: `/dashboard/${workspaceId}/subscribers` },
+      { label: 'Subscribers Manager', icon: Users, href: `/dashboard/${workspaceId}/subscribers` },
       { label: 'File Manager', icon: FileText, href: `/dashboard/${workspaceId}/file-manager` },
+      { label: 'Blog Manager', icon: FileText, href: `/dashboard/${workspaceId}/blog` },
       { label: 'Email Manager', icon: Files, href: `/dashboard/${workspaceId}/email-manager` },
       { label: 'campaigns Manager', icon: Mail, href: `/dashboard/${workspaceId}/campaigns` },
     ],
@@ -176,31 +179,23 @@ export function DashboardSidebar({
             {/* Workspace Selector */}
             <WorkspaceSelector />
 
-            {/* Wallet Balance */}
-            {wallet && (
-              <div className="mx-2 mb-6 p-3 rounded-xl bg-primary/5 border border-primary/10">
+          {/* Wallet Balance */}
+          {wallet && (
+              <div className="mx-2 mb-6 p-2  rounded-xl bg-primary/5 border border-primary/10">
                 <div className="flex items-center gap-2 mb-1">
                   <Wallet size={14} className="text-primary" />
                   <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Wallet Balance</span>
                 </div>
                 <p className="text-lg font-bold text-foreground">₦{wallet.balance.toLocaleString()}</p>
                 <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border pt-2">
-                  {/*<div>*/}
-                  {/*  <p className="text-[9px] text-muted-foreground uppercase">SMS</p>*/}
-                  {/*  <p className="text-xs font-bold text-foreground">{wallet.smsCredits.toLocaleString()}</p>*/}
-                  {/*</div>*/}
-                  {/*<div>*/}
-                  {/*  <p className="text-[9px] text-muted-foreground uppercase">OTP</p>*/}
-                  {/*  <p className="text-xs font-bold text-foreground">{wallet.otpCredits.toLocaleString()}</p>*/}
-                  {/*</div>*/}
                 </div>
                 <div className="mt-2 text-center">
-                   <Link href={`/dashboard/${workspaceId}/billing`}>
-                      <button className="text-[9px] font-medium text-primary hover:underline uppercase">Manage Wallet</button>
-                   </Link>
+                  <Link href={`/dashboard/${workspaceId}/billing`}>
+                    <button className="text-[9px] font-medium text-primary hover:underline uppercase">Manage Wallet</button>
+                  </Link>
                 </div>
               </div>
-            )}
+          )}
 
             {/* Navigation */}
           <nav className="flex-1 hidden-scrollbar  overflow-y-auto space-y-6">

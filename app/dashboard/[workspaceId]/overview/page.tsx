@@ -431,7 +431,7 @@ export default function OverviewPage() {
             
             return (
               <motion.div
-                key={service.href}
+                key={service.statKey}
                 variants={itemVariants}
                 className="group p-6 rounded-lg border transition-all cursor-pointer bg-card border-border hover:border-primary"
               >
@@ -489,16 +489,16 @@ export default function OverviewPage() {
       {/* Recent Activity */}
       {overview && (
         <RecentActivity
-          sms={overview.recent.sms}
-          emails={overview.recent.emails}
+          sms={overview.recent?.sms || []}
+          emails={overview.recent?.emails || []}
           workspaceId={workspaceId}
         />
       )}
 
       {/* Getting Started (shown only if no usage) */}
-      {overview?.stats.total.sms === 0 && 
-       overview?.stats.total.email === 0 && 
-       overview?.stats.total.otp === 0 && (
+      {overview?.stats?.total?.sms === 0 && 
+       overview?.stats?.total?.email === 0 && 
+       overview?.stats?.total?.otp === 0 && (
         <motion.section
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
