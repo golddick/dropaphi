@@ -69,7 +69,7 @@ export function PropertiesPanel({ selectedElement, onUpdate }: PropertiesPanelPr
           <div>
             <Label className="text-xs">Content</Label>
             <textarea
-              className="w-full mt-1 px-3 py-2 text-sm border border-border rounded-md bg-input resize-none"
+              className="w-full mt-1 px-3 py-2 text-sm border border-border rounded-md bg-background resize-none"
               rows={3}
               value={selectedElement.content || ""}
               onChange={(e) => onUpdate({ content: e.target.value })}

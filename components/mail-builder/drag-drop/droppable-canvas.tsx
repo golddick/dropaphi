@@ -19,7 +19,7 @@ export function DroppableCanvas({ children, isEmpty }: DroppableCanvasProps) {
     <Card
       ref={setNodeRef}
       className={`min-h-96 bg-background border-2 border-dashed p-6 transition-colors ${
-        isOver ? "border-red-400 bg-accent/5" : "border-red-200"
+        isOver ? "border-primary/50 bg-primary/5" : "border-border"
       }`}
     >
       {isEmpty ? (
@@ -32,8 +32,8 @@ export function DroppableCanvas({ children, isEmpty }: DroppableCanvasProps) {
             Drag components from the left sidebar to start creating your email template.
           </p>
           {isOver && (
-            <div className="mt-4 px-4 py-2 bg-accent/20 border border-accent rounded-md">
-              <p className="text-sm text-red-500">Drop component here</p>
+            <div className="mt-4 px-4 py-2 bg-primary/10 border border-primary/20 rounded-md">
+              <p className="text-sm text-primary">Drop component here</p>
             </div>
           )}
         </div>

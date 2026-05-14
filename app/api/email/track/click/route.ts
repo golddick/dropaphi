@@ -29,16 +29,24 @@ export async function GET(request: NextRequest) {
     const device = parseUserAgent(userAgent);
 
     // Update email click count and create tracking event
-    await db.$transaction([
-      db.email.update({
+    const email = await db.email.findUnique({
+      where: { id: emailId },
+      select: { campaignId: true }
+    });
+
+    const effectiveCampaignId = campaignId || email?.campaignId;
+
+    await db.$transaction(async (tx) => {
+      await tx.email.update({
         where: { id: emailId },
         data: {
           clickCount: { increment: 1 },
           clickedAt: new Date(),
           status: 'CLICKED',
         },
-      }),
-      db.emailTrackingEvent.create({
+      });
+
+      await tx.emailTrackingEvent.create({
         data: {
           id: dropid('tev'),
           emailId,
@@ -48,18 +56,30 @@ export async function GET(request: NextRequest) {
           userAgent,
           country,
         },
-      }),
-    ]);
+      });
 
-    // Update campaign stats
-    // if (campaignId) {
-    //   await db.emailCampaign.update({
-    //     where: { id: campaignId },
-    //     data: {
-    //       emailsClicked: { increment: 1 },
-    //     },
-    //   });
-    // }
+      if (effectiveCampaignId) {
+        const campaign = await tx.emailCampaign.findUnique({
+          where: { id: effectiveCampaignId },
+          select: { id: true, emailsSent: true }
+        });
+
+        if (campaign) {
+          const totalClicked = await tx.email.count({
+            where: { campaignId: effectiveCampaignId, clickCount: { gt: 0 } }
+          });
+          
+          const clickRate = campaign.emailsSent > 0 ? (totalClicked / campaign.emailsSent) * 100 : 0;
+          
+          await tx.emailCampaign.update({
+            where: { id: effectiveCampaignId },
+            data: {
+              clickRate
+            }
+          });
+        }
+      }
+    });
 
     // Redirect to original URL
     return NextResponse.redirect(originalUrl);

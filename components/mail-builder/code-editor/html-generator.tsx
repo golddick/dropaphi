@@ -24,7 +24,7 @@ const renderElement = (element: EmailElement): string => {
         "text-align": props.alignment || "left",
         "font-weight": props.bold ? "bold" : "normal",
         "font-style": props.italic ? "italic" : "normal",
-        "margin":  props.backgroundColor ? "2px" : "0",
+        "margin":  props.backgroundColor ? "4px" : " 16px 0",
         "line-height": props.lineHeight || 1.5,
         "font-family": props.fontFamily || "Arial, sans-serif,Comic Sans MS, cursive,Impact, sans-serif, 'Times New Roman', serif",
         "text-decoration": props.underline ? "underline" : "none",
@@ -56,7 +56,7 @@ const renderElement = (element: EmailElement): string => {
       if (props.width) imgStyle.maxWidth = `${props.width}px`
       if (props.height) imgStyle.height = `${props.height}px`
 
-      return `<img src="${props.src || "/placeholder.svg?height=200&width=400"}" alt="${props.alt || "Email image"}" style="${Object.entries(
+      return `<img src="${props.src || "https://dropaphi.com/placeholder-image.png"}" alt="${props.alt || "Email image"}" style="${Object.entries(
         imgStyle,
       )
         .map(([key, value]) => `${key.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${value}`)
@@ -96,7 +96,7 @@ const renderElement = (element: EmailElement): string => {
         borderRadius: "4px",
         textDecoration: "none",
         display: "inline-block",
-        margin: "16px 0",
+        margin: "16px 16px",
         fontWeight: "500", // Added consistent font weight
       }
       const buttonContainer =
@@ -121,13 +121,13 @@ const renderElement = (element: EmailElement): string => {
   }] : [])
   
   if (!links || links.length === 0) {
-    return `<div style="text-align: center; color: #666; padding: 8px; margin: 4px 0;">
+    return `<div style="text-align: center; color: #666; padding: 8px; margin: 8px 0;">
       No social links configured
     </div>`
   }
 
   const iconSize = props.iconSize || 24
-  const spacing = props.spacing || 8
+  const spacing = props.spacing || 16
 
   // Container alignment
   const socialContainer = props.alignment === "center"
@@ -238,7 +238,7 @@ const renderElement = (element: EmailElement): string => {
       if (props.width) logoStyle.maxWidth = `${props.width}px`
       if (props.height) logoStyle.height = `${props.height}px`
 
-      return `<img src="${props.src || "/placeholder.svg?height=60&width=120"}" alt="Logo" style="${Object.entries(
+      return `<img src="${props.src || "https://dropaphi.com/logo.png"}" alt="Logo" style="${Object.entries(
         logoStyle,
       )
         .map(([key, value]) => `${key.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${value}`)

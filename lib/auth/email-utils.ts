@@ -1,4 +1,4 @@
-import { transporter } from "../transport";
+import { transporter } from "../inAppTransporter/transport";
 
 
 // Store OTPs temporarily
@@ -60,11 +60,11 @@ export async function sendEmailVerificationOTP(
 
   try {
     // Format context for display
-    const displayContext = context === 'Email Sender' ? 'Email Verification' : context;
+    const displayContext = context === 'Email Sender' ? 'Email Sender Verification' : context;
     
     // Send email using central transporter
     const info = await transporter.sendMail({
-      from: `"Drop-APHI Security" <${process.env.MAIL_FROM || 'noreply@dropapi.com'}>`,
+      from: `"DropAPHI" <${process.env.AUTH_MAIL_FROM || 'noreply@dropaphi.xyz'}>`,
       to: email,
       subject: `Your ${displayContext} Code`,
       html: `
@@ -153,7 +153,7 @@ export async function sendEmailVerificationOTP(
               
               <p style="margin-bottom: 20px;">
                 You've requested to verify your ${displayContext.toLowerCase()}. 
-                Use the following code to complete the verification process:
+                Use the following code to complete your email sender verification process:
               </p>
               
               <div class="otp-box">
@@ -169,7 +169,7 @@ export async function sendEmailVerificationOTP(
               
               <p style="margin-top: 30px;">
                 If you didn't request this verification, please ignore this email or 
-                <a href="mailto:support@dropapi.com" style="color: #DC143C;">contact support</a> 
+                <a href="mailto:dropaphi.hq@gmail.com" style="color: #DC143C;">contact HQ</a>
                 if you have concerns.
               </p>
             </div>
@@ -212,4 +212,4 @@ export async function sendEmailVerificationOTP(
     // Throw a user-friendly error
     throw new Error('Failed to send verification email. Please try again later.');
   }
-}
+} 

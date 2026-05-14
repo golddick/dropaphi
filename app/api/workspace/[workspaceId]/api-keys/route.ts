@@ -3,9 +3,10 @@ import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth/auth-server";
 import { dropid } from "dropid";
 import { z } from "zod";
-import { ApiKeyStatus } from "@/lib/generated/prisma/enums";
 import { generateApiKey, maskApiKey } from "@/lib/api-key/utils";
 import { canCreateProductionKey } from "@/lib/api-key/queries";
+import { BillingService } from "@/lib/billing/billing-service";
+import { ApiKeyStatus } from "@/lib/generated/prisma";
 
 // ============================================================================
 // VALIDATION SCHEMAS
@@ -16,6 +17,7 @@ const createKeySchema = z.object({
   environment: z.enum(['live', 'test']),
   expiresIn: z.number().min(1).max(3650).optional(),
   permissions: z.record(z.any()).optional(),
+  creditCap: z.number().int().min(1).optional(),
   rateLimit: z.number().min(1).max(10000).optional(),
 }).refine(
   (data) => {
@@ -210,9 +212,15 @@ export async function POST(
       return errorResponse("Validation error", 400, parsed.error.errors);
     }
 
-    const { name, environment, expiresIn, permissions, rateLimit } = parsed.data;
+    const { name, environment, expiresIn, permissions, creditCap, rateLimit } = parsed.data;
 
-    // 7. Check if production key creation is allowed
+    // 7. Check plan feature: Dev API must be enabled
+    const devApiAllowed = await BillingService.hasDevApiAccess(workspaceId);
+    if (!devApiAllowed) {
+      return errorResponse("Developer API is not enabled for your current plan. Upgrade to a plan with Dev API access.", 403);
+    }
+
+    // 8. Check if production key creation is allowed
     if (environment === 'live') {
       const productionCheck = await canCreateProductionKey(workspaceId);
       if (!productionCheck.allowed) {
@@ -220,10 +228,10 @@ export async function POST(
       }
     }
 
-    // 8. Generate a unique ID for the API key
+    // 9. Generate a unique ID for the API key
     const keyId = dropid('key');
 
-    // 9. Generate user-friendly API key
+    // 10. Generate user-friendly API key
     //    Returns: { key: "da_live_xK9mPq2rT5", encryptedKey, prefix, lastFour, jwt }
     const { key: rawKey, encryptedKey, prefix, lastFour, jwt } = generateApiKey(
       workspaceId, 
@@ -233,7 +241,7 @@ export async function POST(
 
     console.log(`Generated key with prefix: ${prefix}, lastFour: ${lastFour}`);
 
-    // 10. Calculate expiration
+    // 11. Calculate expiration
     let expiresAt = null;
     if (expiresIn) {
       expiresAt = new Date(Date.now() + expiresIn * 24 * 60 * 60 * 1000);
@@ -243,7 +251,7 @@ export async function POST(
     }
     // Test keys can have no expiration if not specified
 
-    // 11. Create API key in database (store ENCRYPTED version in keyHash, and raw key in key field)
+    // 12. Create API key in database (store ENCRYPTED version in keyHash, and raw key in key field)
     const apiKey = await db.apiKey.create({
       data: {
         id: keyId,
@@ -257,6 +265,7 @@ export async function POST(
         status: ApiKeyStatus.ACTIVE,
         isTest: environment === 'test', // Set isTest based on environment
         permissions: permissions || {},
+        creditCap: creditCap || null,
         rateLimitPerMin: rateLimit || (environment === 'live' ? 100 : 60),
         expiresAt,
       },

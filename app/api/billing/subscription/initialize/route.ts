@@ -6,12 +6,12 @@ import { db } from "@/lib/db";
 import { dropid } from "dropid";
 import { initializeCustomSubscription } from "@/lib/paystack";
 import { err, ok, serverError, validationError } from "@/lib/respond/response";
-import { calculateDiscount, PLANS } from "@/lib/billing/plan";
+import { calculateDiscount } from "@/lib/billing/plan";
 
 const schema = z.object({
   tier: z.enum(['STARTER', 'PROFESSIONAL', 'BUSINESS']),
   promoCode: z.string().optional(),
-});
+}); 
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,14 +44,26 @@ export async function POST(req: NextRequest) {
 
     if (!member) return err("Workspace not found", 404);
 
-    // Get plan details
-    const plan = PLANS.find(p => p.tier === parsed.data.tier);
-    if (!plan) return err("Invalid plan", 400);
+    // Get plan details from DB
+    const plan = await db.plan.findFirst({
+      where: {
+        tier: parsed.data.tier,
+        isActive: true,
+        isArchived: false,
+      }
+    });
 
+    if (!plan) return err("Plan not found or inactive", 404);
+
+    if (!plan.paystackPlanCode) {
+      return err("Payment configuration missing for this plan. Please contact support.", 500);
+    }
+
+    const planPrice = Number(plan.price);
     // Calculate final amount with discount
     let discount = 0;
     let promoCode = null;
-    let finalAmount = plan.price;
+    let finalAmount = planPrice;
 
     if (parsed.data.promoCode) {
       console.log('🎫 Validating promo code:', parsed.data.promoCode);
@@ -86,11 +98,11 @@ export async function POST(req: NextRequest) {
       }
 
       // Calculate discount
-      discount = calculateDiscount(plan.price, promoCode);
-      finalAmount = plan.price - discount;
+      discount = calculateDiscount(planPrice, promoCode);
+      finalAmount = planPrice - discount;
       
       console.log('💰 Discount applied:', {
-        original: plan.price,
+        original: planPrice,
         discount,
         final: finalAmount
       });
@@ -102,7 +114,7 @@ export async function POST(req: NextRequest) {
         id: dropid('inv'),
         workspaceId: member.workspaceId,
         invoiceNumber: `SUB-${Date.now()}`,
-        amount: plan.price,
+        amount: planPrice,
         discount: discount,
         finalAmount: finalAmount,
         status: 'PENDING',
@@ -129,10 +141,11 @@ export async function POST(req: NextRequest) {
         invoiceId: invoice.id,
         promoCode: parsed.data.promoCode,
         discount: discount,
-        originalAmount: plan.price,
+        originalAmount: planPrice,
         workspaceName: member.workspace.name,
         isSubscription: true,
-        planInterval: 'monthly',
+        planInterval: plan.interval,
+        type: 'subscription_payment', // Consistent with verify logic
       },
     });
 
@@ -149,7 +162,7 @@ export async function POST(req: NextRequest) {
       reference: response.data.reference,
       discount,
       finalAmount,
-      originalAmount: plan.price,
+      originalAmount: planPrice,
     });
   } catch (error: any) {
     console.error("🔴 [INITIALIZE_SUBSCRIPTION] Error:", error);

@@ -1,5 +1,6 @@
 // lib/email/nodemailer.service.ts
 import nodemailer from 'nodemailer';
+import { transporter } from '@/lib/inAppTransporter/transport';
 
 export interface EmailOptions {
   to: string | string[];
@@ -28,22 +29,11 @@ class NodemailerService {
   private defaultFromName: string;
 
   constructor() {
-    this.defaultFromEmail = process.env.MAIL_FROM || 'noreply@dropaphi.com';
+    this.defaultFromEmail = process.env.MAIL_FROM || 'mailby@dropaphi.com';
     this.defaultFromName = process.env.NAME_FROM || 'Drop API';
     
-    // Initialize nodemailer transporter
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD,
-      },
-      pool: true,
-      maxConnections: 5,
-      maxMessages: 100,
-    });
+    // Use the shared transporter
+    this.transporter = transporter;
   }
 
   /**

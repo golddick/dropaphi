@@ -12,6 +12,8 @@ import {
   created,
 } from "@/lib/respond/response";
 import { uploadWorkspaceFile } from "@/lib/supabase/server";
+import { Services } from "@/lib/generated/prisma";
+import { checkServiceStatus } from "@/lib/services/service-status";
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
 
@@ -73,6 +75,10 @@ export async function POST(
   try {
     const { workspaceId } = await params;
 
+    // Check if storage service is active
+    const serviceStatusError = await checkServiceStatus(Services.STORAGE);
+    if (serviceStatusError) return serviceStatusError;
+
     const auth = await requireAuth();
     if (auth instanceof Response) return auth;
 
@@ -92,8 +98,8 @@ export async function POST(
     const workspace = await db.workspace.findUnique({
       where: { id: workspaceId },
       select: {
-        fileLimit: true,
-        currentFilesUsed: true,
+        storageLimit: true,
+        currentStorageUsed: true,
       },
     });
 
@@ -127,12 +133,12 @@ export async function POST(
     const fileSizeMB = bytesToMB(file.size);
 
     console.log(`File size: ${file.size} bytes = ${fileSizeMB} MB`);
-    console.log(`Current usage: ${workspace.currentFilesUsed} MB`);
-    console.log(`New total: ${workspace.currentFilesUsed + fileSizeMB} MB`);
-    console.log(`Limit: ${workspace.fileLimit} MB`);
+    console.log(`Current usage: ${workspace.currentStorageUsed} MB`);
+    console.log(`New total: ${workspace.currentStorageUsed + fileSizeMB} MB`);
+    console.log(`Limit: ${workspace.storageLimit} MB`);
 
     // Check if adding this file would exceed the limit
-    if (workspace.currentFilesUsed + fileSizeMB > workspace.fileLimit) {
+    if (workspace.currentStorageUsed + fileSizeMB > workspace.storageLimit) {
       return err(
         "Workspace storage limit exceeded",
         403,
@@ -174,11 +180,11 @@ export async function POST(
         },
       });
 
-      // Update workspace currentFilesUsed (stored in MB)
+      // Update workspace currentStorageUsed (stored in MB)
       await tx.workspace.update({
         where: { id: workspaceId },
         data: {
-          currentFilesUsed: {
+          currentStorageUsed: {
             increment: fileSizeMB,
           },
         },
@@ -194,7 +200,7 @@ export async function POST(
         workspaceId,
         service: "file_storage",
         month: new Date().toISOString().slice(0, 7),
-        currentFilesUsed: workspace.currentFilesUsed + fileSizeMB, // Store the new total
+        currentFilesUsed: workspace.currentStorageUsed + fileSizeMB, // Store the new total
         currentEmailsSent: 0,
         currentSmsSent: 0,
         currentOtpSent: 0,
@@ -212,10 +218,10 @@ export async function POST(
     // Fetch updated workspace to verify the increment
     const updatedWorkspace = await db.workspace.findUnique({
       where: { id: workspaceId },
-      select: { currentFilesUsed: true }
+      select: { currentStorageUsed: true }
     });
 
-    console.log(`Updated workspace currentFilesUsed: ${updatedWorkspace?.currentFilesUsed} MB`);
+    console.log(`Updated workspace currentStorageUsed: ${updatedWorkspace?.currentStorageUsed} MB`);
 
     return created({
       file: {
@@ -230,9 +236,9 @@ export async function POST(
         createdAt: result.createdAt,
       },
       workspace: {
-        currentFilesUsed: updatedWorkspace?.currentFilesUsed,
-        fileLimit: workspace.fileLimit,
-        remaining: workspace.fileLimit - (updatedWorkspace?.currentFilesUsed || 0),
+        currentStorageUsed: updatedWorkspace?.currentStorageUsed,
+        storageLimit: workspace.storageLimit,
+        remaining: workspace.storageLimit - (updatedWorkspace?.currentStorageUsed || 0),
       },
     });
   } catch (error) {
@@ -352,7 +358,7 @@ export async function DELETE(
       await tx.workspace.update({
         where: { id: workspaceId },
         data: {
-          currentFilesUsed: {
+          currentStorageUsed: {
             decrement: fileSizeMB,
           },
         },

@@ -7,7 +7,6 @@
 
 import { NextRequest } from "next/server";
 import { z } from "zod";
-// import { requireAuth } from "@/lib/api-middleware";
 import { db } from "@/lib/db";
 import { err, ok, serverError, validationError } from "@/lib/respond/response";
 import { verifyPassword } from "@/lib/auth/auth-client";

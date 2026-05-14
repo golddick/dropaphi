@@ -12,6 +12,11 @@ export interface EmailSender {
   verifiedAt?: string | null;
   spfVerified?: boolean;
   dkimVerified?: boolean;
+  dmarcVerified?: boolean;
+  domainVerified?: boolean;
+  isDomain?: boolean;
+  dkimTokens?: string[];
+  spfRecord?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,12 +68,12 @@ interface EmailSenderStore {
 
   // Actions
   fetchSenders: (workspaceId: string) => Promise<void>;
-  addSender: (workspaceId: string, data: { email: string; name: string }) => Promise<EmailSender>;
+  addSender: (workspaceId: string, data: { email: string; name: string; isDomain?: boolean }) => Promise<EmailSender>;
   updateSender: (workspaceId: string, id: string, data: Partial<EmailSender>) => Promise<EmailSender>;
-  deleteSender: (id: string) => Promise<void>;
+  deleteSender: (id: string, workspaceId: string) => Promise<void>;
   sendVerificationCode: (workspaceId: string, email: string) => Promise<void>;
   verifySender: (workspaceId: string, data: { email: string; code: string; senderId: string }) => Promise<void>;
-  checkDNSRecords: (senderId: string) => Promise<{ spf: boolean; dkim: boolean }>;
+  checkDNSRecords: (senderId: string, workspaceId: string) => Promise<{ spf: boolean; dkim: boolean }>;
   setCurrentSender: (sender: EmailSender | null) => void;
   clearError: () => void;
 }
@@ -114,7 +119,7 @@ export const useEmailSenderStore = create<EmailSenderStore>()(
       },
 
       // Add new sender
-      addSender: async (workspaceId: string, data: { email: string; name: string }) => {
+      addSender: async (workspaceId: string, data: { email: string; name: string; isDomain?: boolean }) => {
         if (!workspaceId) {
           const error = 'No workspace ID provided';
           set({ error });
@@ -196,8 +201,8 @@ export const useEmailSenderStore = create<EmailSenderStore>()(
       },
 
       // Delete sender
-      deleteSender: async (id: string) => {
-        const workspaceId = get().currentSender?.workspaceId;
+      deleteSender: async (id: string, workspaceId: string ) => {
+
         if (!workspaceId) {
           set({ error: 'No workspace ID' });
           return;
@@ -241,7 +246,7 @@ export const useEmailSenderStore = create<EmailSenderStore>()(
         }));
 
         try {
-          await apiFetch(`/api/workspace/${workspaceId}/email-senders/verify/send`, {
+          await apiFetch(`/api/workspace/${workspaceId}/email-senders/initiate-verify`, {
             method: 'POST',
             body: JSON.stringify({ email }),
           });
@@ -302,7 +307,7 @@ export const useEmailSenderStore = create<EmailSenderStore>()(
         set({ isLoading: true, error: null });
 
         try {
-          const response = await apiFetch(`/api/workspace/${workspaceId}/email-senders/verify`, {
+          const response = await apiFetch(`/api/workspace/${workspaceId}/email-senders/verify-otp`, {
             method: 'POST',
             body: JSON.stringify(data),
           });
@@ -334,29 +339,35 @@ export const useEmailSenderStore = create<EmailSenderStore>()(
       },
 
       // Check DNS records (SPF, DKIM)
-      checkDNSRecords: async (senderId: string) => {
+      checkDNSRecords: async (senderId: string, workspaceId: string) => {
         const sender = get().senders.find((s) => s.id === senderId);
         if (!sender) {
           throw new Error('Sender not found');
         }
 
-        // This is a mock implementation - replace with actual DNS checking
-        // You would need to implement a real DNS check API endpoint
-        const mockResult = {
-          spf: Math.random() > 0.5,
-          dkim: Math.random() > 0.5,
-        };
-
-        // Update sender with DNS status
-        set((state) => ({
-          senders: state.senders.map((s) =>
-            s.id === senderId
-              ? { ...s, spfVerified: mockResult.spf, dkimVerified: mockResult.dkim }
-              : s
-          ),
-        }));
-
-        return mockResult;
+        set({ isLoading: true, error: null });
+ 
+        try {
+          const response = await apiFetch(`/api/workspace/${workspaceId}/email-senders/${senderId}/dns-check`);
+          
+          if (response.success && response.data?.sender) {
+            const updatedSender = response.data.sender;
+            set((state) => ({
+              senders: state.senders.map((s) => (s.id === senderId ? updatedSender : s)),
+              currentSender: state.currentSender?.id === senderId ? updatedSender : state.currentSender,
+            }));
+            return { spf: updatedSender.spfVerified, dkim: updatedSender.dkimVerified };
+          }
+          throw new Error('Failed to check DNS records');
+        } catch (error) {
+          console.error('❌ Check DNS error:', error);
+          const errorMessage = (error as Error).message;
+          set({ error: errorMessage });
+          toast.error(errorMessage);
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
       },
 
       // Set current sender

@@ -41,8 +41,8 @@ export async function signAccessToken(payload: JwtPayload): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(ACCESS_TOKEN_TTL)
-    .setIssuer("dropapi")
-    .setAudience("dropapi-dashboard")
+    .setIssuer("dropaphi")
+    .setAudience("dropaphi-dashboard")
     .sign(JWT_SECRET);
 }
 
@@ -51,8 +51,8 @@ export async function signRefreshToken(payload: JwtPayload): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(REFRESH_TOKEN_TTL)
-    .setIssuer("dropapi")
-    .setAudience("dropapi-refresh")
+    .setIssuer("dropaphi")
+    .setAudience("dropaphi-refresh")
     .sign(JWT_SECRET);
 }
 
@@ -61,8 +61,8 @@ export async function verifyAccessToken(
 ): Promise<JwtPayload | null> {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET, {
-      issuer: "dropapi",
-      audience: "dropapi-dashboard",
+      issuer: "dropaphi",
+      audience: "dropaphi-dashboard",
     });
     return payload as unknown as JwtPayload;
   } catch (error) {
@@ -76,8 +76,8 @@ export async function verifyRefreshToken(
 ): Promise<JwtPayload | null> {
   try {
     const { payload } = await jwtVerify(token, JWT_SECRET, {
-      issuer: "dropapi",
-      audience: "dropapi-refresh",
+      issuer: "dropaphi",
+      audience: "dropaphi-refresh",
     });
     return payload as unknown as JwtPayload;
   } catch (error) {
@@ -91,6 +91,7 @@ export async function verifyRefreshToken(
 export async function setAuthCookies(tokens: AuthTokens) {
   const cookieStore = await cookies();
   const isProd = process.env.NODE_ENV === "production";
+  const domain = isProd ? 'dropaphi.xyz' : undefined;
 
   // First, delete any existing cookies to clean up
   cookieStore.delete(COOKIE.ACCESS_TOKEN);
@@ -103,6 +104,7 @@ export async function setAuthCookies(tokens: AuthTokens) {
     sameSite: "lax",
     maxAge: tokens.expiresIn,
     path: "/",
+    domain,
   });
 
   // Set new refresh token with explicit path
@@ -112,6 +114,7 @@ export async function setAuthCookies(tokens: AuthTokens) {
     sameSite: "lax",
     maxAge: 60 * 60 * 24 * 30, // 30 days
     path: "/", // ALWAYS use root path
+    domain,
   });
 }
 
@@ -260,6 +263,7 @@ export async function refreshAccessToken() {
 
     // Set new cookies
     const isProd = process.env.NODE_ENV === "production";
+    const domain = isProd ? 'dropaphi.xyz' : undefined;
     
     cookieStore.set({
       name: COOKIE.ACCESS_TOKEN,
@@ -269,6 +273,7 @@ export async function refreshAccessToken() {
       sameSite: "lax",
       maxAge: 15 * 60,
       path: "/",
+      domain,
     });
 
     cookieStore.set({
@@ -279,6 +284,7 @@ export async function refreshAccessToken() {
       sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60,
       path: "/",
+      domain,
     });
 
     console.log('[refreshAccessToken] Successfully refreshed tokens');
@@ -338,9 +344,11 @@ export async function requireAuth() {
     // Try to refresh if access token is invalid
     const refreshed = await refreshAccessToken();
     if (refreshed) {
+      console.log('[requireAuth] Successfully refreshed session for user:', refreshed.userId);
       return refreshed;
     }
-    
+
+    console.log('[requireAuth] Refresh failed, returning 401');
     return new Response(
       JSON.stringify({ error: 'Unauthorized - Invalid token' }),
       { status: 401, headers: { 'Content-Type': 'application/json' } }

@@ -1,378 +1,695 @@
+// 'use client';
+//
+// import { useState, useEffect } from 'react';
+// import { motion } from 'framer-motion';
+// import { Button } from '@/components/ui/button';
+// import { Input } from '@/components/ui/input';
+// import { Switch } from '@/components/ui/switch';
+// import { Save, AlertCircle, Loader2 } from 'lucide-react';
+// import { toast } from 'sonner';
+//
+// export default function AdminSettingsPage() {
+//     const [costs, setCosts] = useState<any[]>([]);
+//     const [isLoading, setIsLoading] = useState(true);
+//     const [isSaving, setIsSaving] = useState(false);
+//     const [isSavingAll, setIsSavingAll] = useState(false);
+//     const [saved, setSaved] = useState(false);
+//
+//     useEffect(() => {
+//         fetchCosts();
+//     }, []);
+//
+//     const fetchCosts = async () => {
+//         try {
+//             setIsLoading(true);
+//             const res = await fetch('/api/admin/service-costs');
+//
+//             console.log(res , 'cost ')
+//
+//             if (res.ok) {
+//                 const result = await res.json();
+//                 setCosts(result.data || []);
+//             }
+//         } catch (err) {
+//             toast.error('Failed to load service costs');
+//         } finally {
+//             setIsLoading(false);
+//         }
+//     };
+//
+//     const handleCostChange = (service: string, field: string, value: any) => {
+//         setCosts(prev => {
+//             const existing = prev.find(c => c.service === service);
+//             if (existing) {
+//                 return prev.map(c =>
+//                     c.service === service ? { ...c, [field]: value } : c
+//                 );
+//             } else {
+//                 return [...prev, { service, [field]: value, cost: 0, usageRate: 1, minPurchase: 1, isActive: true }];
+//             }
+//         });
+//     };
+//
+//
+//
+//     const saveAllCosts = async () => {
+//         try {
+//             setIsSavingAll(true);
+//
+//             const payload = costs.map(c => ({
+//                 service: c.service,
+//                 cost: c.cost?.toString().trim() || "0",
+//                 usageRate: c.usageRate?.toString().trim() || "1",
+//                 minPurchase: c.minPurchase?.toString().trim() || "1",
+//                 isActive: c.isActive ?? true,
+//                 description: c.description || null
+//             }));
+//
+//             const res = await fetch('/api/admin/service-costs', {
+//                 method: 'POST',
+//                 headers: { 'Content-Type': 'application/json' },
+//                 body: JSON.stringify(payload)
+//             });
+//
+//             if (res.ok) {
+//                 toast.success('All service costs updated');
+//                 fetchCosts();
+//             } else {
+//                 const errorData = await res.json().catch(() => ({}));
+//                 toast.error(errorData.error || 'Failed to update');
+//             }
+//         } catch {
+//             toast.error('Save failed');
+//         } finally {
+//             setIsSavingAll(false);
+//         }
+//     };
+//
+//
+//     const saveServiceCost = async (serviceCost: any) => {
+//         try {
+//             setIsSaving(true);
+//
+//             const payload = {
+//                 service: serviceCost.service,
+//
+//                 // Send as STRING (important)
+//                 cost: serviceCost.cost?.toString().trim() || "0",
+//                 usageRate: serviceCost.usageRate?.toString().trim() || "1",
+//                 minPurchase: serviceCost.minPurchase?.toString().trim() || "1",
+//
+//                 isActive: serviceCost.isActive ?? true,
+//                 description: serviceCost.description || null
+//             };
+//
+//             const res = await fetch('/api/admin/service-costs', {
+//                 method: 'POST',
+//                 headers: { 'Content-Type': 'application/json' },
+//                 body: JSON.stringify(payload)
+//             });
+//
+//             if (res.ok) {
+//                 setSaved(true);
+//                 setTimeout(() => setSaved(false), 3000);
+//                 toast.success(`Updated ${serviceCost.service}`);
+//                 await fetchCosts();
+//             } else {
+//                 const errorData = await res.json().catch(() => ({}));
+//                 toast.error(errorData.error || 'Failed to update');
+//             }
+//         } catch (err) {
+//             toast.error('Save failed');
+//         } finally {
+//             setIsSaving(false);
+//         }
+//     };
+//
+//
+//     const services = [
+//         { key: 'EMAIL', label: 'Email Service' },
+//         { key: 'SMS', label: 'SMS Service' },
+//         { key: 'OTP', label: 'OTP (Email) Service' },
+//         { key: 'STORAGE', label: 'Storage Overage (GB)' },
+//         { key: 'BLOG', label: 'Blog Service' },
+//         { key: 'PUSH', label: 'Push Notification' },
+//         { key: 'SUBSCRIBERS', label: 'SUBSCRIBERS Usage' },
+//         { key: 'API', label: 'API Usage' },
+//     ];
+//
+//     return (
+//         <div className="space-y-6 pb-20">
+//             {/* Header */}
+//             <motion.div
+//                 initial={{ opacity: 0, y: -20 }}
+//                 animate={{ opacity: 1, y: 0 }}
+//                 transition={{ duration: 0.5 }}
+//             >
+//                 <h1 className="text-3xl font-bold mb-2" style={{ color: '#1A1A1A' }}>
+//                     System Settings
+//                 </h1>
+//                 <p style={{ color: '#666666' }}>
+//                     Configure platform-wide pricing and service rules
+//                 </p>
+//             </motion.div>
+//
+//             {/* Pricing Settings */}
+//             <motion.div
+//                 initial={{ opacity: 0 }}
+//                 animate={{ opacity: 1 }}
+//                 transition={{ delay: 0.1, duration: 0.5 }}
+//                 className="space-y-4"
+//             >
+//                 <div className="flex items-center justify-between">
+//                     <h2 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>
+//                         Service Pricing & Rules
+//                     </h2>
+//                     <div className="flex items-center gap-3">
+//                         {isLoading && <Loader2 className="animate-spin h-5 w-5 text-gray-400" />}
+//                         <Button
+//                             onClick={saveAllCosts}
+//                             disabled={isSavingAll || isLoading}
+//                             className="bg-red-600 hover:bg-red-700 text-white"
+//                         >
+//                             {isSavingAll ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Save size={16} className="mr-2" />}
+//                             Save All Changes
+//                         </Button>
+//                     </div>
+//                 </div>
+//
+//                 <div className="grid grid-cols-1 gap-6">
+//                     {services.map((s) => {
+//                         const costData = costs.find(c => c.service === s.key) || {
+//                             service: s.key,
+//                             cost: '',
+//                             usageRate: '',
+//                             minPurchase: '',
+//                             isActive: true
+//                         };
+//
+//                         return (
+//                             <div
+//                                 key={s.key}
+//                                 className={`p-6 rounded-lg border bg-white shadow-sm flex items-center flex-col md:flex-row md:items-end gap-4 transition-opacity ${!costData.isActive ? 'opacity-75' : ''}`}
+//                             >
+//                                 <div className="flex-1 space-y-4 w-full">
+//                                     <div className="flex items-center justify-between border-b pb-2">
+//                                         <h3 className="font-bold text-lg flex items-center gap-2">
+//                                             {s.label}
+//                                             {!costData.isActive && (
+//                                                 <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full uppercase">
+//                                                     Disabled
+//                                                 </span>
+//                                             )}
+//                                         </h3>
+//                                         <div className="flex items-center gap-2">
+//                                             <span className={`text-xs font-medium ${costData.isActive ? 'text-green-600' : 'text-gray-400'}`}>
+//                                                 {costData.isActive ? 'Active' : 'Inactive'}
+//                                             </span>
+//                                             <Switch
+//                                                 checked={costData.isActive}
+//                                                 onCheckedChange={(checked) => {
+//                                                     handleCostChange(s.key, 'isActive', checked);
+//                                                 }}
+//                                             />
+//                                         </div>
+//                                     </div>
+//                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+//                                         <div>
+//                                             <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+//                                                 Cost Per Unit (₦)
+//                                             </label>
+//                                             <Input
+//                                                 type="number"
+//                                                 value={costData.cost}
+//                                                 onChange={(e) => {
+//                                                     const val = e.target.value;
+//                                                     // Allow empty string or any valid number
+//                                                     if (val === '' || !isNaN(parseFloat(val))) {
+//                                                         handleCostChange(s.key, 'cost', val);
+//                                                     }
+//                                                 }}
+//                                                 onBlur={(e) => {
+//                                                     let val = e.target.value;
+//                                                     if (val === '' || val === '-') {
+//                                                         val = '0';
+//                                                     }
+//                                                     handleCostChange(s.key, 'cost', val);
+//                                                 }}
+//                                                 className="w-full"
+//                                                 disabled={!costData.isActive}
+//                                                 step="0.01"
+//                                                 min="0"
+//                                                 placeholder="0.00"
+//                                             />
+//                                         </div>
+//                                         <div>
+//                                             <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+//                                                 Credit Usage Rate
+//                                             </label>
+//                                             <Input
+//                                                 type="number"
+//                                                 value={costData.usageRate}
+//                                                 onChange={(e) => {
+//                                                     const val = e.target.value;
+//                                                     // Allow empty string or any valid number including decimals
+//                                                     if (val === '' || !isNaN(parseFloat(val))) {
+//                                                         handleCostChange(s.key, 'usageRate', val);
+//                                                     }
+//                                                 }}
+//                                                 onBlur={(e) => {
+//                                                     let val = e.target.value;
+//                                                     if (val === '' || val === '-') {
+//                                                         val = '1';
+//                                                     }
+//                                                     // Ensure valid decimal number
+//                                                     const numVal = parseFloat(val);
+//                                                     if (!isNaN(numVal)) {
+//                                                         handleCostChange(s.key, 'usageRate', numVal.toString());
+//                                                     } else {
+//                                                         handleCostChange(s.key, 'usageRate', '1');
+//                                                     }
+//                                                 }}
+//                                                 className="w-full"
+//                                                 disabled={!costData.isActive}
+//                                                 step="0.01"
+//                                                 min="0.01"
+//                                                 placeholder="0.00"
+//                                             />
+//                                             <p className="text-[10px] text-gray-400 mt-1">Credits used per action (supports decimals like 0.5)</p>
+//                                         </div>
+//                                         <div>
+//                                             <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+//                                                 Min. Top-up Units
+//                                             </label>
+//                                             <Input
+//                                                 type="number"
+//                                                 value={costData.minPurchase}
+//                                                 onChange={(e) => {
+//                                                     const val = e.target.value;
+//                                                     // Allow empty string or any valid number
+//                                                     if (val === '' || !isNaN(parseFloat(val))) {
+//                                                         handleCostChange(s.key, 'minPurchase', val);
+//                                                     }
+//                                                 }}
+//                                                 onBlur={(e) => {
+//                                                     let val = e.target.value;
+//                                                     if (val === '' || val === '-') {
+//                                                         val = '1';
+//                                                     }
+//                                                     handleCostChange(s.key, 'minPurchase', val);
+//                                                 }}
+//                                                 className="w-full"
+//                                                 disabled={!costData.isActive}
+//                                                 step="0.01"
+//                                                 min="0"
+//                                                 placeholder="1"
+//                                             />
+//                                         </div>
+//                                     </div>
+//                                 </div>
+//                                 <Button
+//                                     onClick={() => saveServiceCost(costData)}
+//                                     disabled={isSaving}
+//                                     className="bg-black hover:bg-gray-800 text-white min-w-[120px]"
+//                                 >
+//                                     {isSaving ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Save size={16} className="mr-2" />}
+//                                     Save
+//                                 </Button>
+//                             </div>
+//                         );
+//                     })}
+//                 </div>
+//             </motion.div>
+//
+//             {/* Warning Section */}
+//             <motion.div
+//                 initial={{ opacity: 0 }}
+//                 animate={{ opacity: 1 }}
+//                 transition={{ delay: 0.5, duration: 0.5 }}
+//                 className="p-6 rounded-lg border bg-red-50 border-red-100"
+//             >
+//                 <div className="flex gap-3">
+//                     <AlertCircle size={24} className="text-red-600 shrink-0" />
+//                     <div>
+//                         <h3 className="font-bold mb-2 text-red-600">
+//                             Danger Zone
+//                         </h3>
+//                         <p className="text-sm text-gray-600">
+//                             These settings affect the Marketplace (Top-up) prices for all users immediately.
+//                             Always verify the Unit Cost and Usage Rate before saving.
+//                         </p>
+//                     </div>
+//                 </div>
+//             </motion.div>
+//         </div>
+//     );
+// }
+
+
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Save, AlertCircle, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AdminSettingsPage() {
-  const [settings, setSettings] = useState({
-    smsCost: '1.00',
-    emailCost: '0.50',
-    otpCost: '0.75',
-    storageCost: '50.00',
-    apiRateLimit: '10000',
-    maintenanceMode: false,
-    emailNotifications: true,
-    smsNotifications: true,
-  });
+    const [costs, setCosts] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isSavingAll, setIsSavingAll] = useState(false);
+    const [saved, setSaved] = useState(false);
 
-  const [saved, setSaved] = useState(false);
+    useEffect(() => {
+        fetchCosts();
+    }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target as any;
-    const newValue = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
-    setSettings((prev) => ({ ...prev, [name]: newValue }));
-  };
+    const fetchCosts = async () => {
+        try {
+            setIsLoading(true);
+            const res = await fetch('/api/admin/service-costs');
 
-  const saveSettings = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  };
+            console.log(res , 'cost ')
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <h1 className="text-3xl font-bold mb-2" style={{ color: '#1A1A1A' }}>
-          System Settings
-        </h1>
-        <p style={{ color: '#666666' }}>
-          Configure platform-wide settings and pricing
-        </p>
-      </motion.div>
+            if (res.ok) {
+                const result = await res.json();
+                setCosts(result.data || []);
+            }
+        } catch (err) {
+            toast.error('Failed to load service costs');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-      {/* Success Message */}
-      {saved && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className="p-4 rounded-lg flex items-center gap-3"
-          style={{ backgroundColor: '#E8F5E9', borderLeft: '4px solid #2E7D32' }}
-        >
-          <CheckCircle2 size={20} style={{ color: '#2E7D32' }} />
-          <p style={{ color: '#2E7D32' }} className="font-medium">
-            Settings saved successfully!
-          </p>
-        </motion.div>
-      )}
+    const handleCostChange = (service: string, field: string, value: any) => {
+        setCosts(prev => {
+            const existing = prev.find(c => c.service === service);
+            if (existing) {
+                return prev.map(c =>
+                    c.service === service ? { ...c, [field]: value } : c
+                );
+            } else {
+                return [...prev, { service, [field]: value, cost: 0, usageRate: 1, minPurchase: 1, isActive: true }];
+            }
+        });
+    };
 
-      {/* Pricing Settings */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.1, duration: 0.5 }}
-        className="p-6 rounded-lg border"
-        style={{
-          backgroundColor: '#FFFFFF',
-          borderColor: '#E5E5E5',
-        }}
-      >
-        <h2 className="text-xl font-bold mb-6" style={{ color: '#1A1A1A' }}>
-          Pricing Configuration
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: '#1A1A1A' }}>
-              SMS Cost Per Unit (₦)
-            </label>
-            <Input
-              type="number"
-              name="smsCost"
-              value={settings.smsCost}
-              onChange={handleChange}
-              step="0.01"
-              placeholder="1.00"
-              className="w-full"
-            />
-            <p className="text-xs mt-1" style={{ color: '#999999' }}>
-              Cost per SMS message sent
-            </p>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: '#1A1A1A' }}>
-              Email Cost Per Unit (₦)
-            </label>
-            <Input
-              type="number"
-              name="emailCost"
-              value={settings.emailCost}
-              onChange={handleChange}
-              step="0.01"
-              placeholder="0.50"
-              className="w-full"
-            />
-            <p className="text-xs mt-1" style={{ color: '#999999' }}>
-              Cost per email sent
-            </p>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: '#1A1A1A' }}>
-              OTP Cost Per Verification (₦)
-            </label>
-            <Input
-              type="number"
-              name="otpCost"
-              value={settings.otpCost}
-              onChange={handleChange}
-              step="0.01"
-              placeholder="0.75"
-              className="w-full"
-            />
-            <p className="text-xs mt-1" style={{ color: '#999999' }}>
-              Cost per OTP verification
-            </p>
-          </div>
+    const saveAllCosts = async () => {
+        try {
+            setIsSavingAll(true);
 
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: '#1A1A1A' }}>
-              Storage Cost Per GB (₦)
-            </label>
-            <Input
-              type="number"
-              name="storageCost"
-              value={settings.storageCost}
-              onChange={handleChange}
-              step="0.01"
-              placeholder="50.00"
-              className="w-full"
-            />
-            <p className="text-xs mt-1" style={{ color: '#999999' }}>
-              Cost per gigabyte of storage
-            </p>
-          </div>
-        </div>
-      </motion.div>
+            const payload = costs.map(c => ({
+                service: c.service,
+                cost: c.cost?.toString().trim() || "0",
+                usageRate: c.usageRate?.toString().trim() || "1",
+                minPurchase: c.minPurchase?.toString().trim() || "1",
+                isActive: c.isActive ?? true,
+                description: c.description || null
+            }));
 
-      {/* API Settings */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-        className="p-6 rounded-lg border"
-        style={{
-          backgroundColor: '#FFFFFF',
-          borderColor: '#E5E5E5',
-        }}
-      >
-        <h2 className="text-xl font-bold mb-6" style={{ color: '#1A1A1A' }}>
-          API Rate Limits
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: '#1A1A1A' }}>
-              Default Rate Limit (Requests/Month)
-            </label>
-            <Input
-              type="number"
-              name="apiRateLimit"
-              value={settings.apiRateLimit}
-              onChange={handleChange}
-              placeholder="10000"
-              className="w-full"
-            />
-            <p className="text-xs mt-1" style={{ color: '#999999' }}>
-              Default API requests per month for new users
-            </p>
-          </div>
+            const res = await fetch('/api/admin/service-costs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-          <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: '#1A1A1A' }}>
-              Premium Rate Limit (Requests/Month)
-            </label>
-            <Input
-              type="number"
-              name="premiumRateLimit"
-              value="1000000"
-              disabled
-              className="w-full bg-gray-50"
-            />
-            <p className="text-xs mt-1" style={{ color: '#999999' }}>
-              Fixed limit for premium users
-            </p>
-          </div>
-        </div>
-      </motion.div>
+            if (res.ok) {
+                toast.success('All service costs updated');
+                fetchCosts();
+            } else {
+                const errorData = await res.json().catch(() => ({}));
+                toast.error(errorData.error || 'Failed to update');
+            }
+        } catch {
+            toast.error('Save failed');
+        } finally {
+            setIsSavingAll(false);
+        }
+    };
 
-      {/* System Configuration */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3, duration: 0.5 }}
-        className="p-6 rounded-lg border"
-        style={{
-          backgroundColor: '#FFFFFF',
-          borderColor: '#E5E5E5',
-        }}
-      >
-        <h2 className="text-xl font-bold mb-6" style={{ color: '#1A1A1A' }}>
-          System Configuration
-        </h2>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-lg" style={{ backgroundColor: '#F5F5F5' }}>
-            <div>
-              <p className="font-medium" style={{ color: '#1A1A1A' }}>
-                Maintenance Mode
-              </p>
-              <p className="text-xs" style={{ color: '#999999' }}>
-                Disable API access for all users during maintenance
-              </p>
-            </div>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="maintenanceMode"
-                checked={settings.maintenanceMode}
-                onChange={handleChange}
-                className="w-5 h-5 accent-red-600"
-              />
-            </label>
-          </div>
 
-          <div className="flex items-center justify-between p-4 rounded-lg" style={{ backgroundColor: '#F5F5F5' }}>
-            <div>
-              <p className="font-medium" style={{ color: '#1A1A1A' }}>
-                Email Notifications
-              </p>
-              <p className="text-xs" style={{ color: '#999999' }}>
-                Send system alerts via email to users
-              </p>
-            </div>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="emailNotifications"
-                checked={settings.emailNotifications}
-                onChange={handleChange}
-                className="w-5 h-5 accent-red-600"
-              />
-            </label>
-          </div>
+    const saveServiceCost = async (serviceCost: any) => {
+        try {
+            setIsSaving(true);
 
-          <div className="flex items-center justify-between p-4 rounded-lg" style={{ backgroundColor: '#F5F5F5' }}>
-            <div>
-              <p className="font-medium" style={{ color: '#1A1A1A' }}>
-                SMS Notifications
-              </p>
-              <p className="text-xs" style={{ color: '#999999' }}>
-                Send system alerts via SMS to users
-              </p>
-            </div>
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                name="smsNotifications"
-                checked={settings.smsNotifications}
-                onChange={handleChange}
-                className="w-5 h-5 accent-red-600"
-              />
-            </label>
-          </div>
-        </div>
-      </motion.div>
+            const payload = {
+                service: serviceCost.service,
 
-      {/* Feature Toggles */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4, duration: 0.5 }}
-        className="p-6 rounded-lg border"
-        style={{
-          backgroundColor: '#FFFFFF',
-          borderColor: '#E5E5E5',
-        }}
-      >
-        <h2 className="text-xl font-bold mb-6" style={{ color: '#1A1A1A' }}>
-          Service Toggles
-        </h2>
-        <div className="space-y-3">
-          {[
-            { name: 'SMS Service', enabled: true },
-            { name: 'Email Service', enabled: true },
-            { name: 'OTP Service', enabled: true },
-            { name: 'File Storage', enabled: true },
-          ].map((service) => (
-            <div key={service.name} className="flex items-center justify-between p-4 rounded-lg" style={{ backgroundColor: '#F5F5F5' }}>
-              <div>
-                <p className="font-medium" style={{ color: '#1A1A1A' }}>
-                  {service.name}
-                </p>
-              </div>
-              <div
-                className="w-12 h-6 rounded-full flex items-center px-1 transition-colors cursor-pointer"
-                style={{ backgroundColor: service.enabled ? '#2E7D32' : '#CCCCCC' }}
-              >
-                <div
-                  className="w-5 h-5 rounded-full bg-white transition-transform"
-                  style={{ transform: service.enabled ? 'translateX(24px)' : 'translateX(0)' }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </motion.div>
+                // Send as STRING (important)
+                cost: serviceCost.cost?.toString().trim() || "0",
+                usageRate: serviceCost.usageRate?.toString().trim() || "1",
+                minPurchase: serviceCost.minPurchase?.toString().trim() || "1",
 
-      {/* Warning Section */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5, duration: 0.5 }}
-        className="p-6 rounded-lg border"
-        style={{
-          backgroundColor: '#FFF5F5',
-          borderColor: '#FFD1D1',
-        }}
-      >
-        <div className="flex gap-3">
-          <AlertCircle size={24} style={{ color: '#DC143C', flexShrink: 0 }} />
-          <div>
-            <h3 className="font-bold mb-2" style={{ color: '#DC143C' }}>
-              Danger Zone
-            </h3>
-            <p className="text-sm mb-4" style={{ color: '#666666' }}>
-              These settings affect all users on the platform. Changes are applied immediately. Use with caution.
-            </p>
-            <Button
-              variant="outline"
-              className="hover:bg-red-50"
-              style={{ borderColor: '#DC143C', color: '#DC143C' }}
+                isActive: serviceCost.isActive ?? true,
+                description: serviceCost.description || null
+            };
+
+            const res = await fetch('/api/admin/service-costs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                setSaved(true);
+                setTimeout(() => setSaved(false), 3000);
+                toast.success(`Updated ${serviceCost.service}`);
+                await fetchCosts();
+            } else {
+                const errorData = await res.json().catch(() => ({}));
+                toast.error(errorData.error || 'Failed to update');
+            }
+        } catch (err) {
+            toast.error('Save failed');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+
+    const services = [
+        { key: 'EMAIL', label: 'Email Service' },
+        { key: 'SMS', label: 'SMS Service' },
+        { key: 'OTP', label: 'OTP (Email) Service' },
+        { key: 'STORAGE', label: 'Storage Overage (GB)' },
+        { key: 'BLOG', label: 'Blog Service' },
+        { key: 'PUSH', label: 'Push Notification' },
+        { key: 'AI', label: 'AI Usage' },
+        { key: 'SUBSCRIBERS', label: 'Subscriber Service' },
+    ];
+
+    return (
+        <div className="space-y-6 pb-20">
+            {/* Header */}
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
             >
-              Clear All Cache
-            </Button>
-          </div>
-        </div>
-      </motion.div>
+                <h1 className="text-3xl font-bold mb-2" style={{ color: '#1A1A1A' }}>
+                    System Settings
+                </h1>
+                <p style={{ color: '#666666' }}>
+                    Configure platform-wide pricing and service rules
+                </p>
+            </motion.div>
 
-      {/* Save Button */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.6, duration: 0.5 }}
-        className="flex gap-3"
-      >
-        <Button
-          variant="outline"
-          className="flex-1"
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={saveSettings}
-          className="flex-1"
-          style={{ backgroundColor: '#DC143C' }}
-        >
-          <Save size={18} className="mr-2" />
-          Save Settings
-        </Button>
-      </motion.div>
-    </div>
-  );
+            {/* Pricing Settings */}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1, duration: 0.5 }}
+                className="space-y-4"
+            >
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>
+                        Service Pricing & Rules
+                    </h2>
+                    <div className="flex items-center gap-3">
+                        {isLoading && <Loader2 className="animate-spin h-5 w-5 text-gray-400" />}
+                        <Button
+                            onClick={saveAllCosts}
+                            disabled={isSavingAll || isLoading}
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                            {isSavingAll ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Save size={16} className="mr-2" />}
+                            Save All Changes
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                    {services.map((s) => {
+                        const costData = costs.find(c => c.service === s.key) || {
+                            service: s.key,
+                            cost: '',
+                            usageRate: '',
+                            minPurchase: '',
+                            isActive: true
+                        };
+
+                        return (
+                            <div
+                                key={s.key}
+                                className={`p-6 rounded-lg border bg-white shadow-sm flex items-center flex-col md:flex-row md:items-end gap-4 transition-opacity ${!costData.isActive ? 'opacity-75' : ''}`}
+                            >
+                                <div className="flex-1 space-y-4 w-full">
+                                    <div className="flex items-center justify-between border-b pb-2">
+                                        <h3 className="font-bold text-lg flex items-center gap-2">
+                                            {s.label}
+                                            {!costData.isActive && (
+                                                <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full uppercase">
+                                                    Disabled
+                                                </span>
+                                            )}
+                                        </h3>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-xs font-medium ${costData.isActive ? 'text-green-600' : 'text-gray-400'}`}>
+                                                {costData.isActive ? 'Active' : 'Inactive'}
+                                            </span>
+                                            <Switch
+                                                checked={costData.isActive}
+                                                onCheckedChange={(checked) => {
+                                                    handleCostChange(s.key, 'isActive', checked);
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+                                                Cost Per Unit (₦)
+                                            </label>
+                                            <Input
+                                                type="number"
+                                                value={costData.cost}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    // Allow empty string or any valid number
+                                                    if (val === '' || !isNaN(parseFloat(val))) {
+                                                        handleCostChange(s.key, 'cost', val);
+                                                    }
+                                                }}
+                                                onBlur={(e) => {
+                                                    let val = e.target.value;
+                                                    if (val === '' || val === '-') {
+                                                        val = '0';
+                                                    }
+                                                    handleCostChange(s.key, 'cost', val);
+                                                }}
+                                                className="w-full"
+                                                disabled={!costData.isActive}
+                                                step="0.01"
+                                                min="0"
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+                                                Credit Usage Rate
+                                            </label>
+                                            <Input
+                                                type="number"
+                                                value={costData.usageRate}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    // Allow empty string or any valid number including decimals
+                                                    if (val === '' || !isNaN(parseFloat(val))) {
+                                                        handleCostChange(s.key, 'usageRate', val);
+                                                    }
+                                                }}
+                                                onBlur={(e) => {
+                                                    let val = e.target.value;
+                                                    if (val === '' || val === '-') {
+                                                        val = '1';
+                                                    }
+                                                    // Ensure valid decimal number
+                                                    const numVal = parseFloat(val);
+                                                    if (!isNaN(numVal)) {
+                                                        handleCostChange(s.key, 'usageRate', numVal.toString());
+                                                    } else {
+                                                        handleCostChange(s.key, 'usageRate', '1');
+                                                    }
+                                                }}
+                                                className="w-full"
+                                                disabled={!costData.isActive}
+                                                step="0.01"
+                                                min="0.01"
+                                                placeholder="0.00"
+                                            />
+                                            <p className="text-[10px] text-gray-400 mt-1">Credits used per action (supports decimals like 0.5)</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">
+                                                Min. Top-up Units
+                                            </label>
+                                            <Input
+                                                type="number"
+                                                value={costData.minPurchase}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    // Allow empty string or any valid number
+                                                    if (val === '' || !isNaN(parseFloat(val))) {
+                                                        handleCostChange(s.key, 'minPurchase', val);
+                                                    }
+                                                }}
+                                                onBlur={(e) => {
+                                                    let val = e.target.value;
+                                                    if (val === '' || val === '-') {
+                                                        val = '1';
+                                                    }
+                                                    handleCostChange(s.key, 'minPurchase', val);
+                                                }}
+                                                className="w-full"
+                                                disabled={!costData.isActive}
+                                                step="0.01"
+                                                min="0"
+                                                placeholder="1"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <Button
+                                    onClick={() => saveServiceCost(costData)}
+                                    disabled={isSaving}
+                                    className="bg-black hover:bg-gray-800 text-white min-w-[120px]"
+                                >
+                                    {isSaving ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Save size={16} className="mr-2" />}
+                                    Save
+                                </Button>
+                            </div>
+                        );
+                    })}
+                </div>
+            </motion.div>
+
+            {/* Warning Section */}
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+                className="p-6 rounded-lg border bg-red-50 border-red-100"
+            >
+                <div className="flex gap-3">
+                    <AlertCircle size={24} className="text-red-600 shrink-0" />
+                    <div>
+                        <h3 className="font-bold mb-2 text-red-600">
+                            Danger Zone
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                            These settings affect the Marketplace (Top-up) prices for all users immediately.
+                            Always verify the Unit Cost and Usage Rate before saving.
+                        </p>
+                    </div>
+                </div>
+            </motion.div>
+        </div>
+    );
 }

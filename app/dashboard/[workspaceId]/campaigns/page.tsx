@@ -20,16 +20,8 @@ export default function CampaignManagementPage() {
   const params = useParams();
   const workspaceId = params.workspaceId as string;
   const { toast } = useToast();
-  const { currentWorkspace, setCurrentWorkspace } = useWorkspaceStore();
-  const { 
-    campaigns, 
-    templates, 
-    isLoading,
-    fetchCampaigns, 
-    fetchTemplates,
-    fetchStats,
-    stats
-  } = useEmailStore();
+  const { campaigns, templates, isLoading, fetchCampaigns, fetchTemplates, fetchStats, stats } = useEmailStore();
+  const { currentWorkspace } = useWorkspaceStore();
 
   
   const [selectedCampaign, setSelectedCampaign] = useState<any>(null);
@@ -38,19 +30,12 @@ export default function CampaignManagementPage() {
   const [previewTemplate, setPreviewTemplate] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load workspace
-  useEffect(() => {
-    if (workspaceId) {
-      setCurrentWorkspace({ id: workspaceId } as any);
-    }
-  }, [workspaceId, setCurrentWorkspace]);
-
   // Load data
   useEffect(() => {
-    if (currentWorkspace?.id) {
+    if (workspaceId) {
       loadData();
     }
-  }, [currentWorkspace?.id]);
+  }, [workspaceId]);
 
   const loadData = async () => {
     try {
@@ -91,7 +76,7 @@ export default function CampaignManagementPage() {
     <div className="space-y-6 p-6">
       <CampaignHeader 
         onRefresh={handleRefresh}
-        // onNewCampaign={() => setShowNewCampaignModal(true)}
+        onNewCampaign={() => setShowNewCampaignModal(true)}
         refreshing={refreshing}
       />
  
@@ -108,11 +93,11 @@ export default function CampaignManagementPage() {
         }}
       />
 
-      {/* <NewCampaignModal
+      <NewCampaignModal
         open={showNewCampaignModal}
         onOpenChange={setShowNewCampaignModal}
         templates={templates}
-      /> */}
+      />
 
       <TemplatePreviewModal
         template={previewTemplate}
@@ -120,12 +105,12 @@ export default function CampaignManagementPage() {
         onOpenChange={setShowTemplatePreview}
       />
 
-      {/* {selectedCampaign && (
+      {selectedCampaign && (
         <CampaignDetails 
           campaign={selectedCampaign} 
           onClose={() => setSelectedCampaign(null)}
         />
-      )} */}
+      )}
     </div>
   );
 }

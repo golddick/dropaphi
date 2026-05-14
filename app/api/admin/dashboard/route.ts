@@ -114,16 +114,25 @@ export async function GET(req: NextRequest) {
     });
 
     // API usage statistics
-    const totalApiCalls = await db.apiKey.aggregate({
+    const totalApiCallsSnapshot = await db.apiKey.aggregate({
       _sum: { usageCount: true }
     });
 
-    const apiCallsThisPeriod = await db.apiKey.aggregate({
-      where: {
-        createdAt: { gte: startDate }
-      },
-      _sum: { usageCount: true }
+    const historicalApiCalls = await db.aPiUsageSummary.aggregate({
+      _sum: { totalCalls: true }
     });
+
+    const totalApiCalls = (totalApiCallsSnapshot._sum.usageCount || 0) + 
+                         (historicalApiCalls._sum.totalCalls || 0);
+
+    const apiCallsThisPeriod = await db.aPiUsageSummary.aggregate({
+      where: {
+        date: { gte: startDate }
+      },
+      _sum: { totalCalls: true }
+    });
+
+    const currentPeriodApiCalls = apiCallsThisPeriod._sum.totalCalls || 0;
 
     // Communication statistics
     const totalEmailsSent = await db.email.count();
@@ -245,8 +254,8 @@ export async function GET(req: NextRequest) {
           failed: failedTransactions
         },
         api: {
-          totalCalls: totalApiCalls._sum.usageCount || 0,
-          thisPeriod: apiCallsThisPeriod._sum.usageCount || 0
+          totalCalls: totalApiCalls,
+          thisPeriod: currentPeriodApiCalls
         },
         communications: {
           emails: {

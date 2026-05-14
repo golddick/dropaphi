@@ -11,7 +11,7 @@ const updatePromoSchema = z.object({
   maxUses: z.number().min(1).optional().nullable(),
   validFrom: z.string().transform(s => new Date(s)).optional(),
   validUntil: z.string().transform(s => new Date(s)).optional(),
-  minPlanTier: z.enum(['STARTER', 'PROFESSIONAL', 'BUSINESS', 'ENTERPRISE']).optional().nullable(),
+  minPlanTier: z.enum(['FREE', 'STARTER', 'PROFESSIONAL', 'BUSINESS']).optional().nullable(),
   appliesToPlans: z.array(z.string()).optional().nullable(),
   firstTimeOnly: z.boolean().optional(),
 });

@@ -228,7 +228,7 @@ const handlePasswordSubmit = async (e: React.FormEvent) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'dropapi-backup-codes.txt';
+    a.download = 'dropaphi-backup-codes.txt';
     a.click();
     URL.revokeObjectURL(url);
   };

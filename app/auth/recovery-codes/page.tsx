@@ -91,7 +91,7 @@ export default function RecoveryCodesPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `dropapi-backup-codes-${new Date().toISOString().split('T')[0]}.txt`;
+    a.download = `dropaphi-backup-codes-${new Date().toISOString().split('T')[0]}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Backup codes downloaded');

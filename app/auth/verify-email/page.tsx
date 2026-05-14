@@ -36,13 +36,13 @@ function VerifyEmailContent() {
       toast.success(
         <div>
           <p className="font-medium">Email verified successfully!</p>
-          <p className="text-xs text-gray-500">Redirecting to login...</p>
+          <p className="text-xs text-gray-500">Redirecting to dashboard...</p>
         </div>,
         { duration: 3000 }
       );
       
       setTimeout(() => {
-        router.push('/auth/login?verified=true');
+        router.push('/dashboard');
       }, 2000);
     } catch (error: any) {
       toast.dismiss(loadingToast);

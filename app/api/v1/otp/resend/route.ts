@@ -27,6 +27,8 @@ const regenerateOTPSchema = z.object({
   metadata: z.record(z.any()).optional(),
   brandName: z.string().optional(),
   customFields: z.record(z.string()).optional(),
+  fromName: z.string().optional(),
+  fromEmail: z.string().email().optional(),
   reason: z.enum(['expired', 'not_received', 'new_request']).optional().default('not_received'),
 });
 
@@ -81,6 +83,8 @@ export async function POST(req: NextRequest) {
       metadata,
       brandName,
       customFields,
+      fromName: customFromName,
+      fromEmail: customFromEmail,
       reason
     } = parsed.data;
 
@@ -245,9 +249,11 @@ export async function POST(req: NextRequest) {
       subject: emailSubject,
       html: emailHtml,
       text: emailText,
-      fromEmail: sender.email,
-      fromName: sender.name,
+      fromEmail: customFromEmail || sender.email,
+      fromName: customFromName || sender.name,
       replyTo: sender.replyTo,
+      workspaceId: keyInfo.workspaceId,
+      skipFooter: true, // OTP templates have their own branding/footer
       headers: {
         "X-OTP-ID": otpRecord.id,
         "X-Workspace-ID": keyInfo.workspaceId,
@@ -255,7 +261,7 @@ export async function POST(req: NextRequest) {
         "X-OTP-Regenerate": "true",
         "X-OTP-Reason": reason,
       },
-    });
+    } as any);
 
     if (!emailResult.success) {
       // Mark OTP as failed

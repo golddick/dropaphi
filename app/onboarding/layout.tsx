@@ -9,17 +9,17 @@ export default function OnboardingLayout({
     <div className="min-h-screen" style={{ backgroundColor: '#FAFAFA' }}>
       {/* Progress Header */}
       <div
-        className="border-b"
+        className=""
         style={{ borderColor: '#E5E5E5' }}
       >
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1
                 className="text-2xl sm:text-3xl font-bold"
                 style={{ color: '#1A1A1A' }}
               >
-                Get Started with Drop API
+                Drop APHI
               </h1>
               <p style={{ color: '#666666' }} className="text-sm mt-1">
                 Complete these steps to launch your workspace

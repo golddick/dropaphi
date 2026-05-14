@@ -200,7 +200,7 @@ export function SendEmailModal({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <Send className="w-5 h-5 text-red-500" />
+            <Send className="w-5 h-5 text-primary" />
             Send Email
           </DialogTitle>
         </DialogHeader>
@@ -211,7 +211,7 @@ export function SendEmailModal({
               <Folder className="w-4 h-4" />
               To Subscribers
               {subscriberCount !== null && subscriberCount > 0 && (
-                <span className="ml-1 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
+                <span className="ml-1 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                   {subscriberCount}
                 </span>
               )}
@@ -223,11 +223,11 @@ export function SendEmailModal({
           </TabsList>
 
           {/* Campaign Selection Section */}
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="mb-6 p-4 bg-muted/30 rounded-lg border border-border">
             <div className="flex items-center justify-between mb-3">
               <label className="text-sm font-medium flex items-center gap-2">
-                <Folder className="w-4 h-4 text-gray-500" />
-                Select Campaign <span className="text-red-500">*</span>
+                <Folder className="w-4 h-4 text-muted-foreground" />
+                Select Campaign <span className="text-destructive">*</span>
               </label>
               
               {/* Refresh subscriber count button */}
@@ -254,29 +254,29 @@ export function SendEmailModal({
                     disabled={isLoading}
                     className={`text-left p-3 rounded-lg border-2 transition-all ${
                       selectedCampaign === campaign.id
-                        ? "border-red-500 bg-red-50 shadow-sm"
-                        : "border-gray-200 hover:border-red-200 hover:bg-gray-50"
+                        ? "border-primary bg-primary/5 shadow-sm"
+                        : "border-border hover:border-primary/20 hover:bg-muted/50"
                     } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
-                        <Folder className={`w-4 h-4 shrink-0 ${selectedCampaign === campaign.id ? 'text-red-500' : 'text-gray-400'}`} />
+                        <Folder className={`w-4 h-4 shrink-0 ${selectedCampaign === campaign.id ? 'text-primary' : 'text-muted-foreground'}`} />
                         <div className="truncate">
-                          <p className="font-medium text-sm text-gray-900 truncate capitalize">{campaign.name}</p>
+                          <p className={`font-medium text-sm truncate capitalize ${selectedCampaign === campaign.id ? 'text-foreground' : 'text-muted-foreground'}`}>{campaign.name}</p>
                         </div>
                       </div>
                       {selectedCampaign === campaign.id && (
-                        <Check className="w-4 h-4 text-red-500 shrink-0 ml-2" />
+                        <Check className="w-4 h-4 text-primary shrink-0 ml-2" />
                       )}
                     </div>
                   </button>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-4 bg-white rounded-lg border border-dashed">
-                <Folder className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-                <p className="text-sm text-gray-500">No campaigns available</p>
-                <p className="text-xs text-gray-400 mt-1">Create a campaign first</p>
+              <div className="text-center py-4 bg-muted/50 rounded-lg border border-dashed border-border">
+                <Folder className="w-8 h-8 mx-auto text-muted-foreground/30 mb-2" />
+                <p className="text-sm text-muted-foreground">No campaigns available</p>
+                <p className="text-xs text-muted-foreground/50 mt-1">Create a campaign first</p>
               </div>
             )}
 
@@ -295,16 +295,16 @@ export function SendEmailModal({
                 {/* Subscriber Count Status */}
                 <div className={`p-4 rounded-lg border ${
                   subscriberCount && subscriberCount > 0 
-                    ? "bg-green-50 border-green-200" 
-                    : "bg-yellow-50 border-yellow-200"
+                    ? "bg-green-500/10 border-green-500/20" 
+                    : "bg-yellow-500/10 border-yellow-500/20"
                 }`}>
                   <div className="flex items-center gap-3">
                     <Users className={`w-5 h-5 ${
-                      subscriberCount && subscriberCount > 0 ? "text-green-600" : "text-yellow-600"
+                      subscriberCount && subscriberCount > 0 ? "text-green-500" : "text-yellow-500"
                     }`} />
                     <div>
                       <p className={`font-medium ${
-                        subscriberCount && subscriberCount > 0 ? "text-green-800" : "text-yellow-800"
+                        subscriberCount && subscriberCount > 0 ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"
                       }`}>
                         {loadingSubscribers ? (
                           "Checking subscribers..."
@@ -391,7 +391,7 @@ export function SendEmailModal({
                     size="sm"
                     onClick={handleClearAll}
                     disabled={isLoading}
-                    className="text-red-500 hover:text-red-600 h-auto px-2"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 h-auto px-2"
                   >
                     Clear all
                   </Button>
@@ -400,16 +400,16 @@ export function SendEmailModal({
                   {customEmails.map((email, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 group hover:border-red-200 transition-colors"
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border group hover:border-primary/20 transition-colors"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <Mail className="w-4 h-4 text-gray-400 shrink-0" />
-                        <span className="text-sm text-gray-700 truncate">{email}</span>
+                        <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm text-foreground truncate">{email}</span>
                       </div>
                       <button
                         onClick={() => handleRemoveEmail(email)}
                         disabled={isLoading}
-                        className="text-gray-400 hover:text-red-500 transition-colors p-1 hover:bg-red-50 rounded shrink-0"
+                        className="text-muted-foreground hover:text-destructive transition-colors p-1 hover:bg-destructive/10 rounded shrink-0"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -421,10 +421,10 @@ export function SendEmailModal({
 
             {/* Empty State */}
             {customEmails.length === 0 && !emailError && selectedCampaign && (
-              <div className="text-center py-8">
-                <Mail className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                <p className="text-sm text-gray-500">No emails added yet</p>
-                <p className="text-xs text-gray-400 mt-1">Add email addresses above to send</p>
+              <div className="text-center py-8 bg-muted/30 rounded-lg border border-dashed border-border">
+                <Mail className="w-12 h-12 mx-auto text-muted-foreground/30 mb-3" />
+                <p className="text-sm text-muted-foreground">No emails added yet</p>
+                <p className="text-xs text-muted-foreground/50 mt-1">Add email addresses above to send</p>
               </div>
             )}
           </TabsContent>
@@ -447,7 +447,7 @@ export function SendEmailModal({
               }
             }}
             disabled={isSendDisabled()}
-            className="bg-red-500 hover:bg-red-600 text-white min-w-25"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground min-w-25"
           >
             {getButtonText()}
           </Button>

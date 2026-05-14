@@ -30,15 +30,15 @@ function ViewEmailModal({ isOpen, onClose, email, onReply }: ViewEmailModalProps
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-white rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col"
+        className="bg-card rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col border border-border"
       >
-        <div className="flex justify-between items-center p-4 border-b">
-          <h3 className="text-lg font-semibold" style={{ color: '#1A1A1A' }}>
+        <div className="flex justify-between items-center p-4 border-b border-border">
+          <h3 className="text-lg font-semibold text-foreground">
             Email Details
           </h3>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground"
           >
             <X size={20} />
           </button>
@@ -46,37 +46,37 @@ function ViewEmailModal({ isOpen, onClose, email, onReply }: ViewEmailModalProps
         
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Subject</p>
-            <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>{email.subject}</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Subject</p>
+            <p className="text-sm font-medium text-foreground">{email.subject}</p>
           </div>
           
           <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">From</p>
-            <p className="text-sm" style={{ color: '#1A1A1A' }}>{email.fromName || email.fromEmail || 'Unknown'}</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">From</p>
+            <p className="text-sm text-foreground">{email.fromName || email.fromEmail || 'Unknown'}</p>
           </div>
           
           <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">To</p>
-            <p className="text-sm" style={{ color: '#1A1A1A' }}>{email.toEmails?.join(', ') || 'Unknown'}</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">To</p>
+            <p className="text-sm text-foreground">{email.toEmails?.join(', ') || 'Unknown'}</p>
           </div>
           
           <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Date</p>
-            <p className="text-sm" style={{ color: '#1A1A1A' }}>
+            <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Date</p>
+            <p className="text-sm text-foreground">
               {email.createdAt ? new Date(email.createdAt).toLocaleString() : 'Unknown'}
             </p>
           </div>
           
           <div>
-            <p className="text-xs font-medium text-gray-500 mb-1">Content</p>
-            <div className="mt-2 p-4 bg-gray-50 rounded-lg">
+            <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider">Content</p>
+            <div className="mt-2 p-4 bg-muted/50 rounded-lg border border-border">
               {email.bodyHtml ? (
                 <div 
-                  className="text-sm prose prose-sm max-w-none"
+                  className="text-sm prose dark:prose-invert prose-sm max-w-none"
                   dangerouslySetInnerHTML={{ __html: email.bodyHtml }}
                 />
               ) : (
-                <p className="text-sm whitespace-pre-wrap" style={{ color: '#1A1A1A' }}>
+                <p className="text-sm whitespace-pre-wrap text-foreground">
                   {email.bodyText || 'No content'}
                 </p>
               )}
@@ -91,14 +91,13 @@ function ViewEmailModal({ isOpen, onClose, email, onReply }: ViewEmailModalProps
           )}
         </div>
         
-        <div className="flex gap-2 p-4 border-t">
+        <div className="flex gap-2 p-4 border-t border-border">
           <Button
             onClick={() => {
               onClose();
               onReply();
             }}
             className="flex-1 gap-2"
-            style={{ backgroundColor: '#DC143C' }}
           >
             <Mail size={16} />
             Reply
@@ -232,17 +231,16 @@ export function EmailHistory({ subscriberId, subscriberEmail }: EmailHistoryProp
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
-            className="border rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-all"
-            style={{ borderColor: '#E5E5E5' }}
+            className="border border-border rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-all bg-card"
             onClick={() => handleViewEmail(email)}
           >
-            <div className="p-4 hover:bg-gray-50 transition-colors">
+            <div className="p-4 hover:bg-muted/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1">
-                  <Mail size={16} style={{ color: '#DC143C' }} />
+                  <Mail size={16} className="text-primary" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-sm" style={{ color: '#1A1A1A' }}>
+                      <span className="font-medium text-sm text-foreground">
                         {email.subject || '(No subject)'}
                       </span>
                       <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${getStatusColor(email.status)}`}>
@@ -250,7 +248,7 @@ export function EmailHistory({ subscriberId, subscriberEmail }: EmailHistoryProp
                         <span className="capitalize">{email.status?.toLowerCase() || 'pending'}</span>
                       </span>
                     </div>
-                    <div className="flex items-center gap-4 mt-1 text-xs" style={{ color: '#666666' }}>
+                    <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar size={12} />
                         {email.createdAt ? formatDistanceToNow(new Date(email.createdAt), { addSuffix: true }) : 'Unknown date'}

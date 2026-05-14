@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { DashboardHeader } from '@/components/dashboard/header';
+import { WorkspacePopup } from '@/components/dashboard/WorkspacePopup';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/stores/auth';
 import { useWorkspaceStore } from '@/lib/stores/workspace';
@@ -15,6 +16,19 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { user } = useAuthStore();
   const { workspaces, currentWorkspace, fetchWorkspaces } = useWorkspaceStore();
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) { // lg breakpoint
+        setSidebarOpen(true);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Set initial state
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -31,7 +45,7 @@ export default function DashboardLayout({
 
 
   return (
-    <div className="flex h-screen w-full bg-white" style={{ backgroundColor: '#FAFAFA' }}>
+    <div className="flex h-screen w-full bg-background">
       {/* Sidebar */}
       <DashboardSidebar open={sidebarOpen} onOpenChange={setSidebarOpen} />
 
@@ -46,6 +60,10 @@ export default function DashboardLayout({
             {children}
           </div>
         </main>
+        
+        {currentWorkspace && (
+          <WorkspacePopup workspaceId={currentWorkspace.id} />
+        )}
       </div>
     </div>
   );

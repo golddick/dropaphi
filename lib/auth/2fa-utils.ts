@@ -7,7 +7,7 @@
 
 // lib/auth/2fa-utils.ts
 import { db } from '@/lib/db';
-import { transporter } from '../transport';
+import { transporter } from '../inAppTransporter/transport';
 import { randomInt } from 'crypto';
 
 // Generate random OTP (6 digits)
@@ -71,11 +71,11 @@ export async function verifyOTP(email: string, code: string): Promise<boolean> {
   return isValid;
 }
 
-
+ 
 // Send OTP via email
 export async function sendOTPEmail(email: string, otp: string, name: string): Promise<void> {
   const mailOptions = {
-    from: `"Drop-APHI Security" <${process.env.MAIL_FROM || 'security@dropapi.com'}>`,
+    from: `"DropAPHI" <${process.env.AUTH_MAIL_FROM || 'security@dropaphi.com'}>`,
     to: email,
     subject: 'Your Two-Factor Authentication Code',
     html: `

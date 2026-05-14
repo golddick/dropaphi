@@ -13,9 +13,8 @@ const formatPrice = (price: number) => {
 // Map plan features to display format
 const getFeatureList = (plan: typeof PLANS[0]) => {
   const features = [
-    `${plan.limits.sms.toLocaleString()} SMS/month`,
     `${plan.limits.email.toLocaleString()} Emails/month`,
-    `${plan.limits.otp.toLocaleString()} OTP verifications/month`,
+    `Pay-as-you-go SMS/OTP`,
     plan.limits.storage >= 1024 
       ? `${plan.limits.storage / 1024} GB Storage`
       : `${plan.limits.storage} MB Storage`,
@@ -58,7 +57,7 @@ export default function PricingSection() {
             Transparent. <span className="text-red-600">No surprises.</span>
           </h2>
           <p className="font-sans text-base text-gray-500 mt-3 max-w-sm mx-auto">
-            Start free, upgrade when you need it. DropID SDK on every plan.
+            Flexible subscriptions + Pay-as-you-go credits for SMS and OTP.
           </p>
         </motion.div>
 

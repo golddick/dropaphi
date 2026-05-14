@@ -50,8 +50,8 @@ export function EditPromoModal({ promo, isOpen, onClose, onSuccess }: Props) {
         description: formData.description,
         discountValue: parseInt(formData.discountValue),
         maxUses: formData.maxUses ? parseInt(formData.maxUses) : undefined,
-        validFrom: new Date(formData.validFrom),
-        validUntil: new Date(formData.validUntil),
+        validFrom: new Date(formData.validFrom).toISOString(),
+        validUntil: new Date(formData.validUntil).toISOString(),
         firstTimeOnly: formData.firstTimeOnly,
       });
 

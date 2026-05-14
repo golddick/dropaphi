@@ -58,24 +58,12 @@ export default function TeamPage() {
   const [copied, setCopied] = useState(false);
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
 
-  // Load workspace data first
   useEffect(() => {
-    const loadWorkspace = async () => {
-      if (workspaceId && !currentWorkspace) {
-        await fetchWorkspaceById(workspaceId);
-      }
-      setWorkspaceLoaded(true);
-    };
-    loadWorkspace();
-  }, [workspaceId, currentWorkspace, fetchWorkspaceById]);
-
-  // Load data on mount
-  useEffect(() => {
-    if (workspaceId && workspaceLoaded) {
+    if (workspaceId) {
       loadMembers();
       loadInvitations();
     }
-  }, [workspaceId, workspaceLoaded]);
+  }, [workspaceId]);
 
   // Get current user's role from workspace members or workspace data
   const getUserRole = () => {
@@ -88,17 +76,13 @@ export default function TeamPage() {
     }
     
     // Fallback to workspace.role
-    return currentWorkspace.role;
+    return currentWorkspace.role || WorkspaceRole.WRITER;
   };
 
   const currentUserRole = getUserRole();
   const isOwner = currentUserRole === WorkspaceRole.OWNER;
   const isAdmin = isOwner || currentUserRole === WorkspaceRole.ADMIN;
 
-  console.log('Current User Role:', currentUserRole);
-  console.log('Is Owner:', isOwner);
-  console.log('Is Admin:', isAdmin);
-  console.log('Current Workspace:', currentWorkspace);
 
   // Show errors
   useEffect(() => {
@@ -264,7 +248,7 @@ export default function TeamPage() {
     return [];
   };
 
-  if (!workspaceLoaded) {
+  if (!workspaceId) {
     return (
       <div className="flex items-center justify-center min-h-100">
         <Loader2 size={40} className="animate-spin" style={{ color: '#DC143C' }} />

@@ -120,8 +120,16 @@ export async function POST(req: NextRequest) {
 
         // Create new verification token
         token = generateSecureToken();
-        await db.emailVerification.create({
-          data: { 
+        await db.emailVerification.upsert({
+          where: { email: user.email },
+          update: {
+            token,
+            expiresAt: EXPIRY.emailVerification(),
+            Verified: false,
+            usedAt: null,
+            createdAt: new Date()
+          },
+          create: { 
             email: user.email,
             token,
             expiresAt: EXPIRY.emailVerification(),
@@ -131,14 +139,13 @@ export async function POST(req: NextRequest) {
         });
 
         // Send verification email (fire and forget)
-        // sendVerificationEmail(user.email, token, user.fullName || 'User')
-        sendVerificationEmail(user.email, token, )
+        sendVerificationEmail(user.email, token)
           .catch(err => console.error("Failed to send verification email:", err));
         
         console.log("✅ New verification email sent to:", user.email);
       } else {
         // Use existing valid token - resend the same email
-        sendVerificationEmail(user.email, token, )
+        sendVerificationEmail(user.email, token)
           .catch(err => console.error("Failed to resend verification email:", err));
         
         console.log("✅ Existing verification email resent to:", user.email);

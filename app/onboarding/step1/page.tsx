@@ -163,9 +163,9 @@ const handleSubmit = async (e: React.FormEvent) => {
     <div className="max-w-2xl mx-auto">
       {/* Progress Indicator - Now only 2 steps */}
       <div className="mb-12">
-        <div className="flex items-center justify-between w-full mb-4">
+        <div className="flex justify-between w-full mb-4">
           {[1, 2].map((step, idx) => (
-            <div key={step} className="flex  items-center flex-1">
+            <div key={step} className="flex  ">
               <div
                 className="flex h-10 w-10 items-center justify-center rounded-full font-bold text-white text-sm"
                 style={{
@@ -199,9 +199,6 @@ const handleSubmit = async (e: React.FormEvent) => {
           >
             Let's set up your workspace
           </h2>
-          <p style={{ color: '#666666' }} className="text-sm">
-            This is where all your API projects and team members will live
-          </p>
         </div>
 
         {/* Workspace Name */}

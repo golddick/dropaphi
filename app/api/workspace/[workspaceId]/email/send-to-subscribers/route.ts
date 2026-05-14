@@ -15,7 +15,9 @@ import {
   created,
 } from "@/lib/respond/response";
 import { mailSender } from "@/lib/email/service/transporter";
-// import { mailSender } from "@/lib/email/service/transporter";
+import { BillingService } from "@/lib/billing/billing-service";
+import { Services } from "@/lib/generated/prisma";
+import { checkServiceStatus } from "@/lib/services/service-status";
 
 // ========================================
 // Validation Schema
@@ -35,10 +37,14 @@ const sendToSubscribersSchema = z.object({
 // ========================================
 
 async function getWorkspaceSender(workspaceId: string) {
+  // First try to get any verified identity (email or domain)
   const sender = await db.emailSender.findFirst({
     where: {
       workspaceId,
-      verified: true,
+      OR: [
+        { verified: true },
+        { isDomain: true, domainVerified: true }
+      ]
     },
     orderBy: { createdAt: "desc" },
   });
@@ -76,6 +82,10 @@ export async function POST(
 ) {
   try {
     const { workspaceId } = await params;
+
+    // Check if EMAIL service is active
+    const serviceStatusError = await checkServiceStatus(Services.EMAIL);
+    if (serviceStatusError) return serviceStatusError;
 
     const auth = await requireAuth();
     if (auth instanceof Response) return auth;
@@ -145,13 +155,16 @@ export async function POST(
       return err("No active subscribers found", 404, "NO_SUBSCRIBERS");
     }
 
-    // Check email limit
-    if (workspace.currentEmailsSent + subscribers.length > workspace.emailLimit) {
+
+    // Check email limit using BillingService
+    const limitCheck = await BillingService.checkLimit(workspaceId, Services.EMAIL, subscribers.length);
+
+    if (!limitCheck.success) {
       return err(
-        "Email limit exceeded",
-        403,
-        "LIMIT_EXCEEDED",
-        `Used ${workspace.currentEmailsSent}/${workspace.emailLimit} emails. This would send ${subscribers.length} more.`
+          "Email limit exceeded",
+          403,
+          "LIMIT_EXCEEDED",
+          "Please upgrade your plan or top up your wallet to send more emails."
       );
     }
 
@@ -175,7 +188,7 @@ export async function POST(
           "{{email}}": subscriber.email,
           "{{subscriber_id}}": subscriber.id,
           "{{workspace_name}}": workspace.name || "",
-          "{{unsubscribe_url}}": `${process.env.NEXTAUTH_URL || "https://app.dropaphi.com"}/unsubscribe?email=${encodeURIComponent(subscriber.email)}&workspace=${workspaceId}`,
+          "{{unsubscribe_url}}": `${process.env.NEXTAUTH_URL || "https://dropaphi.xyz"}/unsubscribe?email=${encodeURIComponent(subscriber.email)}&workspace=${workspaceId}`,
         };
 
         Object.entries(replacements).forEach(([placeholder, value]) => {
@@ -236,9 +249,9 @@ export async function POST(
         const result = await mailSender.sendEmail({
           to: subscriber.email,
           subject,
-          html: personalizedHtml,
-          text: personalizedText, 
-          fromEmail: sender.email,
+          html: personalizedHtml, 
+          text: personalizedText,  
+          fromEmail: sender.email, 
           fromName: sender.name,
           workspaceId:workspaceId,
           campaignId:campaignId,
@@ -260,13 +273,9 @@ export async function POST(
             },
           });
 
-          // Update workspace count
-          await db.workspace.update({
-            where: { id: workspaceId },
-            data: {
-              currentEmailsSent: { increment: 1 },
-            },
-          });
+          // Deduct credits (handles bundle, wallet, and cumulative counters)
+          await BillingService.deductCredits(workspaceId, Services.EMAIL, subscribers.length);
+
 
           successful.push({
             emailId,

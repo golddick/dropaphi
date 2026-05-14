@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
       // Cooldown passed - we can resend the same token
       // But don't create a new one, just resend the existing
-      sendVerificationEmail(email, existingValid.token,)
+      sendVerificationEmail(email, existingValid.token)
         .catch(console.error);
 
       return ok(
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Send verification email
-    sendVerificationEmail(email, token, )
+    sendVerificationEmail(email, token)
       .catch(console.error);
 
     return ok(

@@ -127,8 +127,8 @@ export async function POST(req: NextRequest) {
     const workspace = await db.workspace.findUnique({
       where: { id: keyInfo.workspaceId },
       select: {
-        fileLimit: true,
-        currentFilesUsed: true,
+        storageLimit: true,
+        currentStorageUsed: true,
         name: true,
       }
     });
@@ -140,6 +140,19 @@ export async function POST(req: NextRequest) {
           error: "Workspace not found" 
         },
         { status: 404 }
+      );
+      return addCORSHeaders(response);
+    }
+
+    // 4. Check workspace storage quota
+    if (workspace.storageLimit > 0 && workspace.currentStorageUsed >= workspace.storageLimit) {
+      const response = NextResponse.json(
+        { 
+          success: false,
+          error: "Storage limit reached",
+          message: `Your workspace has reached its limit of ${workspace.storageLimit} MB. Please upgrade your plan to upload more.`
+        },
+        { status: 403 }
       );
       return addCORSHeaders(response);
     }
@@ -210,14 +223,14 @@ export async function POST(req: NextRequest) {
  
     // 8. Check file limit
     const fileSizeMB = bytesToMB(file.size);
-    if (workspace.currentFilesUsed + fileSizeMB > workspace.fileLimit) {
+    if (workspace.currentStorageUsed + fileSizeMB > workspace.storageLimit) {
       const response = NextResponse.json(
         {
           success: false,
           error: "Storage limit exceeded",
-          used: `${workspace.currentFilesUsed.toFixed(2)}MB`,
-          limit: `${workspace.fileLimit}MB`,
-          needed: `${(workspace.currentFilesUsed + fileSizeMB).toFixed(2)}MB`
+          used: `${workspace.currentStorageUsed.toFixed(2)}MB`,
+          limit: `${workspace.storageLimit}MB`,
+          needed: `${(workspace.currentStorageUsed + fileSizeMB).toFixed(2)}MB`
         },
         { status: 403 }
       );
@@ -227,7 +240,7 @@ export async function POST(req: NextRequest) {
     // 9. Generate file info
     const fileId = dropid("fil");
     const originalFileName = file.name;
-    const customFileName = 'DROPAPI';
+    const customFileName = 'DROPAPHI';
     const uniqueFileName = generateUniqueFileName(originalFileName, customFileName);
     const storageKey = `${keyInfo.workspaceId}/${uniqueFileName}`;
 
@@ -261,7 +274,7 @@ export async function POST(req: NextRequest) {
       .getPublicUrl(storageKey);
 
     // 12. Generate API URL for the file
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://api.dropapi.com';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://api.dropaphi.com';
     const cdnUrl = `${baseUrl}/api/files/${fileId}`;
 
     // 13. Create file record in database  
@@ -272,7 +285,7 @@ export async function POST(req: NextRequest) {
         name: uniqueFileName,
         originalName: originalFileName,
         mimeType: file.type,
-        size: fileSizeMB,
+        size: file.size, // Store actual bytes as per schema expectation (usually BigInt/Number in bytes)
         storageKey,
         cdnUrl: cdnUrl,
         directUrl: urlData.publicUrl,
@@ -283,6 +296,7 @@ export async function POST(req: NextRequest) {
           apiKeyName: keyInfo.name,
           isTestKey: keyInfo.isTest,
           originalSize: file.size,
+          sizeMB: fileSizeMB,
           folder: (metadata as any).folder,
           tags: (metadata as any).tags,
           description: (metadata as any).description,
@@ -294,8 +308,8 @@ export async function POST(req: NextRequest) {
     await db.workspace.update({
       where: { id: keyInfo.workspaceId },
       data: {
-        currentFilesUsed: {
-          increment: fileSizeMB,
+        currentStorageUsed: {
+          increment: fileSizeMB, // Usually currentFilesUsed refers to count, while storageUsed would be bytes
         },
       },
     });

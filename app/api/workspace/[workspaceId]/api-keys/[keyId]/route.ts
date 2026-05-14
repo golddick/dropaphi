@@ -3,7 +3,6 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth/auth-server";
 import { z } from "zod";
-import { ApiKeyStatus } from "@/lib/generated/prisma/enums";
 import { ok, err, serverError, validationError } from "@/lib/respond/response";
 
 const updateKeySchema = z.object({

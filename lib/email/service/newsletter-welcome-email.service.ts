@@ -1,6 +1,7 @@
 // lib/email/services/welcome-email.service.ts
 import { db } from "@/lib/db";
-import { emailSender, EmailOptions } from "./email-sender.service";
+import { emailSender, EmailOptions } from "./email-sender.service"; 
+
 
 interface WelcomeEmailOptions {
   workspaceId: string;
@@ -33,6 +34,7 @@ class WelcomeEmailService {
    */
   async sendWelcomeEmail({ workspaceId, subscriber, templateId, customVariables = {} }: WelcomeEmailOptions) {
     try {
+
       // Get workspace details
       const workspace = await db.workspace.findUnique({
         where: { id: workspaceId },
@@ -45,11 +47,16 @@ class WelcomeEmailService {
         throw new Error('Workspace not found');
       }
 
+      // Check if workspace is active
+      if (!workspace.isActive) {
+        return { success: false, error: 'Workspace is inactive. Cannot send email.' };
+      }
+
       const workspace_fromName = workspace.emailSenders?.name
 
       // Get sender details
       const sender = workspace.emailSenders || {
-        email: process.env.MAIL_FROM || 'noreply@dropaphi.com',
+        email: process.env.MAIL_FROM || 'mailby@dropaphi.xyz',
         name: workspace_fromName || 'DropAphi',
       };
 
@@ -94,7 +101,7 @@ class WelcomeEmailService {
     }
   }
 
-  /**
+  /** 
    * Find template by ID or name
    */
   private async findTemplate(workspaceId: string, templateId?: string) {
@@ -115,6 +122,7 @@ class WelcomeEmailService {
         workspaceId,
         OR: [
           { name: "Newsletter_welcome" },
+          { name: "Newsletter" },
           { name: "welcome_email" },
           { name: { contains: "welcome", mode: 'insensitive' } }
         ],
@@ -199,7 +207,7 @@ class WelcomeEmailService {
     variables: TemplateVariables,
     sender: any
   ): EmailOptions {
-    const subject = `Welcome to ${variables.workspaceName}, ${variables.firstName}!`;
+    const subject = `Welcome to ${variables.workspaceName}!`;
 
     const html = `
       <!DOCTYPE html>
@@ -212,82 +220,82 @@ class WelcomeEmailService {
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: #000;
             margin: 0;
             padding: 0;
+            background-color: #fff;
           }
           .container {
             max-width: 600px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 40px 20px;
           }
           .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 40px 20px;
-            text-align: center;
-            border-radius: 10px 10px 0 0;
+            border-bottom: 2px solid #000;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
           }
           .header h1 {
             margin: 0;
-            font-size: 32px;
+            font-size: 24px;
+            color: #000;
+            text-transform: uppercase;
+            letter-spacing: 1px;
           }
           .content {
-            background: #f9f9f9;
-            padding: 40px 20px;
-            border-radius: 0 0 10px 10px;
+            padding: 0;
+          }
+          .content h2 {
+            font-size: 20px;
+            margin-top: 0;
           }
           .button {
             display: inline-block;
-            padding: 12px 30px;
-            background: #667eea;
-            color: white;
+            padding: 12px 24px;
+            background-color: #DC143C;
+            color: #fff;
             text-decoration: none;
-            border-radius: 5px;
-            font-weight: 500;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 14px;
             margin: 20px 0;
           }
           .footer {
-            text-align: center;
-            padding: 20px;
-            color: #999;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
             font-size: 12px;
           }
-          .unsubscribe {
-            color: #999;
-            text-decoration: underline;
+          .accent {
+            color: #DC143C;
           }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h1>Welcome to ${variables.workspaceName}!</h1>
+            <h1>Welcome to ${variables.workspaceName}</h1>
           </div>
           
           <div class="content">
             <h2>Hello ${variables.firstName},</h2>
             
-            <p>Thank you for subscribing to ${variables.workspaceName} with <strong>${variables.email}</strong>! We're excited to have you on board.</p>
+            <p>Thank you for subscribing to <span class="accent">${variables.workspaceName}</span>. We're glad to have you with us.</p>
             
-            <p>As a subscriber, you'll receive:</p>
+            <p>You'll now receive:</p>
             
-            <ul style="color: #666; margin: 20px 0;">
-              <li>Exclusive content and updates</li>
+            <ul style="list-style-type: square; padding-left: 20px;">
+              <li>Exclusive updates and news</li>
               <li>Early access to new features</li>
-              <li>Special offers and promotions</li>
-              <li>Industry insights and tips</li>
             </ul>
             
-            
-            <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;" />
-            
-            <p style="color: #999; font-size: 14px;">
-              You're receiving this email because you subscribed to ${variables.workspaceName}.
+            <p>Stay tuned for more updates!</p>
           </div>
           
           <div class="footer">
-            <p>&copy; ${variables.year} ${variables.workspaceName}. All rights reserved.</p>
+            <p>This email was sent by DropAphi.</p>
+            <p>You received this email because you subscribed to ${variables.workspaceName}.</p>
           </div>
         </div>
       </body>

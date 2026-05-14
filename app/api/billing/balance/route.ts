@@ -17,11 +17,11 @@ export async function GET(req: NextRequest) {
       return ok({ balance: 0 });
     }
 
-    const balance = await db.creditBalance.findUnique({
+    const wallet = await db.wallet.findUnique({
       where: { workspaceId: member.workspaceId },
     });
 
-    return ok({ balance: balance?.balance.toNumber() || 0 });
+    return ok({ balance: wallet?.balance.toNumber() || 0 });
   } catch (error) {
     console.error("[GET_BALANCE]", error);
     return serverError();

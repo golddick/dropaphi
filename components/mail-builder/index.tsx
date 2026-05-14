@@ -24,12 +24,13 @@ import { EmailBuilderHeader } from "./builder/header"
 import { SendEmailModal } from "./builder/send-email-modal"
 import { CampaignSelector } from "./builder/campaign-selector"
 import { EmailPreview } from "./preview/mail-preview"
-import { ActivitySquare, ChevronLeft, ChevronRight } from "lucide-react"
+import {ActivitySquare, ChevronLeft, ChevronRight, Layers, Layout} from "lucide-react"
 import { DraggableComponent } from "./drag-drop/draggable-component"
 import { DroppableCanvas } from "./drag-drop/droppable-canvas"
 import { PropertiesPanel } from "./properties/properties-panel"
 import { TextModeEditor } from "./builder/text-mode-editor"
 import { CodeEditor } from "./code-editor/code-editor"
+import { TemplateLibrary } from "./builder/template-library"
 
 // Import the email store
 import { useWorkspaceStore } from "@/lib/stores/workspace"
@@ -83,17 +84,18 @@ export default function DropAphiMailStudio() {
   } = useHistory<EmailState>({
     elements: [],
     subject: "Your Email Subject",
-    bodyBackgroundColor: "#ffffff",
+    bodyBackgroundColor: "var(--background)",
   })
 
 
+  const [isMobile, setIsMobile] = useState(false)
   const [selectedElement, setSelectedElement] = useState<string | null>(null)
   const [mode, setMode] = useState<"visual" | "code" | "text">("visual")
   const [activeId, setActiveId] = useState<string | null>(null)
   const [showPreview, setShowPreview] = useState(false)
   const [customHTML, setCustomHTML] = useState("")
   const [originalHTML, setOriginalHTML] = useState("")
-  const [isMobile, setIsMobile] = useState(false)
+  const [pendingSend, setPendingSend] = useState(false)
   const [textModeContent, setTextModeContent] = useState("")
   const [showSendModal, setShowSendModal] = useState(false)
   const [showCampaignSelector, setShowCampaignSelector] = useState(false)
@@ -101,6 +103,7 @@ export default function DropAphiMailStudio() {
   const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false)
   const [templateName, setTemplateName] = useState("")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarTab, setSidebarTab] = useState<"components" | "templates">("components")
 
   const componentLibrary = [
     { id: "text", icon: Icons.Type, label: "Text", category: "Basics" },
@@ -157,13 +160,18 @@ export default function DropAphiMailStudio() {
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      // Only set mode to text if we are on mobile AND it hasn't been set yet or is currently visual/code
+      if (mobile && mode !== "text") {
+        setMode("text")
+      }
     }
 
     checkMobile()
     window.addEventListener("resize", checkMobile)
     return () => window.removeEventListener("resize", checkMobile)
-  }, [])
+  }, []) // Remove mode dependency to avoid infinite loop or unnecessary resets
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string)
@@ -230,7 +238,6 @@ export default function DropAphiMailStudio() {
   const handleComponentClick = (componentId: string, label: string) => {
     const componentType = componentId.replace(/-(1|2)$/, "")
     const newElement: EmailElement = {
-      // id: `${componentType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       id: dropid(`${componentType}`),
       type: componentType as EmailElement["type"],
       properties: componentId.includes("columns")
@@ -246,12 +253,17 @@ export default function DropAphiMailStudio() {
     })
   }
 
-  const loadTemplate = (elements: EmailElement[], subject: string) => {
+  const handleLoadTemplate = (template: any) => {
+    // Extract elements and subject from template
+    const elements = template.elements || []
+    const subject = template.subject || "Your Email Subject"
+
     setEmailState({ elements, subject })
     setSelectedElement(null)
+    setSidebarTab("components")
     toast({
       title: "Template loaded",
-      description: "The template has been loaded successfully.",
+      description: `"${template.name}" has been loaded successfully.`,
     })
   }
 
@@ -320,6 +332,11 @@ export default function DropAphiMailStudio() {
           title: "Success",
           description: `Campaign "${name}" created successfully`,
         })
+        
+        if (pendingSend) {
+          setPendingSend(false)
+          setShowSendModal(true)
+        }
       }
     } catch (error: any) {
       toast({
@@ -347,8 +364,12 @@ export default function DropAphiMailStudio() {
         html,
         emailState.subject
       )
-       
-      setShowSendModal(false)
+      
+      toast({
+        title: "Success",
+        description: "Emails are being sent to subscribers.",
+      })
+      setShowSendModal(false) 
     } catch (error: any) {
       toast({
         title: "Error",
@@ -386,6 +407,10 @@ export default function DropAphiMailStudio() {
         campaignId: selectedCampaign?.id,
       })
       
+      toast({
+        title: "Success",
+        description: "Emails sent successfully.",
+      })
       setShowSendModal(false)
     } catch (error: any) {
       toast({
@@ -630,6 +655,7 @@ const parseAsText = (content: string) => {
           onPreview={() => setShowPreview(true)}
           onSend={() => {
             if (!selectedCampaign) {
+              setPendingSend(true)
               setShowCampaignSelector(true)
               toast({
                 title: "Select a campaign",
@@ -641,6 +667,7 @@ const parseAsText = (content: string) => {
           }}
           onSelectCampaign={() => setShowCampaignSelector(true)}
           selectedCampaign={selectedCampaign}
+          isMobile={isMobile}
         />
 
         {/* Main Content - Responsive */}
@@ -654,12 +681,31 @@ const parseAsText = (content: string) => {
                 } bg-sidebar border-r border-sidebar-border flex flex-col overflow-hidden transition-all duration-300`}
               >
                 <div className="p-2 border-b border-sidebar-border shrink-0 flex items-center justify-between">
-                  {!sidebarCollapsed && <h2 className="text-sm font-semibold text-sidebar-foreground">Components</h2>}
+                  {!sidebarCollapsed && (
+                    <div className="flex bg-muted rounded-md p-0.5">
+                      <Button 
+                        size="sm" 
+                        variant={sidebarTab === "components" ? "secondary" : "ghost"}
+                        className="h-7 text-xs px-2"
+                        onClick={() => setSidebarTab("components")}
+                      >
+                        Tools
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant={sidebarTab === "templates" ? "secondary" : "ghost"}
+                        className="h-7 text-xs px-2"
+                        onClick={() => setSidebarTab("templates")}
+                      >
+                        Library
+                      </Button>
+                    </div>
+                  )}
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                    className="h-8 bg-red-500 text-white w-8 p-0"
+                    className="h-8 bg-primary text-primary-foreground w-8 p-0"
                     title={sidebarCollapsed ? "Expand" : "Collapse"}
                   >
                     {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -670,19 +716,30 @@ const parseAsText = (content: string) => {
                   {sidebarCollapsed ? (
                     // Icon-only view
                     <div className="flex flex-col gap-2">
-                      {componentLibrary.map((component) => (
-                        <DraggableComponent
-                          key={component.id}
-                          id={component.id}
-                          icon={component.icon}
-                          label={component.label}
-                          category={component.category}
-                          collapsed={true}
-                          onClick={() => handleComponentClick(component.id, component.label)}
-                        />
-                      ))}
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className={`h-9 w-9 ${sidebarTab === 'components' ? 'bg-accent text-accent-foreground' : ''}`}
+                        onClick={() => {
+                          setSidebarTab('components');
+                          setSidebarCollapsed(false);
+                        }}
+                      >
+                        <Layout className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className={`h-9 w-9 ${sidebarTab === 'templates' ? 'bg-accent text-accent-foreground' : ''}`}
+                        onClick={() => {
+                          setSidebarTab('templates');
+                          setSidebarCollapsed(false);
+                        }}
+                      >
+                        <Layers className="h-4 w-4" />
+                      </Button>
                     </div>
-                  ) : (
+                  ) : sidebarTab === "components" ? (
                     // Full view with categories
                     <div className="space-y-6 p-2">
                       {categories.map((category) => (
@@ -707,14 +764,18 @@ const parseAsText = (content: string) => {
                         </div>
                       ))}
                     </div>
+                  ) : (
+                    <div className="p-2 h-full">
+                      <TemplateLibrary onSelect={handleLoadTemplate} />
+                    </div>
                   )}
                 </div>
               </aside>
 
               {/* Center Canvas */}
               <main
-                className="flex-1 bg-canvas canvas-grid p-4 sm:p-6 md:p-8 overflow-auto"
-                style={{ backgroundColor: emailState.bodyBackgroundColor || "#ffffff" }}
+                className="flex-1 bg-muted/30 canvas-grid p-4 sm:p-6 md:p-8 overflow-auto"
+                style={{ backgroundColor: emailState.bodyBackgroundColor }}
               >
                 <div className="max-w-2xl mx-auto">
                   <SortableContext
@@ -732,7 +793,7 @@ const parseAsText = (content: string) => {
               <aside
                 className={`${
                   isMobile ? "hidden" : " w-40 lg:w-80"
-                } bg-properties border-l border-border flex flex-col overflow-hidden`}
+                } bg-background border-l border-border flex flex-col overflow-hidden`}
               >
                 <div className="p-4 border-b border-border shrink-0">
                   <h2 className="text-sm font-semibold mb-1">Properties</h2>
@@ -757,6 +818,15 @@ const parseAsText = (content: string) => {
                 subject={emailState.subject}
                 onSave={handleTextModeSave}
                 onSubjectChange={updateSubject}
+                onPreview={() => setShowPreview(true)}
+                onSend={() => {
+                  if (!selectedCampaign) {
+                    setPendingSend(true)
+                    setShowCampaignSelector(true)
+                  } else {
+                    setShowSendModal(true)
+                  }
+                }}
               />
             </div>
           ) : mode === "code" && !isMobile ? (
@@ -772,6 +842,15 @@ const parseAsText = (content: string) => {
                 subject={emailState.subject}
                 onSave={handleTextModeSave}
                 onSubjectChange={updateSubject}
+                onPreview={() => setShowPreview(true)}
+                onSend={() => {
+                  if (!selectedCampaign) {
+                    setPendingSend(true)
+                    setShowCampaignSelector(true)
+                  } else {
+                    setShowSendModal(true)
+                  }
+                }}
               />
             </div>
           ) : null}
@@ -779,7 +858,7 @@ const parseAsText = (content: string) => {
 
         <DragOverlay>
           {activeDragComponent ? (
-            <div className="p-3 bg-sidebar-accent border border-red-500 rounded-md shadow-lg">
+            <div className="p-3 bg-sidebar-accent border border-primary rounded-md shadow-lg">
               <div className="flex items-center gap-3">
                 <ActivitySquare className="w-4 h-4 text-sidebar-primary" />
                 <span className="text-sm text-sidebar-foreground">{activeDragComponent.label}</span>
@@ -813,7 +892,13 @@ const parseAsText = (content: string) => {
           onOpenChange={setShowCampaignSelector}
           campaigns={campaigns}
           selectedCampaignId={selectedCampaign?.id}
-          onSelectCampaign={(campaign) => setSelectedCampaign(campaign)}
+          onSelectCampaign={(campaign) => {
+            setSelectedCampaign(campaign)
+            if (pendingSend) {
+              setPendingSend(false)
+              setShowSendModal(true)
+            }
+          }}
           onCreateCampaign={handleCreateCampaign}
           // isLoading={isLoading}
         />
@@ -821,21 +906,20 @@ const parseAsText = (content: string) => {
         {/* Save Template Modal */}
         {showSaveTemplateModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="bg-card text-card-foreground rounded-lg max-w-md w-full p-6 border border-border shadow-xl">
               <h2 className="text-xl font-bold mb-4">Save as Template</h2>
               <input
                 type="text"
                 placeholder="Template name"
                 value={templateName}
                 onChange={(e) => setTemplateName(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg mb-4"
+                className="w-full px-3 py-2 border border-input bg-background rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <div className="flex gap-3">
                 <Button
                   onClick={handleSaveTemplate}
                   disabled={isLoading || !templateName.trim()}
                   className="flex-1"
-                  style={{ backgroundColor: '#DC143C' }}
                 >
                   {isLoading ? 'Saving...' : 'Save Template'}
                 </Button>

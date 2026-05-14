@@ -62,7 +62,6 @@ export default function FileManagerPage() {
     await handleFilesUpload(droppedFiles);
   };
 
-  console.log(files, 'file')
 
   const handleFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.currentTarget.files;

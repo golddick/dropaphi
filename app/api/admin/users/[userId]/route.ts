@@ -5,13 +5,13 @@ import { requireAdmin } from "@/lib/auth/admin-auth";
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const auth = await requireAdmin();
     if (auth instanceof Response) return auth;
 
-    const { userId } = params;
+    const { userId } = await params;
 
     // Delete user (cascading delete will handle related records)
     await db.user.delete({

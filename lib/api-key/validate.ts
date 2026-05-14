@@ -19,19 +19,16 @@ export async function validateApiKey(req: NextRequest): Promise<{
   status?: number;
 }> {
   try {
-    // Get API key from X-API-Key header (this is what your client sends)
+    // Get API key from X-API-Key header
     const apiKey = req.headers.get("x-api-key");
     
     if (!apiKey) {
-      console.log('No X-API-Key header found');
       return { 
         valid: false, 
         error: "Missing API key. Provide via X-API-Key header",
         status: 401
       };
     }
-
-    console.log('API Key received:', apiKey.substring(0, 10) + '...');
 
     // Validate key format first
     if (!isValidKeyFormat(apiKey)) {
@@ -52,23 +49,18 @@ export async function validateApiKey(req: NextRequest): Promise<{
       };
     }
 
-    // Find the API key in database using the raw key field
+    // Find the API key in database with workspace and subscription
     const keyRecord = await db.apiKey.findFirst({
       where: { 
-        key: apiKey, // Look up by raw key
+        key: apiKey,
         status: 'ACTIVE'
       },
       include: {
         workspace: {
-          select: {
-            id: true,
-            name: true,
-            fileLimit: true,
-            currentFilesUsed: true,
+          include: {
             subscription: {
-              select: {
-                tier: true,
-                status: true,
+              include: {
+                plan: true
               }
             }
           }
@@ -77,7 +69,6 @@ export async function validateApiKey(req: NextRequest): Promise<{
     });
 
     if (!keyRecord) {
-      console.log('API key not found in database:', apiKey.substring(0, 10) + '...');
       return { 
         valid: false, 
         error: "Invalid API key",
@@ -109,7 +100,7 @@ export async function validateApiKey(req: NextRequest): Promise<{
       };
     }
 
-    // Check workspace subscription status
+    // 1. Check workspace subscription status
     if (!keyRecord.workspace.subscription || keyRecord.workspace.subscription.status !== 'ACTIVE') {
       return { 
         valid: false, 
@@ -118,7 +109,17 @@ export async function validateApiKey(req: NextRequest): Promise<{
       };
     }
 
-    // Update last used timestamp and increment usage count
+    // 2. Check if plan allows API access
+    const plan = keyRecord.workspace.subscription.plan;
+    if (!plan || !plan.devApiAccess) {
+      return {
+        valid: false,
+        error: "Your current plan does not include API access. Please upgrade to a plan that includes API access.",
+        status: 403
+      };
+    }
+
+    // 3. Update API key last used timestamp
     await db.apiKey.update({
       where: { id: keyRecord.id },
       data: { 

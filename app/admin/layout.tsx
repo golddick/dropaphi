@@ -12,6 +12,8 @@ import {
   Menu,
   X,
   Gift,
+  Building2,
+  PenTool,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -27,14 +29,29 @@ const adminMenuItems = [
     href: '/admin/users',
   },
   {
+    label: 'Workspaces',
+    icon: Building2,
+    href: '/admin/workspaces',
+  },
+  {
     label: 'Transactions',
     icon: TrendingUp,
     href: '/admin/transactions',
   },
   {
+    label: 'Plans',
+    icon: Settings,
+    href: '/admin/plans',
+  },
+  {
     label: 'Promo Codes',
     icon: Gift,
     href: '/admin/promo',
+  },
+  {
+    label: 'Blog Management',
+    icon: PenTool,
+    href: '/admin/blog',
   },
   {
     label: 'Settings',

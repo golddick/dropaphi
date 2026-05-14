@@ -68,17 +68,22 @@ import './globals.css'
 import { RootLayoutClient } from './layout-client'
 import { Toaster } from 'sonner'
 import { ThemeProvider } from '@/components/theme-provider'
-import { Plus_Jakarta_Sans, DM_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ['latin'],
+// Using locally hosted fonts to avoid build-time network fetches
+// Fonts located at app/public/fonts (already in repo)
+const ubuntuSans = localFont({
+  src: [
+    { path: './public/fonts/Ubuntu-Light.ttf', weight: '300', style: 'normal' },
+    { path: './public/fonts/Ubuntu-Italic.ttf', weight: '400', style: 'italic' },
+    { path: './public/fonts/Ubuntu-Regular.ttf', weight: '400', style: 'normal' },
+    { path: './public/fonts/Ubuntu-Medium.ttf', weight: '500', style: 'normal' },
+    { path: './public/fonts/Ubuntu-MediumItalic.ttf', weight: '500', style: 'italic' },
+    { path: './public/fonts/Ubuntu-Bold.ttf', weight: '700', style: 'normal' },
+    { path: './public/fonts/Ubuntu-BoldItalic.ttf', weight: '700', style: 'italic' },
+  ],
   variable: '--font-sans',
-});
-
-const dmMono = DM_Mono({
-  subsets: ['latin'],
-  weight: ['300', '400', '500'],
-  variable: '--font-mono',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -110,7 +115,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html className={`${plusJakarta.variable} ${dmMono.variable}`}>
+    <html className={`${ubuntuSans.variable}`} suppressHydrationWarning>
       <body className="antialiased">
         <RootLayoutClient>
           <ThemeProvider

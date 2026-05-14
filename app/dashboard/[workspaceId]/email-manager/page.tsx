@@ -200,9 +200,9 @@ export default function EmailManagerPage() {
           <DialogTitle>All Recipients - {email.subject}</DialogTitle>
         </DialogHeader>
         <div className="mt-4">
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-muted/50 rounded-lg p-4 border border-border">
             <div className="flex items-center gap-2 mb-3">
-              <Users size={16} className="text-gray-500" />
+              <Users size={16} className="text-muted-foreground" />
               <span className="text-sm font-medium">
                 Total Recipients: {email.toEmails.length}
                 {email.ccEmails.length > 0 && ` (CC: ${email.ccEmails.length})`}
@@ -252,10 +252,10 @@ export default function EmailManagerPage() {
   );
 
   const RecipientRow = ({ recipient }: { recipient: string }) => (
-    <div className="flex items-center justify-between p-2 bg-white rounded border hover:shadow-sm">
+    <div className="flex items-center justify-between p-2 bg-card rounded border border-border hover:shadow-sm">
       <div className="flex items-center gap-2">
-        <Mail size={14} className="text-gray-400" />
-        <span className="text-sm">{recipient}</span>
+        <Mail size={14} className="text-muted-foreground" />
+        <span className="text-sm text-foreground">{recipient}</span>
       </div>
       <Button
         variant="ghost"
@@ -306,10 +306,10 @@ export default function EmailManagerPage() {
         className="flex justify-between items-center"
       >
         <div>
-          <h1 className="text-3xl font-bold mb-2" style={{ color: '#1A1A1A' }}>
+          <h1 className="text-3xl font-bold mb-2 text-foreground">
             Email Manager
           </h1>
-          <p style={{ color: '#666666' }}>
+          <p className="text-muted-foreground">
             Monitor, debug, and preview emails from in-app notifications and API calls
           </p>
         </div>
@@ -539,17 +539,17 @@ export default function EmailManagerPage() {
                     </div>
 
                     {/* Email Metadata */}
-                    <div className="grid grid-cols-2 gap-2 mt-4 p-3 bg-gray-50 rounded-lg text-sm">
+                    <div className="grid grid-cols-2 gap-2 mt-4 p-3 bg-muted/50 rounded-lg text-sm border border-border">
                       <div>
-                        <span className="text-gray-500">From:</span>
-                        <span className="ml-2 font-medium">
+                        <span className="text-muted-foreground">From:</span>
+                        <span className="ml-2 font-medium text-foreground">
                           {selectedEmail.fromName ? `${selectedEmail.fromName} <${selectedEmail.fromEmail}>` : selectedEmail.fromEmail}
                         </span>
                       </div>
                       <div>
-                        <span className="text-gray-500">To:</span>
+                        <span className="text-muted-foreground">To:</span>
                         <div className="ml-2 inline-flex items-center gap-1">
-                          <span className="font-medium">
+                          <span className="font-medium text-foreground">
                             {selectedEmail.toEmails.length > 1 
                               ? `${selectedEmail.toEmails[0]} +${selectedEmail.toEmails.length - 1} more`
                               : selectedEmail.toEmails[0]
@@ -569,31 +569,31 @@ export default function EmailManagerPage() {
                         </div>
                       </div>
                       <div>
-                        <span className="text-gray-500">Created:</span>
-                        <span className="ml-2">{new Date(selectedEmail.createdAt).toLocaleString()}</span>
+                        <span className="text-muted-foreground">Created:</span>
+                        <span className="ml-2 text-foreground">{new Date(selectedEmail.createdAt).toLocaleString()}</span>
                       </div>
                       {selectedEmail.deliveredAt && (
                         <div>
-                          <span className="text-gray-500">Delivered:</span>
-                          <span className="ml-2">{new Date(selectedEmail.deliveredAt).toLocaleString()}</span>
+                          <span className="text-muted-foreground">Delivered:</span>
+                          <span className="ml-2 text-foreground">{new Date(selectedEmail.deliveredAt).toLocaleString()}</span>
                         </div>
                       )}
                       {selectedEmail.openedAt && (
                         <div>
-                          <span className="text-gray-500">Opened:</span>
-                          <span className="ml-2">{new Date(selectedEmail.openedAt).toLocaleString()}</span>
+                          <span className="text-muted-foreground">Opened:</span>
+                          <span className="ml-2 text-foreground">{new Date(selectedEmail.openedAt).toLocaleString()}</span>
                         </div>
                       )}
                       {selectedEmail.openCount > 0 && (
                         <div>
-                          <span className="text-gray-500">Opens:</span>
-                          <span className="ml-2">{selectedEmail.openCount}</span>
+                          <span className="text-muted-foreground">Opens:</span>
+                          <span className="ml-2 text-foreground">{selectedEmail.openCount}</span>
                         </div>
                       )}
                       {selectedEmail.clickCount > 0 && (
                         <div>
-                          <span className="text-gray-500">Clicks:</span>
-                          <span className="ml-2">{selectedEmail.clickCount}</span>
+                          <span className="text-muted-foreground">Clicks:</span>
+                          <span className="ml-2 text-foreground">{selectedEmail.clickCount}</span>
                         </div>
                       )}
                     </div>
@@ -608,9 +608,9 @@ export default function EmailManagerPage() {
                       </TabsList>
 
                       <TabsContent value="html" className="mt-4">
-                        <div className="border rounded-lg overflow-hidden">
-                          <div className="bg-gray-50 px-4 py-2 border-b flex justify-between items-center">
-                            <span className="text-sm font-medium">HTML Preview</span>
+                        <div className="border border-border rounded-lg overflow-hidden">
+                          <div className="bg-muted px-4 py-2 border-b border-border flex justify-between items-center">
+                            <span className="text-sm font-medium text-foreground">HTML Preview</span>
                             <Button 
                               variant="ghost" 
                               size="sm"
@@ -620,7 +620,7 @@ export default function EmailManagerPage() {
                               Fullscreen
                             </Button>
                           </div>
-                          <div className="p-4 max-h-96 overflow-auto">
+                          <div className="p-4 max-h-96 overflow-auto bg-white">
                             {selectedEmail.bodyHtml ? (
                               <iframe
                                 srcDoc={selectedEmail.bodyHtml}
@@ -629,7 +629,7 @@ export default function EmailManagerPage() {
                                 sandbox="allow-same-origin"
                               />
                             ) : (
-                              <div className="text-center py-8 text-gray-500">
+                              <div className="text-center py-8 text-muted-foreground">
                                 No HTML content available
                               </div>
                             )}

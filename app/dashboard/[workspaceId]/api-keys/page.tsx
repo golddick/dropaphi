@@ -70,20 +70,14 @@ export default function ApiKeysPage() {
   } = useApiKeyStore();
 
   const { currentWorkspace } = useWorkspaceStore();
-  const { subscription } = useSubscriptionStore();
-  const spaceid = useWorkspaceID()
+  const { subscription, isLoading: isSubscriptionLoading } = useSubscriptionStore();
+  const workspaceId = useWorkspaceID();
 
-  console.log(spaceid, 'workspace ID from hook')
-  // Get workspace ID from currentWorkspace
-  const workspaceId =  spaceid;
 
 
   useEffect(() => {
     if (workspaceId) {
-      console.log('Loading API keys for workspace:', workspaceId);
       loadData();
-    } else {
-      console.log('No workspace ID available yet');
     }
   }, [workspaceId]);
 
@@ -143,13 +137,6 @@ export default function ApiKeysPage() {
     }
 
     try {
-      console.log('Creating API key with:', {
-        workspaceId,
-        name: formData.name,
-        environment: formData.environment,
-        expiresIn
-      });
-
       const newKey = await createApiKey(
         {
           name: formData.name,
@@ -206,7 +193,7 @@ export default function ApiKeysPage() {
     }
   };
 
-  const isFreePlan = subscription?.tier === 'FREE';
+  const isFreePlan = !isSubscriptionLoading && subscription?.tier === 'FREE';
 
   // Get current expiration options based on selected environment
   const currentExpirationOptions = EXPIRATION_OPTIONS[formData.environment];
@@ -232,13 +219,8 @@ export default function ApiKeysPage() {
             API Keys
           </h1>
           <p style={{ color: '#666666' }}>
-            Manage API keys for authenticating requests to the Drop API
+            Manage API keys for authenticating requests to the DropAPHI
           </p>
-          {workspaceId && (
-            <p className="text-xs mt-1 text-gray-500">
-              Workspace ID: {workspaceId}
-            </p>
-          )}
         </div>
         <Button
           onClick={() => setShowCreateForm(true)}
