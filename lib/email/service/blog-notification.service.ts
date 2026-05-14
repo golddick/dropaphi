@@ -58,7 +58,7 @@ class BlogNotificationService {
       }
 
       const sender = workspace.emailSenders || {
-        email: process.env.MAIL_FROM || 'no-reply@dropaphi.xyz',
+        email: process.env.MAIL_FROM || 'mailby@dropaphi.xyz',
         name: workspace.name || 'DropAphi',
       };
 
@@ -104,7 +104,7 @@ class BlogNotificationService {
             html,
             fromEmail: sender.email,
             fromName: sender.name,
-            workspaceId,
+            workspaceId, 
             emailId: emailRecord.id,
           });
         })

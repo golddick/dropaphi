@@ -6,8 +6,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-const nanoid = customAlphabet('1234567890abcdefghijklmnopqrstuvwxyz', 12)
 
-export function dropid(prefix: string) {
-  return `${prefix}_${nanoid()}`
-}
+export const formatStorageLimit = (limitInMB: number): string => {
+  if (limitInMB >= 1024) {
+    const gb = limitInMB / 1024;
+    return `${gb.toFixed(1)} GB`;
+  }
+  return `${limitInMB} MB`;
+};

@@ -11,6 +11,10 @@ export async function GET(
     const auth = await requireAuth();
     if (auth instanceof Response) return auth;
 
+    if (!auth.userId) {
+      return unauthorized("User not authenticated");
+    }
+
     const { workspaceId } = await params;
 
     if (!workspaceId){
@@ -107,7 +111,7 @@ export async function GET(
       ? Math.floor(features.storageQuotaGb * 1024) // GB to MB
       : undefined;
 
-    const resolvedFileLimit = storageLimitFromFeatures ?? membership.workspace.fileLimit;
+    const resolvedFileLimit = storageLimitFromFeatures ?? membership.workspace.storageLimit ?? 0;
 
     const usage = {
       sms: {
@@ -126,9 +130,9 @@ export async function GET(
         percentage: workspace.otpLimit > 0 ? Math.min(Math.round((workspace.currentOtpSent / workspace.otpLimit) * 100), 100) : 0,
       },
       storage: {
-        used: Math.round(workspace.currentFilesUsed * 100) / 100, // MB
+        used: Math.round(workspace.currentStorageUsed * 100) / 100, // MB
         limit: resolvedFileLimit,
-        percentage: resolvedFileLimit > 0 ? Math.min(Math.round((workspace.currentFilesUsed / resolvedFileLimit) * 100), 100) : 0,
+        percentage: resolvedFileLimit > 0 ? Math.min(Math.round((workspace.currentStorageUsed / resolvedFileLimit) * 100), 100) : 0,
       },
       subscribers: {
         used: workspace.currentSubscribers,
@@ -145,10 +149,10 @@ export async function GET(
         limit: workspace.pushLimit,
         percentage: workspace.pushLimit > 0 ? Math.min(Math.round((workspace.currentPushSent / workspace.pushLimit) * 100), 100) : 0,
       },
-      api: {
-        used: workspace.currentApiCalls,
-        limit: workspace.apiLimit,
-        percentage: workspace.apiLimit > 0 ? Math.min(Math.round((workspace.currentApiCalls / workspace.apiLimit) * 100), 100) : 0,
+      ai: {
+        used: workspace.currentAiCalls,
+        limit: workspace.aiLimit,
+        percentage: workspace.aiLimit > 0 ? Math.min(Math.round((workspace.currentAiCalls / workspace.aiLimit) * 100), 100) : 0,
       }
     };
 
@@ -226,7 +230,7 @@ export async function GET(
         subscribers: workspace.subscriberLimit,
         blog: workspace.blogLimit,
         push: workspace.pushLimit,
-        api: workspace.apiLimit,
+        ai: workspace.aiLimit,
       },
       usage,
       stats: {
@@ -236,7 +240,7 @@ export async function GET(
           otp: workspace.currentOtpSent,
           blogs: workspace.currentBlogsCount,
           push: workspace.currentPushSent,
-          api: workspace.currentApiCalls,
+          ai: workspace.currentAiCalls,
           files: fileStats._count || 0,
           storage: Number(fileStats._sum?.size || 0),
           subscribers: workspace.currentSubscribers,
@@ -248,7 +252,7 @@ export async function GET(
           otp: workspace.currentOtpSent,
           blog: workspace.currentBlogsCount,
           push: workspace.currentPushSent,
-          api: workspace.currentApiCalls,
+          ai: workspace.currentAiCalls,
         },
         success: {
           sms: smsTotal > 0 ? Math.round((smsSuccess / smsTotal) * 100) : 0,
@@ -286,7 +290,7 @@ export async function GET(
         otpCredits: wallet.otpCredits,
         blogCredits: wallet.blogCredits,
         pushCredits: wallet.pushCredits,
-        apiCredits: wallet.apiCredits,
+        aiCredits: wallet.aiCredits,
         storageCredits: wallet.storageCredits,
       } : { 
         balance: 0, 
@@ -295,7 +299,7 @@ export async function GET(
         otpCredits: 0,
         blogCredits: 0,
         pushCredits: 0,
-        apiCredits: 0,
+        aiCredits: 0,
         storageCredits: 0
       },
     });

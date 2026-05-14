@@ -17,10 +17,10 @@ export async function GET(req: NextRequest) {
     costs.forEach(c => {
       const uiKey = c.service.toLowerCase();
       pricing[uiKey] = {
-        amount: 1, // Base unit
-        price: Number(c.cost),
-        usageRate: c.usageRate,
-        minPurchase: c.minPurchase,
+        amount: 1,
+        price: typeof c.cost === 'number' ? c.cost : Number(c.cost),
+        usageRate: typeof c.usageRate === 'number' ? c.usageRate : Number(c.usageRate),
+        minPurchase: typeof c.minPurchase === 'number' ? c.minPurchase : Number(c.minPurchase),
         isActive: c.isActive
       };
     });

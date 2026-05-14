@@ -38,14 +38,19 @@ export interface Workspace {
   fileLimit?: number;
   smsLimit?: number;
   otpLimit?: number;
-  
+  aiLimit?: number;
+  blogLimit?: number;
+  pushLimit?: number;
   // Usage
   currentSubscribers?: number;
   currentEmailsSent?: number;
   currentFilesUsed?: number;
   currentSmsSent?: number;
   currentOtpSent?: number;
-  
+  currentAiCalls?: number;
+  currentBlogPosts?: number;
+  currentPushSent?: number;
+
   // Subscription
   subscription?: {
     id: string;
@@ -87,6 +92,9 @@ export interface WorkspaceDetails extends Workspace {
     files: { limit: number; used: number; remaining: number; percentage: number };
     sms: { limit: number; used: number; remaining: number; percentage: number };
     otp: { limit: number; used: number; remaining: number; percentage: number };
+    ai: { limit: number; used: number; remaining: number; percentage: number };
+    blog: { limit: number; used: number; remaining: number; percentage: number };
+    push: { limit: number; used: number; remaining: number; percentage: number };
   };
 }
 
@@ -233,7 +241,7 @@ export interface Subscription {
     subscribers: number;
     blog: number;
     push: number;
-    api: number;
+    ai: number;
   };
 
   // Add usage from workspace
@@ -245,7 +253,7 @@ export interface Subscription {
     subscribers: number;
     blog: number;
     push: number;
-    api: number;
+    ai: number;
   };
   
   // Add wallet credits
@@ -257,7 +265,6 @@ export interface Subscription {
     subscribers: number;
     blog: number;
     push: number;
-    api: number;
     ai: number;
   };
   balance?: number;

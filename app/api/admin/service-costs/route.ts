@@ -3,8 +3,8 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { ok, serverError } from "@/lib/respond/response";
 import { requireAdmin } from "@/lib/auth/admin-auth";
-import { dropid } from "@/lib/utils";
 import { z } from "zod";
+import { dropid } from "dropid";
 
 export async function GET() {
   try {
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
             description: description || null,
           },
           create: {
-            id: dropid('cost'),
+            id: dropid('serv'),
             service,
             cost: costValue,
             usageRate: usageRateValue,

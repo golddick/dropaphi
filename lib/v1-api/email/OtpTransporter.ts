@@ -1,6 +1,6 @@
 // lib/email/services/email-sender.service.ts
 
-import { transporter } from "@/lib/transport";
+import { transporter } from "@/lib/inAppTransporter/transport";
 import { mailSender as globalEmailSender } from "@/lib/email/service/transporter";
 
 export interface EmailOptions {

@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { dropid } from "dropid";
 import { initializeCustomSubscription } from "@/lib/paystack";
 import { err, ok, serverError, validationError } from "@/lib/respond/response";
-import { calculateDiscount, PLANS } from "@/lib/billing/plan";
+import { calculateDiscount } from "@/lib/billing/plan";
 
 const schema = z.object({
   tier: z.enum(['STARTER', 'PROFESSIONAL', 'BUSINESS']),

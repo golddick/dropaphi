@@ -36,6 +36,12 @@ export async function POST(
   try {
     const { workspaceId } = await params;
 
+    const blogActive = await checkServiceStatus(Services.BLOG);
+    if (!blogActive) {
+      return err("Blog service is not available", 403, "SERVICE_UNAVAILABLE");
+    }
+
+
     const auth = await requireAuth();
     if (auth instanceof Response) return auth;
 

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { ok, serverError } from "@/lib/respond/response";
 import { requireAdmin } from "@/lib/auth/admin-auth";
-import { dropid } from "@/lib/utils";
+import { dropid } from "dropid";
 
 export async function GET() {
   try {

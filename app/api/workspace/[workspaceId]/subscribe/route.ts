@@ -18,7 +18,7 @@ import {BillingService} from "@/lib/billing/billing-service";
 const subscribeSchema = z.object({
   email: z.string().email("Invalid email address"),
   name: z.string().optional(),
-  source: z.string().default("website"),
+  source: z.string().default("website"), 
   templateId: z.string().optional(), 
 });
 
@@ -136,15 +136,6 @@ export async function POST(
         // Deduct credits (handles bundle, wallet, and cumulative counters)
         await BillingService.deductCredits(workspaceId, Services.SUBSCRIBERS, 1);
 
-        // Increment workspace subscriber count
-        // await db.workspace.update({
-        //   where: { id: workspaceId },
-        //   data: {
-        //     currentSubscribers: {
-        //       increment: 1
-        //     }
-        //   }
-        // });
 
         // Send welcome email on reactivation (fire and forget - don't await)
         sendWelcomeEmail({ 

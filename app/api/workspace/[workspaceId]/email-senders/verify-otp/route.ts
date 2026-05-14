@@ -29,7 +29,7 @@ export async function POST(
 
     if (!sender) return notFound("Sender not found");
 
-    const result = await emailSender.verifyOTP(sender.id, parsed.data.code);
+    const result = await emailSender.verifySenderOTP(sender.id, parsed.data.code);
     
     if (!result.success) {
       return serverError(result.error);

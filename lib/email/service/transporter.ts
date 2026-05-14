@@ -1,6 +1,6 @@
 // lib/email/services/email-sender.service.ts
 import nodemailer from "nodemailer";
-import { transporter } from "@/lib/transport";
+import { transporter } from "@/lib/inAppTransporter/transport";
 import { db } from "@/lib/db";
 
 export interface EmailOptions {
@@ -58,10 +58,10 @@ class EmailSenderService {
     } = options;
 
     // Identity Resolution & Fallback Logic
-    const platformDomain = 'dropaphi.xyz';
-    const platformSender = `no-reply@${platformDomain}`;
+   const platformDomain = 'dropaphi.xyz';
+   const platformSender = `mailby@${platformDomain}`;
     
-    let finalFromEmail = process.env.SMTP_USER || platformSender;
+    let finalFromEmail = process.env.MAIL_FROM || platformSender;
     let finalFromName = requestedFromName || process.env.NAME_FROM || 'DropAphi';
     let finalReplyTo = replyTo || requestedFromEmail;
 
@@ -98,10 +98,10 @@ class EmailSenderService {
         }
 
         if (!fallbackName) {
-          fallbackName = 'User';
+          fallbackName = 'User'; 
         }
 
-        finalFromName = `${fallbackName} via ${platformDomain}`;
+        finalFromName = `${fallbackName}`;
         finalFromEmail = platformSender;
         finalReplyTo = requestedFromEmail; // Ensure replies go to the original sender
       }
@@ -136,7 +136,7 @@ class EmailSenderService {
           <div style="text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid #eee;font-size:12px;color:#666;font-family:Arial,sans-serif;">
             <p>
               © ${new Date().getFullYear()} 
-              <a href="https://dropaphi.vercel.app" style="color:#666;text-decoration:underline;">
+              <a href="https://dropaphi.xyz" style="color:#666;text-decoration:underline;">
                 DropAphi
               </a>. All rights reserved.
             </p>

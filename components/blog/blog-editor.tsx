@@ -318,27 +318,27 @@ export function BlogEditor({ initialData, onSave, isSubmitting }: BlogEditorProp
     }
   }, [title, initialData?.slug]);
 
-  const handleImageUpload = async (file: File, type: 'inline' | 'cover') => {
-    if (!file) return;
+  // const handleImageUpload = async (file: File, type: 'inline' | 'cover') => {
+  //   if (!file) return;
     
-    setIsUploading(true);
-    try {
-      const result = await uploadFile(workspaceId, file);
-      if (result) {
-        const url = useFileStore.getState().getFileUrl(result);
-        if (type === 'inline') {
-          editor?.chain().focus().setImage({ src: url }).run();
-        } else {
-          setCoverImage(url);
-        }
-        toast.success('Image uploaded successfully');
-      }
-    } catch (error) {
-      toast.error('Failed to upload image');
-    } finally {
-      setIsUploading(false);
-    }
-  };
+  //   setIsUploading(true);
+  //   try {
+  //     const result = await uploadFile(workspaceId, file);
+  //     if (result) {
+  //       const url = useFileStore.getState().getFileUrl(result);
+  //       if (type === 'inline') {
+  //         editor?.chain().focus().setImage({ src: url }).run();
+  //       } else {
+  //         setCoverImage(url);
+  //       }
+  //       toast.success('Image uploaded successfully');
+  //     }
+  //   } catch (error) {
+  //     toast.error('Failed to upload image');
+  //   } finally {
+  //     setIsUploading(false);
+  //   }
+  // };
 
   const handleImageSelect = (url: string) => {
     if (imagePickerType === 'inline') {

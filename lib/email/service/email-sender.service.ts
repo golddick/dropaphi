@@ -1,15 +1,15 @@
 // lib/email/services/email-sender.service.ts
 import nodemailer from 'nodemailer';
-import { transporter } from '@/lib/transport';
+import { transporter } from '@/lib/inAppTransporter/transport';
 import { db } from '@/lib/db';
 import { addMinutes } from 'date-fns';
-import { dropid } from '@/lib/utils';
 import { isServiceActive } from '@/lib/services/service-status';
 import { Services } from "@/lib/generated/prisma";
+import { dropid } from 'dropid';
 
 export interface EmailOptions {
   to: string | string[];
-  subject: string;
+  subject: string; 
   html: string;
   text?: string;
   fromEmail?: string;
@@ -69,7 +69,7 @@ class EmailSenderService {
 
       // Identity Resolution & Fallback Logic
       const platformDomain = 'dropaphi.xyz';
-      const platformSender = `no-reply@${platformDomain}`;
+      const platformSender = `mailby@${platformDomain}`;
     
       let finalFromEmail = process.env.SMTP_USER || platformSender;
       let finalFromName = fromName || process.env.NAME_FROM || 'DropAphi';
@@ -106,7 +106,7 @@ class EmailSenderService {
             }
           }
 
-          finalFromName = `${fallbackName || 'User'} via ${platformDomain}`;
+          finalFromName = `${fallbackName || 'User'} `;
           finalFromEmail = platformSender;
           finalReplyTo = fromEmail; // Ensure replies go to the original sender
         }
@@ -249,7 +249,7 @@ class EmailSenderService {
   /**
    * Verify an OTP for an email sender
    */
-  async verifyOTP(senderId: string, code: string): Promise<{ success: boolean; error?: string }> {
+  async verifySenderOTP(senderId: string, code: string): Promise<{ success: boolean; error?: string }> {
     try {
       const otp = await db.senderOTP.findFirst({
         where: {
@@ -275,7 +275,7 @@ class EmailSenderService {
       await db.senderOTP.deleteMany({
         where: { emailSenderId: senderId }
       });
-
+ 
       return { success: true };
     } catch (error) {
       console.error('[EMAIL_SENDER] Failed to verify OTP:', error);
@@ -295,7 +295,7 @@ class EmailSenderService {
       return false;
     }
   }
-}
+} 
 
 // Export singleton instance
 export const emailSender = new EmailSenderService(); 

@@ -20,7 +20,7 @@ export async function PATCH(
       otpCredits,
       blogCredits,
       pushCredits,
-      apiCredits,
+      aiCredits,
       storageCredits
     } = body;
 
@@ -33,7 +33,7 @@ export async function PATCH(
         otpCredits: otpCredits !== undefined ? otpCredits : undefined,
         blogCredits: blogCredits !== undefined ? blogCredits : undefined,
         pushCredits: pushCredits !== undefined ? pushCredits : undefined,
-        apiCredits: apiCredits !== undefined ? apiCredits : undefined,
+        aiCredits: aiCredits !== undefined ? aiCredits : undefined,
         storageCredits: storageCredits !== undefined ? storageCredits : undefined,
       },
       create: {
@@ -44,7 +44,7 @@ export async function PATCH(
         otpCredits: otpCredits || 0,
         blogCredits: blogCredits || 0,
         pushCredits: pushCredits || 0,
-        apiCredits: apiCredits || 0,
+        aiCredits: aiCredits || 0,
         storageCredits: storageCredits || 0,
       }
     });
@@ -80,7 +80,7 @@ export async function GET(
          otpCredits: 0,
          blogCredits: 0,
          pushCredits: 0,
-         apiCredits: 0,
+         aiCredits: 0,
          storageCredits: 0
         });
     }

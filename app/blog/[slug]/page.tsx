@@ -66,8 +66,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   return (
     <article className="min-h-screen bg-background">
       {/* Header / Hero */}
-      <div className="w-full border-b border-border bg-muted/30">
-        <div className="container max-w-4xl py-12 px-6">
+      <div className="w-full flex justify-center items-center  border-b border-border bg-muted/30">
+        <div className="container  max-w-4xl  py-12 px-6">
           <Link href="/blog" className="inline-flex items-center text-sm text-muted-foreground hover:text-primary mb-8 transition-colors">
             <ChevronLeft size={16} />
             Back to blog

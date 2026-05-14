@@ -107,14 +107,20 @@ model Workspace {
   website                String?
   subscriberLimit        Int                       @default(100)
   emailLimit             Int                       @default(20)
-  fileLimit              Int                       @default(1)
+  storageLimit           Int                       @default(1)
   smsLimit               Int                       @default(0)
   otpLimit               Int                       @default(10)
+  blogLimit              Int                       @default(2)
+  pushLimit              Int                       @default(2)
+  aiLimit                Int                       @default(100)
   currentSubscribers     Int                       @default(0) @map("current_subscribers")
   currentEmailsSent      Int                       @default(0) @map("current_emails_sent")
-  currentFilesUsed       Float                     @default(0) @map("current_files_used")
+  currentStorageUsed     Float                     @default(0) @map("current_storage_used")
   currentSmsSent         Int                       @default(0) @map("current_sms_sent")
   currentOtpSent         Int                       @default(0) @map("current_otp_sent")
+  currentAiCalls         Int                       @default(0) @map("current_ai_calls")
+  currentBlogsCount      Int                       @default(0) @map("current_blogs_count")
+  currentPushSent        Int                       @default(0) @map("current_push_sent")
   teamSize               String?                   @map("team_size")
   timezone               String                    @default("Africa/Lagos")
   isActive               Boolean                   @default(true) @map("is_active")
@@ -122,16 +128,10 @@ model Workspace {
   updatedAt              DateTime                  @updatedAt @map("updated_at")
   plan                   SubscriptionTier          @default(FREE)
   planSubscriptionStatus PlanSubscriptionStatus    @default(INACTIVE)
-  apiLimit               Int                       @default(100)
   autoTopUpAmount        Decimal                   @default(0) @map("auto_top_up_amount") @db.Decimal(12, 2)
   autoTopUpEnabled       Boolean                   @default(false) @map("auto_top_up_enabled")
   autoTopUpThreshold     Decimal                   @default(0) @map("auto_top_up_threshold") @db.Decimal(12, 2)
-  blogLimit              Int                       @default(2)
-  currentApiCalls        Int                       @default(0) @map("current_api_calls")
-  currentBlogsCount      Int                       @default(0) @map("current_blogs_count")
-  currentPushSent        Int                       @default(0) @map("current_push_sent")
   gracePeriodUntil       DateTime?                 @map("grace_period_until")
-  pushLimit              Int                       @default(100)
   apiKeys                ApiKey[]
   blogPosts              BlogPost[]
   emailSenders           EmailSender?
@@ -159,6 +159,39 @@ model Workspace {
 
   @@map("workspaces")
 }
+
+model MonthlyUsage {
+  id                     String    @id @default("")
+  workspaceId            String    @map("workspace_id")
+  service                Services
+  month                  String    @map("month") // format: YYYY-MM
+  unitsUsed              Int       @default(0) @map("units_used")
+  subscriberLimit        Int       @default(100)
+  emailLimit             Int       @default(20)
+  storageLimit           Int       @default(1)
+  smsLimit               Int       @default(0)
+  otpLimit               Int       @default(10)
+  blogLimit              Int       @default(2)
+  pushLimit              Int       @default(2)
+  aiLimit                Int       @default(100)
+  currentSubscribers     Int       @default(0) @map("current_subscribers")
+  currentEmailsSent      Int       @default(0) @map("current_emails_sent")
+  currentStorageUsed     Float     @default(0) @map("current_storage_used")
+  currentSmsSent         Int       @default(0) @map("current_sms_sent")
+  currentOtpSent         Int       @default(0) @map("current_otp_sent")
+  currentAiCalls         Int       @default(0) @map("current_ai_calls")
+  currentBlogsCount      Int       @default(0) @map("current_blogs_count")
+  currentPushSent        Int       @default(0) @map("current_push_sent")
+  topUpUnitsUsed         Int       @default(0) @map("top_up_units_used")
+  topUpCost              Decimal   @default(0) @map("top_up_cost") @db.Decimal(12, 2)
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+  workspace              Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, service, month])
+  @@map("monthly_usages")
+}
+
+
 
 model WorkspaceMember {
   id          String        @id @default("")
@@ -726,20 +759,14 @@ model Plan {
   description      String?
   price            Decimal                 @db.Decimal(12, 2)
   interval         String                  @default("month")
-  emailCredits     Int                     @default(0) @map("email_credits")
-  smsCredits       Int                     @default(0) @map("sms_credits")
-  otpCredits       Int                     @default(0) @map("otp_credits")
-  storageCredits   Float                   @default(0) @map("storage_credits")
-  extraCreditRate  Decimal                 @default(0) @map("extra_credit_rate") @db.Decimal(12, 2)
-  rollOverCredits  Boolean                 @default(false) @map("roll_over_credits")
-  subscriberLimit  Int                     @default(100)
-  emailLimit       Int                     @default(500)
-  storageLimit     Float                   @default(100)
+  subscriberLimit  Int                     @default(0)
+  emailLimit       Int                     @default(0)
+  storageLimit     Float                   @default(0)
   smsLimit         Int                     @default(0)
   otpLimit         Int                     @default(0)
   blogLimit        Int                     @default(0)
   pushLimit        Int                     @default(0)
-  apiLimit         Int                     @default(0)
+  aiLimit          Int                     @default(0)
   features         Json?
   isActive         Boolean                 @default(true)
   isArchived       Boolean                 @default(false) @map("is_archived")
@@ -753,18 +780,19 @@ model Plan {
 }
 
 model Wallet {
-  id             String    @id @default("")
-  workspaceId    String    @unique @map("workspace_id")
-  balance        Decimal   @default(0) @db.Decimal(12, 2)
-  emailCredits   Int       @default(0) @map("email_credits")
-  smsCredits     Int       @default(0) @map("sms_credits")
-  otpCredits     Int       @default(0) @map("otp_credits")
-  blogCredits    Int       @default(0) @map("blog_credits")
-  pushCredits    Int       @default(0) @map("push_credits")
-  apiCredits     Int       @default(0) @map("api_credits")
-  storageCredits Float     @default(0) @map("storage_credits")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  id                    String    @id @default("")
+  workspaceId           String    @unique @map("workspace_id")
+  balance               Decimal   @default(0) @db.Decimal(12, 2)
+  emailCredits          Int       @default(0) @map("email_credits")
+  smsCredits            Int       @default(0) @map("sms_credits")
+  otpCredits            Int       @default(0) @map("otp_credits")
+  blogCredits           Int       @default(0) @map("blog_credits")
+  pushCredits           Int       @default(0) @map("push_credits")
+  aiCredits             Int       @default(0) @map("ai_credits")
+  subscribersCredits    Int       @default(0) @map("subscribers_credits")
+  storageCredits        Float     @default(0) @map("storage_credits")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  workspace             Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@map("wallets")
 }
@@ -785,21 +813,6 @@ model WorkspaceAlert {
   @@map("workspace_alerts")
 }
 
-model MonthlyUsage {
-  id                 String    @id @default("")
-  workspaceId        String    @map("workspace_id")
-  service            Services
-  month              String    @map("month") // format: YYYY-MM
-  unitsUsed          Int       @default(0) @map("units_used")
-  bundleLimit        Int       @default(0) @map("bundle_limit")
-  topUpUnitsUsed     Int       @default(0) @map("top_up_units_used")
-  topUpCost          Decimal   @default(0) @map("top_up_cost") @db.Decimal(12, 2)
-  updatedAt          DateTime  @updatedAt @map("updated_at")
-  workspace          Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@unique([workspaceId, service, month])
-  @@map("monthly_usages")
-}
 
 model UsageLog {
   id                 String    @id @default("")
@@ -1295,6 +1308,6 @@ enum Services {
   STORAGE
   BLOG
   PUSH
-  API
+  AI
   SUBSCRIBERS
 }

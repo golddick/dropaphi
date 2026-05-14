@@ -48,57 +48,6 @@ export default function OverviewPage() {
   const params = useParams();
   const workspaceId = params.workspaceId as string;
 
-  const OurServices = [
-    {
-      title: 'SMS service',
-      description: 'Send bulk and transactional SMS messages',
-      icon: MessageSquare,
-      href: `/dashboard/${workspaceId}/sms`,
-      statKey: 'sms',
-    },
-    {
-      title: 'Email Service',
-      description: 'Send emails with templates and tracking',
-      icon: Mail,
-      href: `/dashboard/${workspaceId}/email`,
-      statKey: 'email',
-    },
-    {
-      title: 'OTP Service',
-      description: 'Multi-channel OTP verification',
-      icon: Lock,
-      href: '/dashboard/otp',
-      statKey: 'otp',
-    },
-    {
-      title: 'File Storage',
-      description: 'Secure file management with CDN',
-      icon: FileText,
-      href: `/dashboard/${workspaceId}/file-manager`,
-      statKey: 'storage',
-    },
-    {
-      title: 'Blog Service',
-      description: 'Manage and publish your blog posts',
-      icon: FileText,
-      href: '/dashboard/blog',
-      statKey: 'blog',
-    },
-    {
-      title: 'Push Notifications',
-      description: 'Engage users with real-time push messages',
-      icon: MessageSquare,
-      href: '/dashboard/push',
-      statKey: 'push',
-    },
-    {
-      title: 'Newsletter Subscribers',
-      description: 'Engage users with real-time push messages',
-      icon: MessageSquare,
-      href: `/dashboard/${workspaceId}/subscribers`,
-      statKey: 'subscribers',
-    },
-  ];
 
 
   const [topUpService, setTopUpService] = useState<{ title: string; type: string; unit?: string } | null>(null);
@@ -155,8 +104,8 @@ export default function OverviewPage() {
       color: '#E91E63'
     },
     {
-      statKey: 'api',
-      title: 'API Calls',
+      statKey: 'ai',
+      title: 'AI Calls',
       icon: Zap,
       color: '#607D8B'
     },
@@ -218,7 +167,7 @@ export default function OverviewPage() {
     storage: { used: 0, limit: 0, percentage: 0 },
     blog: { used: 0, limit: 0, percentage: 0 },
     push: { used: 0, limit: 0, percentage: 0 },
-    api: { used: 0, limit: 0, percentage: 0 },
+    ai: { used: 0, limit: 0, percentage: 0 },
   };
 
   const walletData = overview?.wallet || {
@@ -229,7 +178,7 @@ export default function OverviewPage() {
     storageCredits: 0,
     blogCredits: 0,
     pushCredits: 0,
-    apiCredits: 0,
+    aiCredits: 0,
   };
 
 

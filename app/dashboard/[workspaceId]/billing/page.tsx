@@ -24,6 +24,7 @@ import { useDashboardStore } from '@/lib/stores/dashboard/dashboard';
 import { toast } from 'sonner';
 import { UsageProgress } from '../overview/_component/usage-progress';
 import { TopUpModal } from '../overview/_component/top-up-modal';
+import { formatStorageLimit } from '@/lib/utils';
 
 export default function BillingPage() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
@@ -95,7 +96,7 @@ console.log( overview , 'usage')
     }
   };
 
-  console.log( serviceCosts, availablePlans, 'billing plan ')
+  console.log( availablePlans, 'billing plan ')
 
   const loadData = async () => {
     try {
@@ -157,8 +158,8 @@ console.log( overview , 'usage')
       color: '#E91E63'
     },
     {
-      statKey: 'api',
-      title: 'API Calls',
+      statKey: 'ai',
+      title: 'AI Calls',
       icon: Zap,
       color: '#607D8B'
     },
@@ -307,8 +308,10 @@ console.log( overview , 'usage')
     storage: { used: 0, limit: 0, percentage: 0 },
     blog: { used: 0, limit: 0, percentage: 0 },
     push: { used: 0, limit: 0, percentage: 0 },
-    api: { used: 0, limit: 0, percentage: 0 },
+    ai: { used: 0, limit: 0, percentage: 0 },
   };
+
+  // console.log(subscription.)
 
   const walletData = overview?.wallet || {
     balance: 0,
@@ -318,7 +321,7 @@ console.log( overview , 'usage')
     storageCredits: 0,
     blogCredits: 0,
     pushCredits: 0,
-    apiCredits: 0,
+    aiCredits: 0,
   };
 
   const walletBalance = walletData.balance || 0;
@@ -600,26 +603,44 @@ console.log( overview , 'usage')
                   if (plan.emailLimit) list.push(`${plan.emailLimit.toLocaleString()} Emails/mo`);
                   if (plan.smsLimit) list.push(`${plan.smsLimit.toLocaleString()} SMS/mo`);
                   if (plan.otpLimit) list.push(`${plan.otpLimit.toLocaleString()} OTPs/mo`);
-                  if (plan.storageLimit) list.push(`${plan.storageLimit >= 1 ? plan.storageLimit : (plan.storageLimit * 1024)} ${plan.storageLimit >= 1 ? 'GB' : 'MB'} Storage`);
+                  if (plan.aiLimit) list.push(`${plan.aiLimit.toLocaleString()} AI Calls/mo`);
+                  if (plan.blogLimit) list.push(`${plan.blogLimit.toLocaleString()} Blog Posts/mo`);
+                  if (plan.pushLimit) list.push(`${plan.pushLimit.toLocaleString()} Push Notifications/mo`);
+                  if (plan.devApiAccess === true) list.push(`API Access`);
+                  if (plan.feature ) list.push(`${plan.feature.toLocaleString()}  `);
+                  if (plan.storageLimit) list.push(`${formatStorageLimit(plan.storageLimit)} Storage` );
                   
-                  // Service Credits (Signup/One-time)
-                  if (plan.emailCredits > 0) list.push(`${plan.emailCredits.toLocaleString()} Welcome Email Credits`);
-                  if (plan.smsCredits > 0) list.push(`${plan.smsCredits.toLocaleString()} Welcome SMS Credits`);
-                  
-                  // Specific Features from JSON
+                  if (plan.feature ) {
+                    list.push(plan.feature);
+                  }
+
                   if (plan.features && typeof plan.features === 'object') {
-                    Object.entries(plan.features).forEach(([k, v]) => {
-                      if (v === true) {
-                        // Convert camelCase to Title Case with spaces
-                        const featureName = k.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
-                        if (!list.some(item => item.includes(featureName))) {
+                    Object.entries(plan.features).forEach(([key, value]) => {
+                      // If value is truthy (including non-empty strings)
+                      if (value && value !== '') {
+                        // Convert camelCase or kebab-case to Title Case
+                        let featureName = key
+                          .replace(/([A-Z])/g, ' $1')  // Add space before capitals
+                          .replace(/([a-z])([A-Z])/g, '$1 $2')  // Handle camelCase
+                          .replace(/[-_]/g, ' ')  // Replace hyphens/underscores with spaces
+                          .replace(/^./, (str) => str.toUpperCase());  // Capitalize first letter
+                        
+                        // Remove duplicate spaces and trim
+                        featureName = featureName.replace(/\s+/g, ' ').trim();
+                        
+                        // Add custom suffix for specific features if needed
+                        if (key.toLowerCase().includes('support')) {
+                          featureName = `${featureName} Support`;
+                        }
+                        
+                        if (!list.some(item => item.toLowerCase().includes(featureName.toLowerCase()))) {
                           list.push(featureName);
                         }
-                      } else if (typeof v === 'string') {
-                        list.push(v);
                       }
                     });
                   }
+
+
                   
                   // Fallback to static features if no numeric limits found
                   if (list.length <= 1 && Array.isArray(plan.features)) {
@@ -660,7 +681,7 @@ console.log( overview , 'usage')
                       </div>
                     )}
 
-                    <h3 className="text-lg font-bold mb-2" style={{ color: '#1A1A1A' }}>
+                    <h3 className="text-lg font-bold mb-2 capitalize" style={{ color: '#1A1A1A' }}>
                       {plan.name}
                     </h3>
                     

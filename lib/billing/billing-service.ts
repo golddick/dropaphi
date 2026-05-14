@@ -1,14 +1,14 @@
+import { dropid } from "dropid";
 import { db } from "../db";
-import { dropid } from "../utils";
 import { Services } from "../generated/prisma";
 
 export class BillingService {
   /**
    * Deducts credits for a service usage.
    * Logic:
-   * 1. Check monthly bundle credits first (via MonthlyUsage)
-   * 2. If reach limit, deduct from top-up wallet balance based on ServiceCost
-   * This works for ALL services including SUBSCRIBERS, BLOG, etc.
+   * 1. Check monthly limit first (from MonthlyUsage record)
+   * 2. If limit reached, deduct from service-specific wallet credits
+   * 3. If no service credits, deduct from general wallet balance
    */
   static async deductCredits(workspaceId: string, service: Services, units: number = 1) {
     const month = new Date().toISOString().slice(0, 7); // YYYY-MM
@@ -25,6 +25,7 @@ export class BillingService {
     });
 
     if (!workspace) throw new Error("Workspace not found");
+    if (!workspace.wallet) throw new Error("Wallet not found for workspace");
 
     // 2. Get current cost for the service
     const serviceCost = await db.serviceCost.findUnique({
@@ -33,8 +34,22 @@ export class BillingService {
 
     if (!serviceCost) throw new Error(`Cost not configured for service: ${service}`);
 
-    // Use usageRate for deduction from wallet
-    const totalCost = serviceCost.usageRate.toNumber() * units;
+    const costPerUnit = serviceCost.usageRate.toNumber();
+    const totalCost = costPerUnit * units;
+
+    // Map service to wallet credit field
+    const walletFieldMap: Record<Services, string> = {
+      [Services.EMAIL]: 'emailCredits',
+      [Services.SMS]: 'smsCredits',
+      [Services.OTP]: 'otpCredits',
+      [Services.STORAGE]: 'storageCredits',
+      [Services.BLOG]: 'blogCredits',
+      [Services.PUSH]: 'pushCredits',
+      [Services.AI]: 'aiCredits',
+      [Services.SUBSCRIBERS]: 'subscribersCredits',
+    };
+
+    const walletField = walletFieldMap[service];
 
     return await db.$transaction(async (tx) => {
       // 3. Get or Create MonthlyUsage for this service
@@ -49,46 +64,111 @@ export class BillingService {
       });
 
       if (!monthlyUsage) {
-        // Initialize monthly usage from plan if available
-        const bundleLimit = this.getPlanBundleLimit(workspace, service);
+        const limits = this.getServiceLimits(workspace, service);
         monthlyUsage = await tx.monthlyUsage.create({
           data: {
             id: dropid('mus'),
             workspaceId,
             service,
             month,
-            bundleLimit
+            subscriberLimit: limits.subscriberLimit,
+            emailLimit: limits.emailLimit,
+            smsLimit: limits.smsLimit,
+            otpLimit: limits.otpLimit,
+            storageLimit: limits.storageLimit,
+            blogLimit: limits.blogLimit,
+            pushLimit: limits.pushLimit,
+            aiLimit: limits.aiLimit,
+            unitsUsed: 0,
+            currentSubscribers: 0,
+            currentEmailsSent: 0,
+            currentStorageUsed: 0,
+            currentSmsSent: 0,
+            currentOtpSent: 0,
+            currentAiCalls: 0,
+            currentBlogsCount: 0,
+            currentPushSent: 0,
+            topUpUnitsUsed: 0,
+            topUpCost: 0,
           }
         });
       }
 
-      const bundleRemaining = monthlyUsage.bundleLimit - monthlyUsage.unitsUsed;
+      // 4. Get current usage and limit for this service
+      const { currentUsed, limit } = this.getServiceUsageAndLimit(monthlyUsage, service);
+      const remaining = limit - currentUsed;
 
-      // 4. Try Bundle Credits First (works for ALL services)
-      if (bundleRemaining >= units) {
-        await tx.monthlyUsage.update({
-          where: { id: monthlyUsage.id },
-          data: {
-            unitsUsed: { increment: units }
-          }
-        });
-
-        // Update workspace counter
+      // ============================================================
+      // STEP 1: Try Monthly Bundle Credits First
+      // ============================================================
+      if (remaining >= units) {
+        await this.updateMonthlyUsage(tx, monthlyUsage.id, service, units, 'increment');
         await this.updateWorkspaceCounter(tx, workspaceId, service, units);
-
-        // Log usage
         await this.logUsage(tx, workspaceId, service, units, 0, "BUNDLE");
 
         return {
           success: true,
           method: "BUNDLE",
-          remaining: bundleRemaining - units,
-          message: `Used ${units} ${service} from bundle. ${bundleRemaining - units} remaining.`
+          remaining: remaining - units,
+          limit,
+          used: currentUsed + units,
+          message: `Used ${units} ${service} from monthly limit. ${remaining - units} remaining.`
         };
       }
 
-      // 5. If bundle exhausted, check Top-Up Balance (works for ALL services)
-      if (workspace.wallet && workspace.wallet.balance.toNumber() >= totalCost) {
+      // ============================================================
+      // STEP 2: Try Service-Specific Wallet Credits
+      // ============================================================
+      const currentServiceCredits = (workspace.wallet as any)[walletField] || 0;
+      
+      if (currentServiceCredits >= units) {
+        // Deduct from service-specific credits
+        await tx.wallet.update({
+          where: { workspaceId },
+          data: {
+            [walletField]: { decrement: units }
+          }
+        });
+
+        await this.updateMonthlyUsage(tx, monthlyUsage.id, service, units, 'increment');
+        await this.updateWorkspaceCounter(tx, workspaceId, service, units);
+        await this.logUsage(tx, workspaceId, service, units, 0, "SERVICE_CREDITS");
+
+        const remainingCredits = currentServiceCredits - units;
+
+        return {
+          success: true,
+          method: "SERVICE_CREDITS",
+          creditsUsed: units,
+          remainingCredits,
+          limit,
+          used: currentUsed + units,
+          message: `Used ${units} ${service} from ${service} credits. ${remainingCredits} ${service} credits remaining.`
+        };
+      }
+
+      // ============================================================
+      // STEP 3: Try General Wallet Balance
+      // ============================================================
+
+      // Ensure wallet exists before proceeding
+      if (!workspace.wallet) {
+        return {
+          success: false,
+          error: "Wallet not configured for this workspace",
+          code: "WALLET_NOT_FOUND",
+          limit,
+          used: currentUsed,
+          required: totalCost,
+          serviceCreditsAvailable: currentServiceCredits,
+          balanceAvailable: 0,
+          suggestion: "Please contact support to set up your wallet."
+        };
+      }
+
+      const currentBalance = workspace.wallet.balance.toNumber();
+      
+      if (currentBalance >= totalCost) {
         const updatedWallet = await tx.wallet.update({
           where: { workspaceId },
           data: {
@@ -96,6 +176,7 @@ export class BillingService {
           }
         });
 
+        // Also record as top-up usage in monthly usage
         await tx.monthlyUsage.update({
           where: { id: monthlyUsage.id },
           data: {
@@ -104,11 +185,9 @@ export class BillingService {
           }
         });
 
-        // Update workspace counter
+        await this.updateMonthlyUsage(tx, monthlyUsage.id, service, units, 'increment');
         await this.updateWorkspaceCounter(tx, workspaceId, service, units);
-
-        // Log usage
-        await this.logUsage(tx, workspaceId, service, units, totalCost, "TOP_UP");
+        await this.logUsage(tx, workspaceId, service, units, totalCost, "BALANCE");
 
         // Check for auto top-up
         if (workspace.autoTopUpEnabled &&
@@ -118,16 +197,19 @@ export class BillingService {
 
         return {
           success: true,
-          method: "TOP_UP",
+          method: "BALANCE",
           cost: totalCost,
           remainingBalance: updatedWallet.balance.toNumber(),
-          message: `Used ${units} ${service} from wallet. Cost: ${totalCost}. Remaining balance: ${updatedWallet.balance.toNumber()}`
+          limit,
+          used: currentUsed + units,
+          message: `Used ${units} ${service} from wallet balance. Cost: ₦${totalCost}. Remaining balance: ₦${updatedWallet.balance.toNumber()}`
         };
       }
 
-      // 6. Grace Mode check (works for ALL services)
+      // ============================================================
+      // STEP 4: Grace Period Check
+      // ============================================================
       if (workspace.gracePeriodUntil && workspace.gracePeriodUntil > new Date()) {
-        // Update workspace counter even in grace period
         await this.updateWorkspaceCounter(tx, workspaceId, service, units);
         await this.logUsage(tx, workspaceId, service, units, totalCost, "GRACE");
 
@@ -135,124 +217,188 @@ export class BillingService {
           success: true,
           method: "GRACE",
           pending: true,
+          limit,
+          used: currentUsed + units,
           message: `Used ${units} ${service} during grace period. Payment required.`
         };
       }
 
-      // 7. No credits available
-      const limit = await this.getCurrentLimit(workspace, service);
-      const used = await this.getCurrentUsage(workspace, service);
-
-      let errorMessage = "";
-      let errorCode = "INSUFFICIENT_CREDITS";
-
-      switch (service) {
-        case Services.SUBSCRIBERS:
-          errorMessage = `Subscriber limit reached. You have ${used}/${limit} subscribers. Please upgrade your plan or top up your wallet.`;
-          errorCode = "SUBSCRIBER_LIMIT_EXCEEDED";
-          break;
-        case Services.EMAIL:
-          errorMessage = `Email limit reached. You have sent ${used}/${limit} emails. Please upgrade your plan or top up your wallet.`;
-          errorCode = "EMAIL_LIMIT_EXCEEDED";
-          break;
-        case Services.SMS:
-          errorMessage = `SMS limit reached. You have sent ${used}/${limit} SMS. Please upgrade your plan or top up your wallet.`;
-          errorCode = "SMS_LIMIT_EXCEEDED";
-          break;
-        case Services.OTP:
-          errorMessage = `OTP limit reached. You have used ${used}/${limit} OTPs. Please upgrade your plan or top up your wallet.`;
-          errorCode = "OTP_LIMIT_EXCEEDED";
-          break;
-        case Services.STORAGE:
-          errorMessage = `Storage limit reached. You have used ${used}/${limit} MB. Please upgrade your plan or top up your wallet.`;
-          errorCode = "STORAGE_LIMIT_EXCEEDED";
-          break;
-        case Services.API:
-          errorMessage = `API call limit reached. You have made ${used}/${limit} API calls. Please upgrade your plan or top up your wallet.`;
-          errorCode = "API_LIMIT_EXCEEDED";
-          break;
-        case Services.BLOG:
-          errorMessage = `Blog post limit reached. You have ${used}/${limit} blog posts. Please upgrade your plan or top up your wallet.`;
-          errorCode = "BLOG_LIMIT_EXCEEDED";
-          break;
-        case Services.PUSH:
-          errorMessage = `Push notification limit reached. You have sent ${used}/${limit} pushes. Please upgrade your plan or top up your wallet.`;
-          errorCode = "PUSH_LIMIT_EXCEEDED";
-          break;
-        default:
-          errorMessage = `${service} limit reached. Please upgrade your plan or top up your wallet.`;
-      }
+      // ============================================================
+      // STEP 5: No Credits Available - Error
+      // ============================================================
+      const errorMessages: Record<Services, string> = {
+        [Services.SUBSCRIBERS]: `Subscriber limit reached. You have ${currentUsed}/${limit} subscribers. No credits available.`,
+        [Services.EMAIL]: `Email limit reached. You have sent ${currentUsed}/${limit} emails. No email credits or balance remaining.`,
+        [Services.SMS]: `SMS limit reached. You have sent ${currentUsed}/${limit} SMS. No SMS credits or balance remaining.`,
+        [Services.OTP]: `OTP limit reached. You have used ${currentUsed}/${limit} OTPs. No OTP credits or balance remaining.`,
+        [Services.STORAGE]: `Storage limit reached. You have used ${currentUsed}/${limit} MB. No storage credits or balance remaining.`,
+        [Services.BLOG]: `Blog post limit reached. You have ${currentUsed}/${limit} blog posts. No blog credits or balance remaining.`,
+        [Services.PUSH]: `Push notification limit reached. You have sent ${currentUsed}/${limit} pushes. No push credits or balance remaining.`,
+        [Services.AI]: `AI call limit reached. You have made ${currentUsed}/${limit} AI calls. No AI credits or balance remaining.`,
+      };
 
       return {
         success: false,
-        error: errorMessage,
-        code: errorCode,
+        error: errorMessages[service] || `${service} limit reached. No credits available.`,
+        code: `${service}_LIMIT_EXCEEDED`,
         limit,
-        used,
+        used: currentUsed,
         required: totalCost,
-        balance: workspace.wallet?.balance.toNumber() || 0
+        serviceCreditsAvailable: currentServiceCredits,
+        balanceAvailable: currentBalance,
+        suggestion: "Please purchase credits or upgrade your plan."
       };
     });
   }
 
+
+  // Add this method to your BillingService class
+
+/**
+ * Check if a workspace's plan has Dev API access enabled
+ * @param workspaceId - The workspace ID
+ * @returns boolean - True if Dev API access is enabled, false otherwise
+ */
+static async hasDevApiAccess(workspaceId: string): Promise<boolean> {
+  try {
+    const workspace = await db.workspace.findUnique({
+      where: { id: workspaceId },
+      include: {
+        subscription: {
+          include: { plan: true }
+        }
+      }
+    });
+
+    if (!workspace) {
+      console.error(`[BillingService] Workspace not found: ${workspaceId}`);
+      return false;
+    }
+
+    // Check if workspace has an active subscription with a plan
+    if (!workspace.subscription || !workspace.subscription.plan) {
+      // No subscription - check workspace's own devApiAccess flag if it exists
+      // Or return false for no plan
+      return false;
+    }
+
+    // Check the boolean field on the plan model
+    // Replace 'devApiAccess' with your actual field name
+    const plan = workspace.subscription.plan;
+    return plan.devApiAccess === true;
+    
+  } catch (error) {
+    console.error(`[BillingService] Error checking Dev API access:`, error);
+    return false;
+  }
+}
+
+
   /**
-   * Get current limit from workspace plan
+   * Get service limits from workspace
    */
-  private static async getCurrentLimit(workspace: any, service: Services): Promise<number> {
+  private static getServiceLimits(workspace: any, service: Services): any {
     const plan = workspace.subscription?.plan;
-
+    
     switch (service) {
-      case Services.EMAIL: return plan?.emailCredits || plan?.emailLimit || workspace.emailLimit || 0;
-      case Services.SMS: return plan?.smsCredits || plan?.smsLimit || workspace.smsLimit || 0;
-      case Services.OTP: return plan?.otpCredits || plan?.otpLimit || workspace.otpLimit || 0;
-      case Services.STORAGE: return plan?.storageCredits || plan?.storageLimit || workspace.fileLimit || 0;
-      case Services.PUSH: return plan?.pushLimit || workspace.pushLimit || 0;
-      case Services.BLOG: return plan?.blogLimit || workspace.blogLimit || 0;
-      case Services.API: return plan?.apiLimit || workspace.apiLimit || 0;
-      case Services.SUBSCRIBERS: return plan?.subscriberLimit || workspace.subscriberLimit || 0;
-      default: return 0;
+      case Services.SUBSCRIBERS:
+        return { subscriberLimit: plan?.subscriberLimit || workspace.subscriberLimit || 0 };
+      case Services.EMAIL:
+        return { emailLimit: plan?.emailLimit || workspace.emailLimit || 0 };
+      case Services.SMS:
+        return { smsLimit: plan?.smsLimit || workspace.smsLimit || 0 };
+      case Services.OTP:
+        return { otpLimit: plan?.otpLimit || workspace.otpLimit || 0 };
+      case Services.STORAGE:
+        return { storageLimit: plan?.storageLimit || workspace.storageLimit || 0 };
+      case Services.BLOG:
+        return { blogLimit: plan?.blogLimit || workspace.blogLimit || 0 };
+      case Services.PUSH:
+        return { pushLimit: plan?.pushLimit || workspace.pushLimit || 0 };
+      case Services.AI:
+        return { aiLimit: plan?.aiLimit || workspace.aiLimit || 0 };
+      default:
+        return {};
     }
   }
 
   /**
-   * Get current usage from workspace
+   * Get current usage and limit from MonthlyUsage record
    */
-  private static async getCurrentUsage(workspace: any, service: Services): Promise<number> {
+  private static getServiceUsageAndLimit(monthlyUsage: any, service: Services): { currentUsed: number; limit: number } {
     switch (service) {
-      case Services.SUBSCRIBERS: return workspace.currentSubscribers || 0;
-      case Services.EMAIL: return workspace.currentEmailsSent || 0;
-      case Services.SMS: return workspace.currentSmsSent || 0;
-      case Services.OTP: return workspace.currentOtpSent || 0;
-      case Services.STORAGE: return workspace.currentFilesUsed || 0;
-      case Services.API: return workspace.currentApiCalls || 0;
-      case Services.BLOG: return workspace.currentBlogsCount || 0;
-      case Services.PUSH: return workspace.currentPushSent || 0;
-      default: return 0;
+      case Services.SUBSCRIBERS:
+        return { currentUsed: monthlyUsage.currentSubscribers || 0, limit: monthlyUsage.subscriberLimit || 0 };
+      case Services.EMAIL:
+        return { currentUsed: monthlyUsage.currentEmailsSent || 0, limit: monthlyUsage.emailLimit || 0 };
+      case Services.SMS:
+        return { currentUsed: monthlyUsage.currentSmsSent || 0, limit: monthlyUsage.smsLimit || 0 };
+      case Services.OTP:
+        return { currentUsed: monthlyUsage.currentOtpSent || 0, limit: monthlyUsage.otpLimit || 0 };
+      case Services.STORAGE:
+        return { currentUsed: monthlyUsage.currentStorageUsed || 0, limit: monthlyUsage.storageLimit || 0 };
+      case Services.BLOG:
+        return { currentUsed: monthlyUsage.currentBlogsCount || 0, limit: monthlyUsage.blogLimit || 0 };
+      case Services.PUSH:
+        return { currentUsed: monthlyUsage.currentPushSent || 0, limit: monthlyUsage.pushLimit || 0 };
+      case Services.AI:
+        return { currentUsed: monthlyUsage.currentAiCalls || 0, limit: monthlyUsage.aiLimit || 0 };
+      default:
+        return { currentUsed: 0, limit: 0 };
     }
   }
 
   /**
-   * Get plan bundle limit from subscription plan
+   * Update MonthlyUsage counters
    */
-  private static getPlanBundleLimit(workspace: any, service: Services): number {
-    const plan = workspace.subscription?.plan || null;
-    if (!plan) return 0;
+  private static async updateMonthlyUsage(tx: any, monthlyUsageId: string, service: Services, units: number, operation: 'increment' | 'decrement') {
+    const updateData: any = {};
 
     switch (service) {
-      case Services.EMAIL: return plan.emailCredits || plan.emailLimit || 0;
-      case Services.SMS: return plan.smsCredits || plan.smsLimit || 0;
-      case Services.OTP: return plan.otpCredits || plan.otpLimit || 0;
-      case Services.STORAGE: return plan.storageCredits || plan.storageLimit || 0;
-      case Services.PUSH: return plan.pushLimit || 0;
-      case Services.BLOG: return plan.blogLimit || 0;
-      case Services.API: return plan.apiLimit || 0;
-      case Services.SUBSCRIBERS: return plan.subscriberLimit || 0;
-      default: return 0;
+      case Services.SUBSCRIBERS:
+        updateData.currentSubscribers = { [operation]: units };
+        updateData.unitsUsed = { [operation]: units };
+        break;
+      case Services.EMAIL:
+        updateData.currentEmailsSent = { [operation]: units };
+        updateData.unitsUsed = { [operation]: units };
+        break;
+      case Services.SMS:
+        updateData.currentSmsSent = { [operation]: units };
+        updateData.unitsUsed = { [operation]: units };
+        break;
+      case Services.OTP:
+        updateData.currentOtpSent = { [operation]: units };
+        updateData.unitsUsed = { [operation]: units };
+        break;
+      case Services.STORAGE:
+        updateData.currentStorageUsed = { [operation]: units };
+        updateData.unitsUsed = { [operation]: units };
+        break;
+      case Services.BLOG:
+        updateData.currentBlogsCount = { [operation]: units };
+        updateData.unitsUsed = { [operation]: units };
+        break;
+      case Services.PUSH:
+        updateData.currentPushSent = { [operation]: units };
+        updateData.unitsUsed = { [operation]: units };
+        break;
+      case Services.AI:
+        updateData.currentAiCalls = { [operation]: units };
+        updateData.unitsUsed = { [operation]: units };
+        break;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await tx.monthlyUsage.update({
+        where: { id: monthlyUsageId },
+        data: updateData
+      });
     }
   }
 
   /**
-   * Update workspace counter for any service
+   * Update workspace counter
    */
   private static async updateWorkspaceCounter(tx: any, workspaceId: string, service: Services, units: number) {
     const updateData: any = {};
@@ -271,16 +417,16 @@ export class BillingService {
         updateData.currentOtpSent = { increment: units };
         break;
       case Services.STORAGE:
-        updateData.currentFilesUsed = { increment: units };
-        break;
-      case Services.API:
-        updateData.currentApiCalls = { increment: units };
+        updateData.currentStorageUsed = { increment: units };
         break;
       case Services.BLOG:
         updateData.currentBlogsCount = { increment: units };
         break;
       case Services.PUSH:
         updateData.currentPushSent = { increment: units };
+        break;
+      case Services.AI:
+        updateData.currentAiCalls = { increment: units };
         break;
     }
 
@@ -304,6 +450,14 @@ export class BillingService {
         workspaceId,
         service: service.toString(),
         month,
+        currentSubscribers: 0,
+        currentEmailsSent: 0,
+        currentFilesUsed: 0,
+        currentSmsSent: 0,
+        currentOtpSent: 0,
+        currentApiCalls: 0,
+        currentBlogsCount: 0,
+        currentPushSent: 0,
         metadata: {
           units,
           cost,
@@ -322,9 +476,13 @@ export class BillingService {
     remaining: number;
     limit: number;
     used: number;
-    hasWalletBalance?: boolean;
-    canUseTopUp?: boolean;
+    serviceCreditsAvailable: number;
+    balanceAvailable: number;
+    canUseServiceCredits: boolean;
+    canUseBalance: boolean;
   }> {
+    const month = new Date().toISOString().slice(0, 7);
+
     const workspace = await db.workspace.findUnique({
       where: { id: workspaceId },
       include: {
@@ -333,334 +491,133 @@ export class BillingService {
       }
     });
 
-    if (!workspace) {
-      return { success: false, remaining: 0, limit: 0, used: 0 };
+    if (!workspace || !workspace.wallet) {
+      return { 
+        success: false, 
+        remaining: 0, 
+        limit: 0, 
+        used: 0,
+        serviceCreditsAvailable: 0,
+        balanceAvailable: 0,
+        canUseServiceCredits: false,
+        canUseBalance: false
+      };
     }
 
-    const limit = await this.getCurrentLimit(workspace, service);
-    const used = await this.getCurrentUsage(workspace, service);
-    const bundleRemaining = limit - used;
+    const walletFieldMap: Record<Services, string> = {
+      [Services.EMAIL]: 'emailCredits',
+      [Services.SMS]: 'smsCredits',
+      [Services.OTP]: 'otpCredits',
+      [Services.STORAGE]: 'storageCredits',
+      [Services.BLOG]: 'blogCredits',
+      [Services.PUSH]: 'pushCredits',
+      [Services.AI]: 'aiCredits',
+      [Services.SUBSCRIBERS]: 'subscribersCredits',
+    };
 
-    // Check bundle first
-    if (bundleRemaining >= units) {
+    const walletField = walletFieldMap[service];
+    const serviceCredits = (workspace.wallet as any)[walletField] || 0;
+    const balanceAvailable = workspace.wallet.balance.toNumber();
+
+    let monthlyUsage = await db.monthlyUsage.findUnique({
+      where: {
+        workspaceId_service_month: {
+          workspaceId,
+          service,
+          month
+        }
+      }
+    });
+
+    if (!monthlyUsage) {
+      const limits = this.getServiceLimits(workspace, service);
+      const limit = this.getLimitValue(limits, service);
+      
       return {
         success: true,
-        remaining: bundleRemaining - units,
+        remaining: limit,
         limit,
-        used,
-        hasWalletBalance: true,
-        canUseTopUp: false
+        used: 0,
+        serviceCreditsAvailable: serviceCredits,
+        balanceAvailable,
+        canUseServiceCredits: serviceCredits > 0,
+        canUseBalance: balanceAvailable > 0
       };
     }
 
-    // Check if wallet has balance for top-up
-    const serviceCost = await db.serviceCost.findUnique({ where: { service } });
-    if (serviceCost && workspace.wallet) {
-      const totalCost = serviceCost.usageRate.toNumber() * units;
-      const hasBalance = workspace.wallet.balance.toNumber() >= totalCost;
+    const { currentUsed, limit } = this.getServiceUsageAndLimit(monthlyUsage, service);
+    const monthlyRemaining = limit - currentUsed;
 
+    if (monthlyRemaining >= units) {
       return {
-        success: hasBalance,
-        remaining: hasBalance ? 999999 : 0,
+        success: true,
+        remaining: monthlyRemaining,
         limit,
-        used,
-        hasWalletBalance: hasBalance,
-        canUseTopUp: true
+        used: currentUsed,
+        serviceCreditsAvailable: serviceCredits,
+        balanceAvailable,
+        canUseServiceCredits: true,
+        canUseBalance: true
       };
+    }
+
+    // Check if service credits can cover
+    if (serviceCredits >= units) {
+      return {
+        success: true,
+        remaining: serviceCredits,
+        limit,
+        used: currentUsed,
+        serviceCreditsAvailable: serviceCredits,
+        balanceAvailable,
+        canUseServiceCredits: true,
+        canUseBalance: true
+      };
+    }
+
+    // Check if balance can cover
+    const serviceCost = await db.serviceCost.findUnique({ where: { service } });
+    if (serviceCost) {
+      const costPerUnit = serviceCost.usageRate.toNumber();
+      const totalCost = costPerUnit * units;
+      
+      if (balanceAvailable >= totalCost) {
+        return {
+          success: true,
+          remaining: Math.floor(balanceAvailable / costPerUnit),
+          limit,
+          used: currentUsed,
+          serviceCreditsAvailable: serviceCredits,
+          balanceAvailable,
+          canUseServiceCredits: false,
+          canUseBalance: true
+        };
+      }
     }
 
     return {
       success: false,
       remaining: 0,
       limit,
-      used,
-      hasWalletBalance: false,
-      canUseTopUp: false
+      used: currentUsed,
+      serviceCreditsAvailable: serviceCredits,
+      balanceAvailable,
+      canUseServiceCredits: false,
+      canUseBalance: false
     };
   }
+
+  private static getLimitValue(limits: any, service: Services): number {
+    switch (service) {
+      case Services.SUBSCRIBERS: return limits.subscriberLimit || 0;
+      case Services.EMAIL: return limits.emailLimit || 0;
+      case Services.SMS: return limits.smsLimit || 0;
+      case Services.OTP: return limits.otpLimit || 0;
+      case Services.STORAGE: return limits.storageLimit || 0;
+      case Services.BLOG: return limits.blogLimit || 0;
+      case Services.PUSH: return limits.pushLimit || 0;
+      case Services.AI: return limits.aiLimit || 0;
+      default: return 0;
+    }
+  }
 }
-
-
-
-
-// import { db } from "../db";
-// import { dropid } from "../utils";
-// import { Services } from "../generated/prisma";
-//
-// export class BillingService {
-//   /**
-//    * Deducts credits for a service usage.
-//    * Logic:
-//    * 1. Check monthly bundle credits first (via MonthlyUsage).
-//    * 2. If reach limit, deduct from top-up wallet balance based on ServiceCost.
-//    */
-//   static async deductCredits(workspaceId: string, service: Services, units: number = 1) {
-//     const month = new Date().toISOString().slice(0, 7); // YYYY-MM
-//
-//     // 1. Get Workspace with Wallet and Subscription
-//     const workspace = await db.workspace.findUnique({
-//       where: { id: workspaceId },
-//       include: {
-//         wallet: true,
-//         subscription: {
-//           include: { plan: true }
-//         }
-//       }
-//     });
-//
-//     if (!workspace) throw new Error("Workspace not found");
-//
-//     // 2. Get current cost for the service
-//     const serviceCost = await db.serviceCost.findUnique({
-//       where: { service }
-//     });
-//
-//     if (!serviceCost) throw new Error(`Cost not configured for service: ${service}`);
-//
-//     // Use usageRate for deduction from wallet
-//     const totalCost = serviceCost.usageRate.toNumber() * units;
-//
-//     return await db.$transaction(async (tx) => {
-//       // 3. Get or Create MonthlyUsage for this service
-//       let monthlyUsage = await tx.monthlyUsage.findUnique({
-//         where: {
-//           workspaceId_service_month: {
-//             workspaceId,
-//             service,
-//             month
-//           }
-//         }
-//       });
-//
-//       if (!monthlyUsage) {
-//         // Initialize monthly usage from plan if available
-//         const bundleLimit = this.getPlanBundleLimit(workspace, service);
-//         monthlyUsage = await tx.monthlyUsage.create({
-//           data: {
-//             id: dropid('mus'),
-//             workspaceId,
-//             service,
-//             month,
-//             bundleLimit
-//           }
-//         });
-//       }
-//
-//       const bundleRemaining = monthlyUsage.bundleLimit - monthlyUsage.unitsUsed;
-//
-//       // 4. Try Bundle Credits First
-//       if (bundleRemaining >= units) {
-//         await tx.monthlyUsage.update({
-//           where: { id: monthlyUsage.id },
-//           data: {
-//             unitsUsed: { increment: units }
-//           }
-//         });
-//
-//         await this.logUsage(tx, workspaceId, service, units, 0, "BUNDLE");
-//         return { success: true, method: "BUNDLE", remaining: bundleRemaining - units };
-//       }
-//
-//       // 5. If bundle exhausted or partially exhausted, check Top-Up Balance
-//       if (workspace.wallet && workspace.wallet.balance.toNumber() >= totalCost) {
-//         const updatedWallet = await tx.wallet.update({
-//           where: { workspaceId },
-//           data: {
-//             balance: { decrement: totalCost }
-//           }
-//         });
-//
-//         await tx.monthlyUsage.update({
-//           where: { id: monthlyUsage.id },
-//           data: {
-//             topUpUnitsUsed: { increment: units },
-//             topUpCost: { increment: totalCost }
-//           }
-//         });
-//
-//         await this.logUsage(tx, workspaceId, service, units, totalCost, "TOP_UP");
-//
-//         // Check for auto top-up
-//         if (workspace.autoTopUpEnabled &&
-//             updatedWallet.balance.toNumber() < workspace.autoTopUpThreshold.toNumber()) {
-//           console.log(`[Billing] Triggering auto top-up for ${workspaceId}`);
-//         }
-//
-//         return { success: true, method: "TOP_UP", cost: totalCost };
-//       }
-//
-//       // 6. Grace Mode check
-//       if (workspace.gracePeriodUntil && workspace.gracePeriodUntil > new Date()) {
-//         await this.logUsage(tx, workspaceId, service, units, totalCost, "GRACE");
-//         return { success: true, method: "GRACE", pending: true };
-//       }
-//
-//       return { success: false, error: "INSUFFICIENT_CREDITS" };
-//     });
-//   }
-//
-//   private static getPlanBundleLimit(workspace: any, service: Services): number {
-//     const plan = workspace.subscription?.plan || null;
-//     if (!plan) return 0;
-//
-//     switch (service) {
-//       case Services.EMAIL: return plan.emailCredits || plan.emailLimit || 0;
-//       case Services.SMS: return plan.smsCredits || plan.smsLimit || 0;
-//       case Services.OTP: return plan.otpCredits || plan.otpLimit || 0;
-//       case Services.STORAGE: return plan.storageCredits || plan.storageLimit || 0;
-//       case Services.PUSH: return plan.pushLimit || 0;
-//       case Services.BLOG: return plan.blogLimit || 0;
-//       case Services.API: return plan.apiLimit || 0;
-//       case Services.SUBSCRIBERS: return plan.subscriberLimit || 0;
-//       default: return 0;
-//     }
-//   }
-//
-//   private static async logUsage(tx: any, workspaceId: string, service: Services, units: number, cost: number, method: string) {
-//     const month = new Date().toISOString().slice(0, 7);
-//
-//     // 1. Create the usage log
-//     await tx.usageLog.create({
-//       data: {
-//         id: dropid('ulg'),
-//         workspaceId,
-//         service: service.toString(),
-//         month,
-//         metadata: {
-//           units,
-//           cost,
-//           method,
-//           timestamp: new Date().toISOString()
-//         }
-//       }
-//     });
-//
-//     // 2. Update the cumulative counters in the Workspace model
-//     const updateData: any = {};
-//     switch (service) {
-//       case Services.EMAIL:
-//         updateData.currentEmailsSent = { increment: units };
-//         break;
-//       case Services.SMS:
-//         updateData.currentSmsSent = { increment: units };
-//         break;
-//       case Services.PUSH:
-//         updateData.currentPushSent = { increment: units };
-//         break;
-//       case Services.BLOG:
-//         updateData.currentBlogsCount = { increment: units };
-//         break;
-//       case Services.API:
-//         updateData.currentApiCalls = { increment: units };
-//         break;
-//       case Services.SUBSCRIBERS:
-//         updateData.currentSubscribers = { increment: units };
-//         break;
-//       case Services.OTP:
-//         updateData.currentOtpSent = { increment: units };
-//         break;
-//       case Services.STORAGE:
-//         updateData.currentFilesUsed = { increment: units };
-//         break;
-//     }
-//
-//     if (Object.keys(updateData).length > 0) {
-//       await tx.workspace.update({
-//         where: { id: workspaceId },
-//         data: updateData
-//       });
-//     }
-//   }
-//
-//   /**
-//    * Checks if a workspace has access to a feature.
-//    */
-//   static async hasFeature(workspaceId: string, featureKey: string): Promise<boolean> {
-//     const workspace = await db.workspace.findUnique({
-//       where: { id: workspaceId },
-//       select: {
-//         plan: true,
-//         subscription: {
-//           include: { plan: true }
-//         }
-//       }
-//     });
-//
-//     if (!workspace) return false;
-//
-//     // 1. Check if the featureKey is actually a service/limit we track in MonthlyUsage
-//     const serviceKey = featureKey.toUpperCase() as keyof typeof Services;
-//     if (Services[serviceKey]) {
-//       const { success } = await this.checkLimit(workspaceId, Services[serviceKey]);
-//       return success;
-//     }
-//
-//     // 2. Check active subscription plan features
-//     if (workspace.subscription?.plan) {
-//       const features = workspace.subscription.plan.features as any;
-//       if (features && features[featureKey] === true) return true;
-//     }
-//
-//     // 3. Fallback: Check if the workspace tier (enum) has default features
-//     if (workspace.plan === 'FREE') {
-//       const freePlan = await db.plan.findFirst({
-//         where: { tier: 'FREE', isArchived: false }
-//       });
-//       if (freePlan) {
-//         const features = freePlan.features as any;
-//         return !!(features && features[featureKey] === true);
-//       }
-//     }
-//
-//     return false;
-//   }
-//
-//   /**
-//    * Checks if a workspace has reached its limit for a service/feature without deducting.
-//    */
-//   static async checkLimit(workspaceId: string, service: Services, units: number = 0): Promise<{ success: boolean; remaining: number }> {
-//     const month = new Date().toISOString().slice(0, 7);
-//
-//     const workspace = await db.workspace.findUnique({
-//       where: { id: workspaceId },
-//       include: {
-//         wallet: true,
-//         subscription: {
-//           include: { plan: true }
-//         }
-//       }
-//     });
-//
-//     if (!workspace) return { success: false, remaining: 0 };
-//
-//     const monthlyUsage = await db.monthlyUsage.findUnique({
-//       where: {
-//         workspaceId_service_month: {
-//           workspaceId,
-//           service,
-//           month
-//         }
-//       }
-//     });
-//
-//     const bundleLimit = monthlyUsage ? monthlyUsage.bundleLimit : this.getPlanBundleLimit(workspace, service);
-//     const unitsUsed = monthlyUsage ? monthlyUsage.unitsUsed : 0;
-//     const bundleRemaining = bundleLimit - unitsUsed;
-//
-//     if (bundleRemaining >= units) {
-//       return { success: true, remaining: bundleRemaining - units };
-//     }
-//
-//     // If bundle exhausted, check if they have top-up balance (only for credit-based services)
-//     // For hard limits like BLOG or SUBSCRIBERS, top-up might not apply unless configured.
-//     if (workspace.wallet && workspace.wallet.balance.toNumber() > 0) {
-//       // In theory, if they have balance, they can go over limit if service cost is defined.
-//       const serviceCost = await db.serviceCost.findUnique({ where: { service } });
-//       if (serviceCost && serviceCost.usageRate.toNumber() > 0) {
-//         return { success: true, remaining: 999999 }; // Effectively unlimited if they have money
-//       }
-//     }
-//
-//     return { success: false, remaining: 0 };
-//   }
-// }

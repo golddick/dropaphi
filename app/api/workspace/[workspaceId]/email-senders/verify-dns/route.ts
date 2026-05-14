@@ -14,7 +14,7 @@ export async function POST(
   { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   try {
-    const { workspaceId } = await params;
+    const { workspaceId } = await params; 
     const auth = await requireAuth();
     if (auth instanceof Response) return auth;
 

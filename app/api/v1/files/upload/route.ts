@@ -127,8 +127,8 @@ export async function POST(req: NextRequest) {
     const workspace = await db.workspace.findUnique({
       where: { id: keyInfo.workspaceId },
       select: {
-        fileLimit: true,
-        currentFilesUsed: true,
+        storageLimit: true,
+        currentStorageUsed: true,
         name: true,
       }
     });
@@ -145,12 +145,12 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Check workspace storage quota
-    if (workspace.fileLimit > 0 && workspace.currentFilesUsed >= workspace.fileLimit) {
+    if (workspace.storageLimit > 0 && workspace.currentStorageUsed >= workspace.storageLimit) {
       const response = NextResponse.json(
         { 
           success: false,
           error: "Storage limit reached",
-          message: `Your workspace has reached its limit of ${workspace.fileLimit} files. Please upgrade your plan to upload more.`
+          message: `Your workspace has reached its limit of ${workspace.storageLimit} MB. Please upgrade your plan to upload more.`
         },
         { status: 403 }
       );
@@ -223,14 +223,14 @@ export async function POST(req: NextRequest) {
  
     // 8. Check file limit
     const fileSizeMB = bytesToMB(file.size);
-    if (workspace.currentFilesUsed + fileSizeMB > workspace.fileLimit) {
+    if (workspace.currentStorageUsed + fileSizeMB > workspace.storageLimit) {
       const response = NextResponse.json(
         {
           success: false,
           error: "Storage limit exceeded",
-          used: `${workspace.currentFilesUsed.toFixed(2)}MB`,
-          limit: `${workspace.fileLimit}MB`,
-          needed: `${(workspace.currentFilesUsed + fileSizeMB).toFixed(2)}MB`
+          used: `${workspace.currentStorageUsed.toFixed(2)}MB`,
+          limit: `${workspace.storageLimit}MB`,
+          needed: `${(workspace.currentStorageUsed + fileSizeMB).toFixed(2)}MB`
         },
         { status: 403 }
       );
@@ -308,8 +308,8 @@ export async function POST(req: NextRequest) {
     await db.workspace.update({
       where: { id: keyInfo.workspaceId },
       data: {
-        currentFilesUsed: {
-          increment: 1, // Usually currentFilesUsed refers to count, while storageUsed would be bytes
+        currentStorageUsed: {
+          increment: fileSizeMB, // Usually currentFilesUsed refers to count, while storageUsed would be bytes
         },
       },
     });

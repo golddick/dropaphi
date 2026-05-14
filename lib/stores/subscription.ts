@@ -27,7 +27,6 @@ export interface SubscriptionState {
 const apiFetch = async (url: string, options: RequestInit = {}) => {
   const response = await fetch(url, {
     ...options,
-    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -82,17 +81,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
                 api: 0,
                 ai: 0,
               },
-              credits: sub.credits || {
-                sms: 0,
-                email: 0,
-                otp: 0,
-                storage: 0,
-                subscribers: 0,
-                blog: 0,
-                push: 0,
-                api: 0,
-                ai: 0,
-              },
+          
               balance: sub.balance || 0,
             };
             

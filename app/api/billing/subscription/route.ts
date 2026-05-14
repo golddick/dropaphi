@@ -5,7 +5,6 @@ import { requireAuth } from "@/lib/auth/auth-server";
 import { db } from "@/lib/db";
 import { ok, serverError } from "@/lib/respond/response";
 import { dropid } from "dropid";
-import { getPlanByTier } from "@/lib/billing/plan";
 
 export async function GET(req: NextRequest) {
   try {
@@ -25,19 +24,19 @@ export async function GET(req: NextRequest) {
             currentSmsSent: true,
             currentEmailsSent: true,
             currentOtpSent: true,
-            currentFilesUsed: true,
+            currentStorageUsed: true,
             currentSubscribers: true,
             currentBlogsCount: true,
             currentPushSent: true,
-            currentApiCalls: true,
+            currentAiCalls: true,
             smsLimit: true,
             emailLimit: true,
             otpLimit: true,
-            fileLimit: true,
+            storageLimit: true,
             subscriberLimit: true,
             blogLimit: true,
             pushLimit: true,
-            apiLimit: true,
+            aiLimit: true,
           }
         }
       },
@@ -79,8 +78,6 @@ export async function GET(req: NextRequest) {
       where: { workspaceId: member.workspaceId },
     });
 
-    // Get plan details for limits
-    const plan = getPlanByTier(subscription.tier as any);
 
     // Return enhanced subscription with workspace data
     return ok({ 
@@ -102,11 +99,11 @@ export async function GET(req: NextRequest) {
           sms: member.workspace.smsLimit,
           email: member.workspace.emailLimit,
           otp: member.workspace.otpLimit,
-          storage: member.workspace.fileLimit,
+          storage: member.workspace.storageLimit,
           subscribers: member.workspace.subscriberLimit,
           blog: member.workspace.blogLimit,
           push: member.workspace.pushLimit,
-          api: member.workspace.apiLimit,
+          ai: member.workspace.aiLimit,
         },
         
         // Add usage from workspace
@@ -114,11 +111,11 @@ export async function GET(req: NextRequest) {
           sms: member.workspace.currentSmsSent || 0,
           email: member.workspace.currentEmailsSent || 0,
           otp: member.workspace.currentOtpSent || 0,
-          storage: member.workspace.currentFilesUsed || 0,
+          storage: member.workspace.currentStorageUsed || 0,
           subscribers: member.workspace.currentSubscribers || 0,
           blog: member.workspace.currentBlogsCount || 0,
           push: member.workspace.currentPushSent || 0,
-          api: member.workspace.currentApiCalls || 0,
+          ai: member.workspace.currentAiCalls || 0,
         },
 
         // Add wallet credits
@@ -130,7 +127,7 @@ export async function GET(req: NextRequest) {
           subscribers: 0, // subscribers typically don't have credits
           blog: wallet?.blogCredits || 0,
           push: wallet?.pushCredits || 0,
-          api: wallet?.apiCredits || 0,
+          ai: wallet?.aiCredits || 0,
         },
         balance: wallet?.balance ? Number(wallet.balance) : 0
       }

@@ -31,9 +31,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { 
       name, tier, description, price, interval, 
-      subscriberLimit, emailLimit, storageLimit, smsLimit, otpLimit,
-      emailCredits, smsCredits, otpCredits, storageCredits,
-      extraCreditRate, rollOverCredits,
+      subscriberLimit, emailLimit, storageLimit, smsLimit, otpLimit, aiLimit,
+      blogLimit,pushLimit,
       features, paystackPlanCode, devApiAccess
     } = body;
 
@@ -45,17 +44,14 @@ export async function POST(req: NextRequest) {
         description,
         price,
         interval,
-        subscriberLimit: subscriberLimit ?? 100,
-        emailLimit: emailLimit ?? 500,
-        storageLimit: storageLimit ?? 100,
+        subscriberLimit: subscriberLimit ?? 0,
+        emailLimit: emailLimit ?? 0,
+        storageLimit: storageLimit ?? 0,
+        blogLimit: blogLimit ?? 0,
+        pushLimit: pushLimit ?? 0,
         smsLimit: smsLimit ?? 0,
         otpLimit: otpLimit ?? 0,
-        emailCredits: emailCredits ?? 0,
-        smsCredits: smsCredits ?? 0,
-        otpCredits: otpCredits ?? 0,
-        storageCredits: storageCredits ?? 0,
-        extraCreditRate: extraCreditRate ?? 0,
-        rollOverCredits: !!rollOverCredits,
+        aiLimit: aiLimit ?? 0,
         features,
         paystackPlanCode,
         devApiAccess: devApiAccess ?? true

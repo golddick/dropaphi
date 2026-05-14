@@ -1,1033 +1,121 @@
-// // app/api/billing/webhook/route.ts
-// import { NextRequest } from "next/server";
-// import crypto from 'crypto';
-// import { db } from "@/lib/db";
-// import { dropid } from "dropid";
-// import { InvoiceStatus, SubscriptionStatus, SubscriptionTier } from "@/lib/generated/prisma/enums";
-// import { NotificationService } from "@/lib/notification.service";
-
-// // Webhook secret for additional security (optional but recommended)
-// const WEBHOOK_SECRET = process.env.PAYSTACK_WEBHOOK_SECRET;
-
-// export async function POST(req: NextRequest) {
-//   const requestId = dropid('webhook').substring(0, 10);
-  
-//   try {
-//     // Get raw body for signature verification
-//     const body = await req.text();
-//     const signature = req.headers.get('x-paystack-signature');
-    
-//     console.log(`[Webhook:${requestId}] Received webhook`, {
-//       signature: signature ? 'present' : 'missing',
-//       bodyLength: body.length,
-//       contentType: req.headers.get('content-type'),
-//     });
-
-//     // Verify webhook signature
-//     if (!signature) {
-//       console.error(`[Webhook:${requestId}] No signature provided`);
-//       return new Response('No signature provided', { status: 401 });
-//     }
-
-//     // Verify signature with Paystack secret
-//     const hash = crypto
-//       .createHmac('sha512', process.env.PAYSTACK_SECRET_KEY!)
-//       .update(body)
-//       .digest('hex');
-
-//     if (hash !== signature) {
-//       console.error(`[Webhook:${requestId}] Invalid signature`, {
-//         expected: hash.substring(0, 10) + '...',
-//         received: signature.substring(0, 10) + '...',
-//       });
-//       return new Response('Invalid signature', { status: 401 });
-//     }
-
-//     // Parse event
-//     const event = JSON.parse(body);
-    
-//     console.log(`[Webhook:${requestId}] Processing event:`, {
-//       event: event.event,
-//       id: event.id || 'no-id',
-//       createdAt: event.createdAt,
-//     });
-
-//     // Process event based on type
-//     let result;
-//     switch (event.event) {
-//       case 'charge.success':
-//         result = await handleSuccessfulCharge(event.data, requestId);
-//         break;
-      
-//       case 'subscription.create':
-//         result = await handleSubscriptionCreate(event.data, requestId);
-//         break;
-      
-//       case 'subscription.disable':
-//         result = await handleSubscriptionDisable(event.data, requestId);
-//         break;
-      
-//       case 'subscription.expiring_cards':
-//         result = await handleExpiringCard(event.data, requestId);
-//         break;
-      
-//       case 'subscription.renewal':
-//         result = await handleSubscriptionRenewal(event.data, requestId);
-//         break;
-      
-//       case 'subscription.cancel':
-//         result = await handleSubscriptionCancel(event.data, requestId);
-//         break;
-      
-//       case 'subscription.expiring':
-//         result = await handleSubscriptionExpiring(event.data, requestId);
-//         break;
-      
-//       case 'transfer.success':
-//       case 'transfer.failed':
-//       case 'transfer.reversed':
-//         result = await handleTransfer(event.data, requestId);
-//         break;
-      
-//       default:
-//         console.log(`[Webhook:${requestId}] Unhandled event type:`, event.event);
-//         return new Response('Event received but unhandled', { status: 200 });
-//     }
-
-//     console.log(`[Webhook:${requestId}] Event processed successfully:`, result);
-    
-//     return new Response(JSON.stringify({ 
-//       received: true,
-//       event: event.event,
-//       processed: true,
-//       requestId
-//     }), { 
-//       status: 200,
-//       headers: { 'Content-Type': 'application/json' }
-//     });
-
-//   } catch (error) {
-//     console.error(`[Webhook:${requestId}] Error:`, {
-//       error: error instanceof Error ? error.message : 'Unknown error',
-//       stack: error instanceof Error ? error.stack : undefined,
-//     });
-
-//     // Always return 200 to prevent Paystack from retrying
-//     return new Response(JSON.stringify({ 
-//       received: true,
-//       error: 'Webhook processing failed but acknowledged',
-//       requestId
-//     }), { 
-//       status: 200,
-//       headers: { 'Content-Type': 'application/json' }
-//     });
-//   }
-// }
-
-// async function handleSuccessfulCharge(data: any, requestId: string) {
-//   const { reference, amount, metadata, customer, authorization, channel } = data;
-
-//   console.log(`[Webhook:${requestId}] Processing charge.success:`, {
-//     reference,
-//     amount: amount / 100,
-//     customer: customer?.email,
-//     type: metadata?.type,
-//   });
-
-//   // Check if this webhook was already processed (idempotency)
-//   const existingTransaction = await db.subscriptionTransaction.findFirst({
-//     where: { referenceId: reference },
-//   });
-
-//   if (existingTransaction) {
-//     console.log(`[Webhook:${requestId}] Transaction already processed:`, reference);
-//     return { processed: false, reason: 'duplicate' };
-//   }
-
-//   // Handle subscription payments
-//   if (metadata?.type === 'subscription_payment' || metadata?.isSubscription) {
-//     return handleSubscriptionPayment(data, requestId);
-//   }
-
-//   return { processed: false, reason: 'unknown_type' };
-// }
-
-// async function handleSubscriptionPayment(data: any, requestId: string) {
-//   const { metadata, reference, amount, customer, authorization, channel } = data;
-
-//   console.log(`[Webhook:${requestId}] Processing subscription payment:`, {
-//     workspaceId: metadata?.workspaceId,
-//     tier: metadata?.tier,
-//     amount: amount / 100,
-//     discount: metadata?.discount,
-//   });
-
-//   return await db.$transaction(async (tx) => {
-//     // Update invoice
-//     const invoice = await tx.invoice.update({
-//       where: { id: metadata.invoiceId },
-//       data: {
-//         status: InvoiceStatus.PAID,
-//         paymentRef: reference,
-//         paidAt: new Date(),
-//         metadata: {
-//           ...metadata,
-//           paymentChannel: channel,
-//           cardType: authorization?.card_type,
-//           bank: authorization?.bank,
-//           last4: authorization?.last4,
-//           paidAt: new Date().toISOString(),
-//         },
-//       },
-//     });
-
-//     // Update or create workspace subscription
-//     const subscription = await tx.workspaceSubscription.upsert({
-//       where: {
-//         workspaceId: metadata.workspaceId,
-//       },
-//       update: {
-//         tier: metadata.tier,
-//         status: SubscriptionStatus.ACTIVE,
-//         currentPeriodStart: new Date(),
-//         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-//         monthlyPrice: metadata.originalAmount,
-//         paymentRef: reference,
-//         updatedAt: new Date(),
-//       },
-//       create: {
-//         id: dropid('sub'),
-//         workspaceId: metadata.workspaceId,
-//         tier: metadata.tier,
-//         status: SubscriptionStatus.ACTIVE,
-//         monthlyPrice: metadata.originalAmount,
-//         currentPeriodStart: new Date(),
-//         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-//         paymentRef: reference,
-//       },
-//     });
-
-//     // If promo code was used, record redemption
-//     if (metadata.promoCode) {
-//       const promo = await tx.promoCode.findUnique({
-//         where: { code: metadata.promoCode.toUpperCase() },
-//       });
-
-//       if (promo) {
-//         const existingRedemption = await tx.promoRedemption.findFirst({
-//           where: {
-//             promoCodeId: promo.id,
-//             workspaceId: metadata.workspaceId,
-//             invoiceId: invoice.id,
-//           },
-//         });
-
-//         if (!existingRedemption) {
-//           await tx.promoRedemption.create({
-//             data: {
-//               id: dropid('red'),
-//               promoCodeId: promo.id,
-//               workspaceId: metadata.workspaceId,
-//               invoiceId: invoice.id,
-//               discountAmount: metadata.discount || 0,
-//             },
-//           });
-
-//           await tx.promoCode.update({
-//             where: { id: promo.id },
-//             data: { usedCount: { increment: 1 } },
-//           });
-//         }
-//       }
-//     }
-
-//     // Create subscription transaction
-//     const transaction = await tx.subscriptionTransaction.create({
-//       data: {
-//         id: dropid('stxn'),
-//         workspaceId: metadata.workspaceId,
-//         subscriptionId: subscription.id,
-//         type: metadata.discount ? 'SUBSCRIPTION_PAYMENT' : 'SUBSCRIPTION_PAYMENT',
-//         status: 'COMPLETED',
-//         amount: amount / 100,
-//         description: metadata.discount 
-//           ? `Subscription payment for ${metadata.tier} plan (${metadata.discount} discount applied)`
-//           : `Subscription payment for ${metadata.tier} plan`,
-//         referenceId: reference,
-//         invoiceId: invoice.id,
-//         metadata: {
-//           tier: metadata.tier,
-//           planAmount: metadata.originalAmount,
-//           discount: metadata.discount || 0,
-//           finalAmount: amount / 100,
-//           promoCode: metadata.promoCode,
-//           paymentMethod: channel,
-//           cardType: authorization?.card_type,
-//           bank: authorization?.bank,
-//           last4: authorization?.last4,
-//           customerEmail: customer?.email,
-//         },
-//       },
-//     });
-
-//     // Send notification
-//     const member = await tx.workspaceMember.findFirst({
-//       where: { workspaceId: metadata.workspaceId, role: 'OWNER' },
-//       include: { user: true },
-//     });
-
-//     if (member) {
-//       await NotificationService.create({
-//         userId: member.user.id,
-//         type: 'PAYMENT_SUCCESS',
-//         variables: {
-//           amount: (amount / 100).toLocaleString(),
-//           plan: metadata.tier,
-//           email: customer?.email,
-//         },
-//         metadata: {
-//           transactionId: transaction.id,
-//           subscriptionId: subscription.id,
-//           invoiceId: invoice.id,
-//         },
-//         actionUrl: `/dashboard/${member.workspaceId}/billing`,
-//       });
-//     }
-
-//     console.log(`[Webhook:${requestId}] Subscription payment completed:`, {
-//       workspaceId: metadata.workspaceId,
-//       subscriptionId: subscription.id,
-//       transactionId: transaction.id,
-//       amount: amount / 100,
-//     });
-
-//     return { 
-//       processed: true, 
-//       type: 'subscription_payment',
-//       subscriptionId: subscription.id,
-//       transactionId: transaction.id 
-//     };
-//   });
-// }
-
-// async function handleSubscriptionCreate(data: any, requestId: string) {
-//   const { customer, plan, subscription_code, next_payment_date, amount } = data;
-  
-//   console.log(`[Webhook:${requestId}] Processing subscription.create:`, {
-//     customer: customer?.email,
-//     plan: plan?.plan_code,
-//     subscription_code,
-//     amount: amount ? amount / 100 : 'N/A',
-//   });
-
-//   const member = await db.workspaceMember.findFirst({
-//     where: { user: { email: customer.email } },
-//     include: { workspace: true, user: true },
-//   });
-
-//   if (!member) {
-//     console.log(`[Webhook:${requestId}] Workspace not found for email:`, customer.email);
-//     return { processed: false, reason: 'workspace_not_found' };
-//   }
-
-//   const tier = mapPlanCodeToTier(plan.plan_code);
-
-//   return await db.$transaction(async (tx) => {
-//     const subscription = await tx.workspaceSubscription.upsert({
-//       where: { workspaceId: member.workspaceId },
-//       create: {
-//         id: dropid('sub'),
-//         workspaceId: member.workspaceId,
-//         tier: tier,
-//         status: SubscriptionStatus.ACTIVE,
-//         monthlyPrice: (amount || plan.amount) / 100,
-//         currentPeriodStart: new Date(),
-//         currentPeriodEnd: new Date(next_payment_date || Date.now() + 30 * 24 * 60 * 60 * 1000),
-//         paymentRef: subscription_code,
-//       },
-//       update: {
-//         tier: tier,
-//         status: SubscriptionStatus.ACTIVE,
-//         monthlyPrice: (amount || plan.amount) / 100,
-//         currentPeriodStart: new Date(),
-//         currentPeriodEnd: new Date(next_payment_date || Date.now() + 30 * 24 * 60 * 60 * 1000),
-//         paymentRef: subscription_code,
-//       },
-//     });
-
-//     const transaction = await tx.subscriptionTransaction.create({
-//       data: {
-//         id: dropid('stxn'),
-//         workspaceId: member.workspaceId,
-//         subscriptionId: subscription.id,
-//         type: 'SUBSCRIPTION_PAYMENT',
-//         status: 'COMPLETED',
-//         amount: (amount || plan.amount) / 100,
-//         description: `Initial subscription payment for ${tier} plan`,
-//         referenceId: subscription_code,
-//         metadata: {
-//           tier,
-//           planCode: plan.plan_code,
-//           customerEmail: customer.email,
-//           event: 'subscription.create',
-//         },
-//       },
-//     });
-
-//     // Send notification
-//     await NotificationService.create({
-//       userId: member.user.id,
-//       type: 'SUBSCRIPTION_CREATED',
-//       variables: {
-//         plan: tier,
-//         workspace: member.workspace.name,
-//         email: customer.email,
-//       },
-//       metadata: {
-//         subscriptionId: subscription.id,
-//         transactionId: transaction.id,
-//       },
-//       actionUrl: `/dashboard/${member.workspaceId}/billing`,
-//     });
-
-//     console.log(`[Webhook:${requestId}] Subscription created:`, {
-//       workspaceId: member.workspaceId,
-//       subscriptionId: subscription.id,
-//       transactionId: transaction.id,
-//       tier,
-//     });
-
-//     return { 
-//       processed: true, 
-//       subscriptionId: subscription.id,
-//       transactionId: transaction.id 
-//     };
-//   });
-// }
-
-// async function handleSubscriptionRenewal(data: any, requestId: string) {
-//   const { customer, subscription_code, amount, next_payment_date, invoice_code } = data;
-  
-//   console.log(`[Webhook:${requestId}] Processing subscription.renewal:`, {
-//     customer: customer?.email,
-//     subscription_code,
-//     amount: amount / 100,
-//     next_payment_date,
-//   });
-
-//   const subscription = await db.workspaceSubscription.findFirst({
-//     where: { paymentRef: subscription_code },
-//     include: { workspace: true },
-//   });
-
-//   if (!subscription) {
-//     console.log(`[Webhook:${requestId}] Subscription not found:`, subscription_code);
-//     return { processed: false, reason: 'subscription_not_found' };
-//   }
-
-//   const member = await db.workspaceMember.findFirst({
-//     where: { workspaceId: subscription.workspaceId, role: 'OWNER' },
-//     include: { user: true },
-//   });
-
-//   return await db.$transaction(async (tx) => {
-//     const invoice = await tx.invoice.create({
-//       data: {
-//         id: dropid('inv'),
-//         workspaceId: subscription.workspaceId,
-//         invoiceNumber: `REN-${Date.now()}`,
-//         amount: amount / 100,
-//         discount: 0,
-//         finalAmount: amount / 100,
-//         status: InvoiceStatus.PAID,
-//         paidAt: new Date(),
-//         periodStart: subscription.currentPeriodEnd,
-//         periodEnd: new Date(next_payment_date),
-//         paymentRef: invoice_code || subscription_code,
-//         metadata: {
-//           type: 'subscription_renewal',
-//           subscriptionCode: subscription_code,
-//           customerEmail: customer?.email,
-//         },
-//       },
-//     });
-
-//     const updatedSubscription = await tx.workspaceSubscription.update({
-//       where: { id: subscription.id },
-//       data: {
-//         currentPeriodStart: subscription.currentPeriodEnd,
-//         currentPeriodEnd: new Date(next_payment_date),
-//         updatedAt: new Date(),
-//       },
-//     });
-
-//     const transaction = await tx.subscriptionTransaction.create({
-//       data: {
-//         id: dropid('stxn'),
-//         workspaceId: subscription.workspaceId,
-//         subscriptionId: subscription.id,
-//         type: 'SUBSCRIPTION_RENEWAL',
-//         status: 'COMPLETED',
-//         amount: amount / 100,
-//         description: `Subscription renewal for ${subscription.tier} plan`,
-//         referenceId: invoice_code || subscription_code,
-//         invoiceId: invoice.id,
-//         metadata: {
-//           tier: subscription.tier,
-//           amount: amount / 100,
-//           nextPaymentDate: next_payment_date,
-//           customerEmail: customer?.email,
-//         },
-//       },
-//     });
-
-//     if (member) {
-//       await NotificationService.create({
-//         userId: member.user.id,
-//         type: 'SUBSCRIPTION_RENEWED',
-//         variables: {
-//           plan: subscription.tier,
-//           amount: (amount / 100).toLocaleString(),
-//         },
-//         metadata: {
-//           subscriptionId: subscription.id,
-//           transactionId: transaction.id,
-//           invoiceId: invoice.id,
-//         },
-//         actionUrl: `/dashboard/${subscription.workspaceId}/billing/invoices/${invoice.id}`,
-//       });
-//     }
-
-//     console.log(`[Webhook:${requestId}] Subscription renewed:`, {
-//       workspaceId: subscription.workspaceId,
-//       subscriptionId: subscription.id,
-//       transactionId: transaction.id,
-//       newPeriodEnd: next_payment_date,
-//     });
-
-//     return { 
-//       processed: true, 
-//       subscriptionId: subscription.id,
-//       transactionId: transaction.id 
-//     };
-//   });
-// }
-
-// async function handleSubscriptionDisable(data: any, requestId: string) {
-//   const { customer, subscription_code } = data;
-  
-//   console.log(`[Webhook:${requestId}] Processing subscription.disable:`, {
-//     customer: customer?.email,
-//     subscription_code,
-//   });
-
-//   const subscription = await db.workspaceSubscription.findFirst({
-//     where: { paymentRef: subscription_code },
-//     include: { workspace: true },
-//   });
-
-//   if (!subscription) {
-//     return { processed: false, reason: 'subscription_not_found' };
-//   }
-
-//   const result = await db.workspaceSubscription.update({
-//     where: { id: subscription.id },
-//     data: { 
-//       status: SubscriptionStatus.CANCELED, 
-//       cancelledAt: new Date() 
-//     },
-//   });
-
-//   const member = await db.workspaceMember.findFirst({
-//     where: { workspaceId: subscription.workspaceId, role: 'OWNER' },
-//     include: { user: true },
-//   });
-
-//   if (member) {
-//     await NotificationService.create({
-//       userId: member.user.id,
-//       type: 'SUBSCRIPTION_CANCELLED',
-//       variables: {
-//         plan: subscription.tier,
-//         endDate: subscription.currentPeriodEnd.toLocaleDateString(),
-//       },
-//       metadata: {
-//         subscriptionId: subscription.id,
-//       },
-//       actionUrl: `/dashboard/${subscription.workspaceId}/billing`,
-//     });
-//   }
-
-//   console.log(`[Webhook:${requestId}] Subscription disabled:`, {
-//     subscription_code,
-//     updated: result.id,
-//   });
-
-//   return { processed: true };
-// }
-
-// async function handleSubscriptionCancel(data: any, requestId: string) {
-//   const { customer, subscription_code } = data;
-  
-//   console.log(`[Webhook:${requestId}] Processing subscription.cancel:`, {
-//     customer: customer?.email,
-//     subscription_code,
-//   });
-
-//   const subscription = await db.workspaceSubscription.findFirst({
-//     where: { paymentRef: subscription_code },
-//     include: { workspace: true },
-//   });
-
-//   if (!subscription) {
-//     return { processed: false, reason: 'subscription_not_found' };
-//   }
-
-//   const result = await db.workspaceSubscription.update({
-//     where: { id: subscription.id },
-//     data: { 
-//       status: SubscriptionStatus.CANCELED, 
-//       cancelledAt: new Date() 
-//     },
-//   });
-
-//   const member = await db.workspaceMember.findFirst({
-//     where: { workspaceId: subscription.workspaceId, role: 'OWNER' },
-//     include: { user: true },
-//   });
-
-//   if (member) {
-//     await NotificationService.create({
-//       userId: member.user.id,
-//       type: 'SUBSCRIPTION_CANCELLED',
-//       variables: {
-//         plan: subscription.tier,
-//         endDate: subscription.currentPeriodEnd.toLocaleDateString(),
-//       },
-//       metadata: {
-//         subscriptionId: subscription.id,
-//       },
-//       actionUrl: `/dashboard/${subscription.workspaceId}/billing`,
-//     });
-//   }
-
-//   console.log(`[Webhook:${requestId}] Subscription cancelled:`, {
-//     subscription_code,
-//     updated: result.id,
-//   });
-
-//   return { processed: true };
-// }
-
-// async function handleSubscriptionExpiring(data: any, requestId: string) {
-//   const { customer, subscription_code, next_payment_date } = data;
-  
-//   console.log(`[Webhook:${requestId}] Processing subscription.expiring:`, {
-//     customer: customer?.email,
-//     subscription_code,
-//     next_payment_date,
-//   });
-
-//   const subscription = await db.workspaceSubscription.findFirst({
-//     where: { paymentRef: subscription_code },
-//     include: { workspace: true },
-//   });
-
-//   if (!subscription) {
-//     return { processed: false, reason: 'subscription_not_found' };
-//   }
-
-//   const daysUntilExpiry = Math.ceil(
-//     (new Date(subscription.currentPeriodEnd).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-//   );
-
-//   const member = await db.workspaceMember.findFirst({
-//     where: { workspaceId: subscription.workspaceId, role: 'OWNER' },
-//     include: { user: true },
-//   });
-
-//   if (member) {
-//     await NotificationService.create({
-//       userId: member.user.id,
-//       type: 'SUBSCRIPTION_EXPIRING',
-//       variables: {
-//         plan: subscription.tier,
-//         days: daysUntilExpiry.toString(),
-//       },
-//       metadata: {
-//         subscriptionId: subscription.id,
-//         expiryDate: subscription.currentPeriodEnd,
-//       },
-//       actionUrl: `/dashboard/${subscription.workspaceId}/billing`,
-//     });
-//   }
-
-//   return { processed: true };
-// }
-
-// async function handleExpiringCard(data: any, requestId: string) {
-//   const { customer, authorization } = data;
-  
-//   console.log(`[Webhook:${requestId}] Processing expiring card:`, {
-//     customer: customer?.email,
-//     last4: authorization?.last4,
-//     expMonth: authorization?.exp_month,
-//     expYear: authorization?.exp_year,
-//   });
-
-//   const member = await db.workspaceMember.findFirst({
-//     where: { user: { email: customer.email } },
-//     include: { workspace: true, user: true },
-//   });
-
-//   if (!member) {
-//     return { processed: false, reason: 'workspace_not_found' };
-//   }
-
-//   await NotificationService.create({
-//     userId: member.user.id,
-//     type: 'CARD_EXPIRING',
-//     variables: {
-//       last4: authorization.last4,
-//       expMonth: authorization.exp_month,
-//       expYear: authorization.exp_year,
-//     },
-//     metadata: {
-//       last4: authorization.last4,
-//       expMonth: authorization.exp_month,
-//       expYear: authorization.exp_year,
-//       customerEmail: customer.email,
-//     },
-//     actionUrl: `/dashboard/${member.workspaceId}/billing`,
-//   });
-
-//   console.log(`[Webhook:${requestId}] Card expiring notification created for:`, {
-//     workspaceId: member.workspaceId,
-//     userId: member.user.id,
-//   });
-
-//   return { processed: true };
-// }
-
-// async function handleTransfer(data: any, requestId: string) {
-//   console.log(`[Webhook:${requestId}] Transfer event:`, {
-//     status: data.status,
-//     reference: data.reference,
-//     amount: data.amount / 100,
-//     recipient: data.recipient?.name,
-//   });
-
-//   return { processed: true };
-// }
-
-// function mapPlanCodeToTier(planCode: string): SubscriptionTier {
-//   const upperCode = planCode.toUpperCase();
-//   if (upperCode.includes('STARTER')) return SubscriptionTier.STARTER;
-//   if (upperCode.includes('PROFESSIONAL')) return SubscriptionTier.PROFESSIONAL;
-//   if (upperCode.includes('BUSINESS')) return SubscriptionTier.BUSINESS;
-//   return SubscriptionTier.FREE;
-// }
-
-
-
-
-
-
-
-
-
+// app/api/webhooks/paystack/route.ts
 import { NextRequest } from "next/server";
 import crypto from 'crypto';
 import { db } from "@/lib/db";
 import { dropid } from "dropid";
-import { InvoiceStatus, SubscriptionStatus, SubscriptionTier, PlanSubscriptionStatus } from "@prisma/client";
+import { 
+  InvoiceStatus, 
+  SubscriptionStatus, 
+  SubscriptionTier, 
+  PlanSubscriptionStatus,
+  Services 
+} from "@/lib/generated/prisma";
 import { NotificationService } from "@/lib/notification.service";
 
-// Webhook secret for additional security (optional but recommended)
-const WEBHOOK_SECRET = process.env.PAYSTACK_WEBHOOK_SECRET;
-
 export async function POST(req: NextRequest) {
-  const requestId = dropid('webhook').substring(0, 10);
+  const requestId = dropid('wh').substring(0, 10);
   
   try {
-    // Get raw body for signature verification
     const body = await req.text();
     const signature = req.headers.get('x-paystack-signature');
     
-    console.log(`[Webhook:${requestId}] Received webhook`, {
-      signature: signature ? 'present' : 'missing',
-      bodyLength: body.length,
-      contentType: req.headers.get('content-type'),
-    });
+    console.log(`[Webhook:${requestId}] Received:`, { event: JSON.parse(body).event });
 
-    // Verify webhook signature
+    // Verify signature
     if (!signature) {
-      console.error(`[Webhook:${requestId}] No signature provided`);
-      return new Response('No signature provided', { status: 401 });
+      return new Response('No signature', { status: 401 });
     }
 
-    // Verify signature with Paystack secret
     const hash = crypto
       .createHmac('sha512', process.env.PAYSTACK_SECRET_KEY!)
       .update(body)
       .digest('hex');
 
     if (hash !== signature) {
-      console.error(`[Webhook:${requestId}] Invalid signature`, {
-        expected: hash.substring(0, 10) + '...',
-        received: signature.substring(0, 10) + '...',
-      });
+      console.error(`[Webhook:${requestId}] Invalid signature`);
       return new Response('Invalid signature', { status: 401 });
     }
 
-    // Parse event
     const event = JSON.parse(body);
     
-    console.log(`[Webhook:${requestId}] Processing event:`, {
-      event: event.event,
-      id: event.id || 'no-id',
-      createdAt: event.createdAt,
-    });
-
     // Process event based on type
-    let result;
     switch (event.event) {
       case 'charge.success':
-        result = await handleSuccessfulCharge(event.data, requestId);
+        await handleChargeSuccess(event.data, requestId);
         break;
-      
       case 'subscription.create':
-        result = await handleSubscriptionCreate(event.data, requestId);
+        await handleSubscriptionCreate(event.data, requestId);
         break;
-      
       case 'subscription.disable':
-        result = await handleSubscriptionDisable(event.data, requestId);
+        await handleSubscriptionDisable(event.data, requestId);
         break;
-      
-      case 'subscription.expiring_cards':
-        result = await handleExpiringCard(event.data, requestId);
-        break;
-      
       case 'subscription.renewal':
-        result = await handleSubscriptionRenewal(event.data, requestId);
+        await handleSubscriptionRenewal(event.data, requestId);
         break;
-      
       case 'subscription.cancel':
-        result = await handleSubscriptionCancel(event.data, requestId);
+        await handleSubscriptionCancel(event.data, requestId);
         break;
-      
-      case 'subscription.expiring':
-        result = await handleSubscriptionExpiring(event.data, requestId);
-        break;
-      
-      case 'transfer.success':
-      case 'transfer.failed':
-      case 'transfer.reversed':
-        result = await handleTransfer(event.data, requestId);
-        break;
-      
       default:
-        console.log(`[Webhook:${requestId}] Unhandled event type:`, event.event);
-        return new Response('Event received but unhandled', { status: 200 });
+        console.log(`[Webhook:${requestId}] Unhandled:`, event.event);
     }
 
-    console.log(`[Webhook:${requestId}] Event processed successfully:`, result);
-    
-    return new Response(JSON.stringify({ 
-      received: true,
-      event: event.event,
-      processed: true,
-      requestId
-    }), { 
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify({ received: true }), { status: 200 });
 
   } catch (error) {
-    console.error(`[Webhook:${requestId}] Error:`, {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-
-    // Always return 200 to prevent Paystack from retrying
-    return new Response(JSON.stringify({ 
-      received: true,
-      error: 'Webhook processing failed but acknowledged',
-      requestId
-    }), { 
-      status: 200,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    console.error(`[Webhook:${requestId}] Error:`, error);
+    return new Response(JSON.stringify({ received: true }), { status: 200 });
   }
 }
 
-async function handleSuccessfulCharge(data: any, requestId: string) {
-  const { reference, amount, metadata, customer, authorization, channel } = data;
+// ============================================================
+// CHARGE SUCCESS HANDLER
+// ============================================================
+async function handleChargeSuccess(data: any, requestId: string) {
+  const { reference, amount, metadata, customer, channel } = data;
+  const amountNaira = amount / 100;
 
-  console.log(`[Webhook:${requestId}] Processing charge.success:`, {
+  console.log(`[Webhook:${requestId}] Charge success:`, {
     reference,
-    amount: amount / 100,
-    customer: customer?.email,
+    amount: amountNaira,
     type: metadata?.type,
+    workspaceId: metadata?.workspaceId
   });
 
-  // Check if this webhook was already processed (idempotency)
-  const existingTransaction = await db.subscriptionTransaction.findFirst({
-    where: { referenceId: reference },
+  // Check for duplicate (idempotency)
+  const existing = await db.subscriptionTransaction.findFirst({
+    where: { referenceId: reference }
   });
 
-  if (existingTransaction) {
-    console.log(`[Webhook:${requestId}] Transaction already processed:`, reference);
-    return { processed: false, reason: 'duplicate' };
+  if (existing) {
+    console.log(`[Webhook:${requestId}] Duplicate skipped`);
+    return;
   }
 
-  // Handle top-ups
   if (metadata?.type === 'top_up') {
-    return handleTopUpPayment(data, requestId);
+    await handleTopUp(data, requestId);
+  } else if (metadata?.type === 'subscription' || metadata?.isSubscription) {
+    await handleSubscriptionPayment(data, requestId);
   }
-
-  // Handle subscription payments
-  if (metadata?.type === 'subscription_payment' || metadata?.isSubscription || data.plan) {
-    return handleSubscriptionPayment(data, requestId);
-  }
-
-  return { processed: false, reason: 'unknown_type' };
 }
 
-async function handleTopUpPayment(data: any, requestId: string) {
-  const { metadata, reference, amount, customer, authorization, channel } = data;
+// ============================================================
+// TOP-UP HANDLER 
+// ============================================================
+async function handleTopUp(data: any, requestId: string) {
+  const { reference, amount, metadata, channel, authorization } = data;
+  const amountNaira = amount / 100;
 
-  console.log(`[Webhook:${requestId}] Processing top-up payment:`, {
-    workspaceId: metadata?.workspaceId,
-    serviceType: metadata?.serviceType,
-    quantity: metadata?.quantity,
-    amount: amount / 100,
+  console.log(`[Webhook:${requestId}] Processing top-up:`, {
+    reference,
+    workspaceId: metadata.workspaceId,
+    serviceType: metadata.serviceType,
+    quantity: metadata.quantity,
+    bonusCredits: metadata.bonusCredits,
+    amount: amountNaira
   });
 
-  if (!metadata?.workspaceId || !metadata?.serviceType || !metadata?.quantity) {
-    console.error(`[Webhook:${requestId}] Missing top-up metadata:`, metadata);
-    return { processed: false, reason: 'missing_metadata' };
-  }
-
-  return await db.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     // 1. Update invoice
-    await tx.invoice.update({
-      where: { id: metadata.invoiceId },
-      data: {
-        status: InvoiceStatus.PAID,
-        paymentRef: reference,
-        paidAt: new Date(),
-        metadata: {
-          ...metadata,
-          paymentChannel: channel,
-          paidAt: new Date().toISOString(),
-        },
-      },
-    });
-
-    // 2. Map service type to wallet field
-    const walletField = getWalletField(metadata.serviceType);
-
-    // 3. Update wallet
-    if (metadata.serviceType === 'balance') {
-        // Direct balance top-up
-        await tx.wallet.update({
-            where: { workspaceId: metadata.workspaceId },
-            data: {
-                balance: { increment: metadata.amount },
-            },
-        });
-    } else {
-        // Specific service credits top-up
-        await tx.wallet.update({
-            where: { workspaceId: metadata.workspaceId },
-            data: {
-                [walletField]: { increment: metadata.quantity },
-            },
-        });
-    }
-
-    // 4. Create alert
-    await tx.workspaceAlert.create({
-      data: {
-        id: dropid('alt'),
-        workspaceId: metadata.workspaceId,
-        title: "Top-up Successful",
-        message: metadata.serviceType === 'balance' 
-            ? `Successfully topped up your wallet balance with ₦${metadata.amount.toLocaleString()}.`
-            : `Successfully added ${metadata.quantity.toLocaleString()} ${metadata.serviceType} credits to your wallet.`,
-        type: "success"
-      }
-    });
-
-    // 5. Update promo code usage and apply FLAT_CREDIT bonus if applicable
-    if (metadata.promoCode) {
-        const promo = await tx.promoCode.findUnique({
-            where: { code: metadata.promoCode.toUpperCase() }
-        });
-
-        if (promo) {
-            await tx.promoCode.update({
-                where: { id: promo.id },
-                data: { usedCount: { increment: 1 } }
-            });
-
-            // If it's a FLAT_CREDIT bonus, apply it now
-            if (promo.discountType === 'FLAT_CREDIT' && promo.bonusCredits) {
-                const walletField = getWalletField(metadata.serviceType);
-                if (walletField !== 'balance') {
-                    await tx.wallet.update({
-                        where: { workspaceId: metadata.workspaceId },
-                        data: {
-                            [walletField]: { increment: promo.bonusCredits },
-                        },
-                    });
-
-                    // Update alert message
-                    await tx.workspaceAlert.updateMany({
-                        where: { 
-                            workspaceId: metadata.workspaceId,
-                            title: "Top-up Successful",
-                            createdAt: { gte: new Date(Date.now() - 5000) } // Find the alert just created
-                        },
-                        data: {
-                            message: `Successfully added ${metadata.quantity.toLocaleString()} ${metadata.serviceType} credits to your wallet plus ${promo.bonusCredits.toLocaleString()} bonus credits!`
-                        }
-                    });
-                }
-            }
-        }
-    }
-
-    return { processed: true, reference };
-  });
-}
-
-function getWalletField(service: string): string {
-  const mapping: Record<string, string> = {
-    email: "emailCredits",
-    sms: "smsCredits",
-    otp: "otpCredits",
-    blog: "blogCredits",
-    push: "pushCredits",
-    api: "apiCredits",
-    storage: "storageCredits",
-  };
-  return mapping[service] || service;
-}
-
-async function handleSubscriptionPayment(data: any, requestId: string) {
-  const { metadata, reference, amount, customer, authorization, channel } = data;
-
-  console.log(`[Webhook:${requestId}] Processing subscription payment:`, {
-    workspaceId: metadata?.workspaceId,
-    tier: metadata?.tier,
-    amount: amount / 100,
-    discount: metadata?.discount,
-  });
-
-  return await db.$transaction(async (tx) => {
-    // Update invoice
     const invoice = await tx.invoice.update({
       where: { id: metadata.invoiceId },
       data: {
@@ -1037,882 +125,721 @@ async function handleSubscriptionPayment(data: any, requestId: string) {
         metadata: {
           ...metadata,
           paymentChannel: channel,
-          cardType: authorization?.card_type,
-          bank: authorization?.bank,
-          last4: authorization?.last4,
-          paidAt: new Date().toISOString(),
-        },
-      },
-    });
-
-    // Get plan details from database
-    const dbPlan = await tx.plan.findFirst({
-      where: { tier: metadata.tier, isArchived: false },
-    });
-
-    if (!dbPlan) {
-      throw new Error(`Plan not found in database for tier: ${metadata.tier}`);
-    }
-
-    // Update or create workspace subscription
-    const subscription = await tx.workspaceSubscription.upsert({
-      where: {
-        workspaceId: metadata.workspaceId,
-      },
-      update: {
-        tier: metadata.tier,
-        planId: dbPlan.id,
-        status: SubscriptionStatus.ACTIVE,
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        monthlyPrice: metadata.originalAmount,
-        paymentRef: reference,
-        updatedAt: new Date(),
-      },
-      create: {
-        id: dropid('sub'),
-        workspaceId: metadata.workspaceId,
-        tier: metadata.tier,
-        planId: dbPlan.id,
-        status: SubscriptionStatus.ACTIVE,
-        monthlyPrice: metadata.originalAmount,
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        paymentRef: reference,
-      },
-    });
-
-    // Update workspace limits and subscription status
-    await tx.workspace.update({
-      where: { id: metadata.workspaceId },
-      data: {
-        plan: metadata.tier,
-        planSubscriptionStatus: PlanSubscriptionStatus.ACTIVE,
-        subscriberLimit: dbPlan.subscriberLimit,
-        emailLimit: dbPlan.emailLimit,
-        smsLimit: dbPlan.smsLimit,
-        otpLimit: dbPlan.otpLimit,
-        fileLimit: Math.floor(dbPlan.storageLimit), // storageLimit is float in Plan, int in Workspace
-        updatedAt: new Date(),
-      },
-    });
-
-    // Update Wallet credits based on the plan
-    const wallet = await tx.wallet.findUnique({ where: { workspaceId: metadata.workspaceId } });
-    if (wallet) {
-      await tx.wallet.update({
-        where: { workspaceId: metadata.workspaceId },
-        data: {
-          emailCredits: dbPlan.rollOverCredits ? { increment: dbPlan.emailCredits } : dbPlan.emailCredits,
-          smsCredits: dbPlan.rollOverCredits ? { increment: dbPlan.smsCredits } : dbPlan.smsCredits,
-          otpCredits: dbPlan.rollOverCredits ? { increment: dbPlan.otpCredits } : dbPlan.otpCredits,
-          storageCredits: dbPlan.rollOverCredits ? { increment: dbPlan.storageCredits } : dbPlan.storageCredits,
-        }
-      });
-    }
-
-    // Reset usage counts for new billing period (optional - based on your business logic)
-    // Uncomment if you want to reset usage at the start of each billing period
-    
-    await tx.workspace.update({
-      where: { id: metadata.workspaceId },
-      data: {
-        currentEmailsSent: 0,
-        currentSmsSent: 0,
-        currentOtpSent: 0,
-        currentFilesUsed: 0,
-        currentSubscribers: 0, // Be careful with this one
-      },
-    });
-    
-
-    // If promo code was used, record redemption
-    if (metadata.promoCode) {
-      const promo = await tx.promoCode.findUnique({
-        where: { code: metadata.promoCode.toUpperCase() },
-      });
-
-      if (promo) {
-        const existingRedemption = await tx.promoRedemption.findFirst({
-          where: {
-            promoCodeId: promo.id,
-            workspaceId: metadata.workspaceId,
-            invoiceId: invoice.id,
-          },
-        });
-
-        if (!existingRedemption) {
-          await tx.promoRedemption.create({
-            data: {
-              id: dropid('red'),
-              promoCodeId: promo.id,
-              workspaceId: metadata.workspaceId,
-              invoiceId: invoice.id,
-              discountAmount: metadata.discount || 0,
-            },
-          });
-
-          await tx.promoCode.update({
-            where: { id: promo.id },
-            data: { usedCount: { increment: 1 } },
-          });
+          cardLast4: authorization?.last4,
+          paidAt: new Date().toISOString()
         }
       }
+    });
+
+    // 2. Get or create wallet
+    let wallet = await tx.wallet.findUnique({
+      where: { workspaceId: metadata.workspaceId }
+    });
+
+    if (!wallet) {
+      wallet = await tx.wallet.create({
+        data: {
+          id: dropid('wlt'),
+          workspaceId: metadata.workspaceId,
+          balance: 0,
+          emailCredits: 0,
+          smsCredits: 0,
+          otpCredits: 0,
+          blogCredits: 0,
+          pushCredits: 0,
+          aiCredits: 0,
+          storageCredits: 0,
+        }
+      });
     }
 
-    // Create subscription transaction
-    const transaction = await tx.subscriptionTransaction.create({
+    // 3. Add credits to the specific wallet field
+    const totalCredits = metadata.quantity + (metadata.bonusCredits || 0);
+    const updateData: any = {};
+    updateData[metadata.walletField] = { increment: totalCredits };
+
+    await tx.wallet.update({
+      where: { workspaceId: metadata.workspaceId },
+      data: updateData
+    });
+
+    // 4. Create transaction record
+    await tx.subscriptionTransaction.create({
       data: {
         id: dropid('stxn'),
         workspaceId: metadata.workspaceId,
-        subscriptionId: subscription.id,
-        type: metadata.discount ? 'SUBSCRIPTION_PAYMENT' : 'SUBSCRIPTION_PAYMENT',
+        subscriptionId: '',
+        type: 'TOPUP',
         status: 'COMPLETED',
-        amount: amount / 100,
-        description: metadata.discount 
-          ? `Subscription payment for ${metadata.tier} plan (${metadata.discount} discount applied)`
-          : `Subscription payment for ${metadata.tier} plan`,
+        amount: amountNaira,
+        description: `Added ${totalCredits} ${metadata.serviceType} credits (${metadata.quantity} purchased + ${metadata.bonusCredits || 0} bonus)`,
         referenceId: reference,
         invoiceId: invoice.id,
         metadata: {
-          tier: metadata.tier,
-          planAmount: metadata.originalAmount,
-          discount: metadata.discount || 0,
-          finalAmount: amount / 100,
-          promoCode: metadata.promoCode,
-          paymentMethod: channel,
-          cardType: authorization?.card_type,
-          bank: authorization?.bank,
-          last4: authorization?.last4,
-          customerEmail: customer?.email,
-          limits: {
-            subscribers: dbPlan.subscriberLimit,
-            email: dbPlan.emailLimit,
-            sms: dbPlan.smsLimit,
-            otp: dbPlan.otpLimit,
-            storage: dbPlan.storageLimit
-          },
-        },
-      },
+          serviceType: metadata.serviceType,
+          quantity: metadata.quantity,
+          bonusCredits: metadata.bonusCredits || 0,
+          totalCredits,
+          paymentChannel: channel,
+          amountPaid: amountNaira
+        }
+      }
     });
 
-    // Create usage log for the new subscription
-    await tx.usageLog.create({
+    // 5. Update promo code usage if applicable
+    if (metadata.promoCode && invoice.promoCodeId) {
+      await tx.promoCode.update({
+        where: { id: invoice.promoCodeId },
+        data: { usedCount: { increment: 1 } }
+      });
+
+      await tx.promoRedemption.create({
+        data: {
+          id: dropid('red'),
+          promoCodeId: invoice.promoCodeId,
+          workspaceId: metadata.workspaceId,
+          invoiceId: invoice.id,
+          discountAmount: invoice.discount?.toNumber() || 0,
+        }
+      });
+    }
+
+    // 6. Create success alert
+    await tx.workspaceAlert.create({
       data: {
-        id: dropid('ulg'),
+        id: dropid('alt'),
         workspaceId: metadata.workspaceId,
-        service: 'SUBSCRIPTION',
-        month: new Date().toISOString().slice(0, 7),
-        currentSubscribers: 0, // Will be updated by the subscriber count
-        currentEmailsSent: 0,
-        currentFilesUsed: 0,
-        currentSmsSent: 0,
-        currentOtpSent: 0,
-        createdAt: new Date(),
-      },
+        title: "Top-up Successful",
+        message: metadata.bonusCredits 
+          ? `Successfully added ${metadata.quantity.toLocaleString()} ${metadata.serviceType} credits + ${metadata.bonusCredits} bonus credits!`
+          : `Successfully added ${metadata.quantity.toLocaleString()} ${metadata.serviceType} credits.`,
+        type: "success"
+      }
     });
 
-    // Send notification
+    // 7. Send notification to user
     const member = await tx.workspaceMember.findFirst({
-      where: { workspaceId: metadata.workspaceId, role: 'OWNER' },
-      include: { user: true },
+      where: { workspaceId: metadata.workspaceId, userId: metadata.userId },
+      include: { user: true }
     });
 
     if (member) {
       await NotificationService.create({
         userId: member.user.id,
-        type: 'PAYMENT_SUCCESS',
+        type: 'CREDITS_ADDED',
         variables: {
-          amount: (amount / 100).toLocaleString(),
-          plan: metadata.tier,
-          email: customer?.email,
-          limits: `Subscribers: ${dbPlan.subscriberLimit}, SMS: ${dbPlan.smsLimit}, Email: ${dbPlan.emailLimit}`,
+          amount: totalCredits.toLocaleString(),
+          type: metadata.serviceType,
+          bonus: metadata.bonusCredits ? ` + ${metadata.bonusCredits} bonus` : ''
         },
-        metadata: {
-          transactionId: transaction.id,
-          subscriptionId: subscription.id,
-          invoiceId: invoice.id,
-          limits: {
-            subscribers: dbPlan.subscriberLimit,
-            email: dbPlan.emailLimit,
-            sms: dbPlan.smsLimit,
-            otp: dbPlan.otpLimit,
-            storage: dbPlan.storageLimit
-          },
+        metadata: { 
+          serviceType: metadata.serviceType, 
+          quantity: metadata.quantity,
+          bonusCredits: metadata.bonusCredits,
+          totalCredits 
         },
-        actionUrl: `/dashboard/${member.workspaceId}/billing`,
+        actionUrl: `/dashboard/${metadata.workspaceId}/billing`
       });
     }
 
-    console.log(`[Webhook:${requestId}] Subscription payment completed with limits:`, {
+    console.log(`[Webhook:${requestId}] Top-up completed:`, {
       workspaceId: metadata.workspaceId,
-      subscriptionId: subscription.id,
-      transactionId: transaction.id,
-      amount: amount / 100,
-      tier: metadata.tier,
-      limits: {
-        subscribers: dbPlan.subscriberLimit,
-        email: dbPlan.emailLimit,
-        sms: dbPlan.smsLimit,
-        otp: dbPlan.otpLimit,
-        storage: dbPlan.storageLimit
-      },
+      serviceType: metadata.serviceType,
+      quantity: metadata.quantity,
+      bonusCredits: metadata.bonusCredits,
+      totalCredits,
+      amount: amountNaira
     });
-
-    return { 
-      processed: true, 
-      type: 'subscription_payment',
-      subscriptionId: subscription.id,
-      transactionId: transaction.id,
-      tier: metadata.tier,
-      limits: {
-        subscribers: dbPlan.subscriberLimit,
-        email: dbPlan.emailLimit,
-        sms: dbPlan.smsLimit,
-        otp: dbPlan.otpLimit,
-        storage: dbPlan.storageLimit
-      },
-    };
   });
 }
 
-async function handleSubscriptionCreate(data: any, requestId: string) {
-  const { customer, plan, subscription_code, next_payment_date, amount } = data;
-  
-  console.log(`[Webhook:${requestId}] Processing subscription.create:`, {
-    customer: customer?.email,
-    plan: plan?.plan_code,
-    subscription_code,
-    amount: amount ? amount / 100 : 'N/A',
-  });
+// ============================================================
+// SUBSCRIPTION PAYMENT HANDLER
+// ============================================================
+async function handleSubscriptionPayment(data: any, requestId: string) {
+  const { reference, amount, metadata, customer, channel, authorization } = data;
+  const amountNaira = amount / 100;
 
-  const member = await db.workspaceMember.findFirst({
-    where: { user: { email: customer.email } },
-    include: { workspace: true, user: true },
-  });
-
-  if (!member) {
-    console.log(`[Webhook:${requestId}] Workspace not found for email:`, customer.email);
-    return { processed: false, reason: 'workspace_not_found' };
-  }
-
-  const tier = mapPlanCodeToTier(plan.plan_code);
-  
-  return await db.$transaction(async (tx) => {
-    // Get plan details from database - NO HARDCODED FALLBACK
-    const dbPlan = await tx.plan.findFirst({
-      where: { tier, isArchived: false },
+  await db.$transaction(async (tx) => {
+    // 1. Get plan from database
+    const plan = await tx.plan.findFirst({
+      where: { tier: metadata.tier, isActive: true, isArchived: false }
     });
 
-    if (!dbPlan) {
-      throw new Error(`Plan not found in database for tier: ${tier}. Please ensure plans are seeded.`);
+    if (!plan) {
+      throw new Error(`Plan ${metadata.tier} not found in database`);
     }
 
+    // 2. Update or create invoice
+    let invoice = await tx.invoice.findUnique({
+      where: { id: metadata.invoiceId }
+    });
+
+    if (!invoice) {
+      invoice = await tx.invoice.create({
+        data: {
+          id: dropid('inv'),
+          workspaceId: metadata.workspaceId,
+          invoiceNumber: `INV-${Date.now()}`,
+          amount: amountNaira,
+          finalAmount: amountNaira,
+          status: InvoiceStatus.PAID,
+          paidAt: new Date(),
+          paymentRef: reference,
+          description: `${plan.tier} plan subscription`,
+          billingEmail: customer?.email
+        }
+      });
+    } else {
+      await tx.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          status: InvoiceStatus.PAID,
+          paidAt: new Date(),
+          paymentRef: reference
+        }
+      });
+    }
+
+    // 3. Update or create workspace subscription
     const subscription = await tx.workspaceSubscription.upsert({
-      where: { workspaceId: member.workspaceId },
+      where: { workspaceId: metadata.workspaceId },
+      update: {
+        tier: plan.tier,
+        planId: plan.id,
+        status: SubscriptionStatus.ACTIVE,
+        monthlyPrice: plan.price,
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        paymentRef: reference,
+        updatedAt: new Date()
+      },
       create: {
         id: dropid('sub'),
-        workspaceId: member.workspaceId,
-        tier: tier,
-        planId: dbPlan.id,
+        workspaceId: metadata.workspaceId,
+        tier: plan.tier,
+        planId: plan.id,
         status: SubscriptionStatus.ACTIVE,
-        monthlyPrice: (amount || plan.amount) / 100,
+        monthlyPrice: plan.price,
         currentPeriodStart: new Date(),
-        currentPeriodEnd: new Date(next_payment_date || Date.now() + 30 * 24 * 60 * 60 * 1000),
-        paymentRef: subscription_code,
-      },
-      update: {
-        tier: tier,
-        planId: dbPlan.id,
-        status: SubscriptionStatus.ACTIVE,
-        monthlyPrice: (amount || plan.amount) / 100,
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: new Date(next_payment_date || Date.now() + 30 * 24 * 60 * 60 * 1000),
-        paymentRef: subscription_code,
-      },
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        paymentRef: reference
+      }
     });
 
-    // Update workspace limits and subscription status
+    // 4. Update workspace with plan limits
     await tx.workspace.update({
-      where: { id: member.workspaceId },
+      where: { id: metadata.workspaceId },
       data: {
-        plan: tier,
+        plan: plan.tier,
         planSubscriptionStatus: PlanSubscriptionStatus.ACTIVE,
-        subscriberLimit: dbPlan.subscriberLimit,
-        emailLimit: dbPlan.emailLimit,
-        smsLimit: dbPlan.smsLimit,
-        otpLimit: dbPlan.otpLimit,
-        fileLimit: Math.floor(dbPlan.storageLimit),
-        updatedAt: new Date(),
-      },
+        subscriberLimit: plan.subscriberLimit,
+        emailLimit: plan.emailLimit,
+        smsLimit: plan.smsLimit,
+        otpLimit: plan.otpLimit,
+        blogLimit: plan.blogLimit,
+        pushLimit: plan.pushLimit,
+        aiLimit: plan.aiLimit,
+        storageLimit: Math.floor(plan.storageLimit),
+        updatedAt: new Date()
+      }
     });
 
-    const transaction = await tx.subscriptionTransaction.create({
+    // 5. Update wallet with plan credits (if plan has any)
+    const wallet = await tx.wallet.findUnique({
+      where: { workspaceId: metadata.workspaceId }
+    });
+
+    if (wallet && plan.features) {
+      const features = plan.features as any;
+      await tx.wallet.update({
+        where: { workspaceId: metadata.workspaceId },
+        data: {
+          emailCredits: { increment: features.emailCredits || 0 },
+          smsCredits: { increment: features.smsCredits || 0 },
+          otpCredits: { increment: features.otpCredits || 0 }
+        }
+      });
+    }
+
+    // 6. Create monthly usage records for all services
+    const month = new Date().toISOString().slice(0, 7);
+    const services = [
+      Services.SUBSCRIBERS, Services.EMAIL, Services.SMS, 
+      Services.OTP, Services.STORAGE, Services.BLOG, 
+      Services.PUSH, Services.AI
+    ];
+
+    for (const service of services) {
+      await tx.monthlyUsage.upsert({
+        where: {
+          workspaceId_service_month: {
+            workspaceId: metadata.workspaceId,
+            service,
+            month
+          }
+        },
+        update: {
+          subscriberLimit: plan.subscriberLimit,
+          emailLimit: plan.emailLimit,
+          smsLimit: plan.smsLimit,
+          otpLimit: plan.otpLimit,
+          storageLimit: Math.floor(plan.storageLimit),
+          blogLimit: plan.blogLimit,
+          pushLimit: plan.pushLimit,
+          aiLimit: plan.aiLimit,
+          updatedAt: new Date()
+        },
+        create: {
+          id: dropid('mus'),
+          workspaceId: metadata.workspaceId,
+          service,
+          month,
+          subscriberLimit: plan.subscriberLimit,
+          emailLimit: plan.emailLimit,
+          smsLimit: plan.smsLimit,
+          otpLimit: plan.otpLimit,
+          storageLimit: Math.floor(plan.storageLimit),
+          blogLimit: plan.blogLimit,
+          pushLimit: plan.pushLimit,
+          aiLimit: plan.aiLimit,
+          unitsUsed: 0,
+          currentSubscribers: 0,
+          currentEmailsSent: 0,
+          currentStorageUsed: 0,
+          currentSmsSent: 0,
+          currentOtpSent: 0,
+          currentAiCalls: 0,
+          currentBlogsCount: 0,
+          currentPushSent: 0,
+          topUpUnitsUsed: 0,
+          topUpCost: 0
+        }
+      });
+    }
+
+    // 7. Create transaction record
+    await tx.subscriptionTransaction.create({
       data: {
         id: dropid('stxn'),
-        workspaceId: member.workspaceId,
+        workspaceId: metadata.workspaceId,
         subscriptionId: subscription.id,
         type: 'SUBSCRIPTION_PAYMENT',
         status: 'COMPLETED',
-        amount: (amount || plan.amount) / 100,
-        description: `Initial subscription payment for ${tier} plan`,
-        referenceId: subscription_code,
+        amount: amountNaira,
+        description: `${plan.tier} plan subscription payment`,
+        referenceId: reference,
+        invoiceId: invoice.id,
         metadata: {
-          tier,
-          planCode: plan.plan_code,
-          customerEmail: customer.email,
-          event: 'subscription.create',
+          tier: plan.tier,
           limits: {
-            subscribers: dbPlan.subscriberLimit,
-            email: dbPlan.emailLimit,
-            sms: dbPlan.smsLimit,
-            otp: dbPlan.otpLimit,
-            storage: dbPlan.storageLimit
-          },
-        },
-      },
+            subscribers: plan.subscriberLimit,
+            email: plan.emailLimit,
+            sms: plan.smsLimit,
+            otp: plan.otpLimit,
+            storage: plan.storageLimit
+          }
+        }
+      }
     });
+
+    // 8. Send notification to owner
+    const owner = await tx.workspaceMember.findFirst({
+      where: { workspaceId: metadata.workspaceId, role: 'OWNER' },
+      include: { user: true }
+    });
+
+    if (owner) {
+      await NotificationService.create({
+        userId: owner.user.id,
+        type: 'PAYMENT_SUCCESS',
+        variables: {
+          amount: amountNaira.toLocaleString(),
+          plan: plan.tier,
+          limits: `Subscribers: ${plan.subscriberLimit}, Email: ${plan.emailLimit}, SMS: ${plan.smsLimit}`
+        },
+        metadata: { subscriptionId: subscription.id, plan: plan.tier },
+        actionUrl: `/dashboard/${metadata.workspaceId}/billing`
+      });
+    }
+
+    console.log(`[Webhook:${requestId}] Subscription payment processed:`, {
+      workspaceId: metadata.workspaceId,
+      tier: plan.tier,
+      limits: {
+        subscribers: plan.subscriberLimit,
+        email: plan.emailLimit,
+        sms: plan.smsLimit
+      }
+    });
+  });
+}
+
+// ============================================================
+// SUBSCRIPTION CREATE HANDLER
+// ============================================================
+async function handleSubscriptionCreate(data: any, requestId: string) {
+  const { customer, plan: planData, subscription_code, amount } = data;
+  const amountNaira = (amount || planData.amount) / 100;
+  const tier = mapPlanCodeToTier(planData.plan_code);
+
+  // Find workspace by user email
+  const member = await db.workspaceMember.findFirst({
+    where: { user: { email: customer.email }, role: 'OWNER' },
+    include: { workspace: true, user: true }
+  });
+
+  if (!member) {
+    console.log(`[Webhook:${requestId}] Workspace not found for:`, customer.email);
+    return;
+  }
+
+  await db.$transaction(async (tx) => {
+    // Get plan from database
+    const plan = await tx.plan.findFirst({
+      where: { tier, isActive: true, isArchived: false }
+    });
+
+    if (!plan) {
+      throw new Error(`Plan ${tier} not found in database`);
+    }
+
+    // Create subscription
+    const subscription = await tx.workspaceSubscription.create({
+      data: {
+        id: dropid('sub'),
+        workspaceId: member.workspaceId,
+        tier: plan.tier,
+        planId: plan.id,
+        status: SubscriptionStatus.ACTIVE,
+        monthlyPrice: plan.price,
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        paymentRef: subscription_code
+      }
+    });
+
+    // Update workspace with plan limits
+    await tx.workspace.update({
+      where: { id: member.workspaceId },
+      data: {
+        plan: plan.tier,
+        planSubscriptionStatus: PlanSubscriptionStatus.ACTIVE,
+        subscriberLimit: plan.subscriberLimit,
+        emailLimit: plan.emailLimit,
+        smsLimit: plan.smsLimit,
+        otpLimit: plan.otpLimit,
+        blogLimit: plan.blogLimit,
+        pushLimit: plan.pushLimit,
+        aiLimit: plan.aiLimit,
+        storageLimit: Math.floor(plan.storageLimit)
+      }
+    });
+
+    // Create monthly usage records
+    const month = new Date().toISOString().slice(0, 7);
+    const services = [Services.SUBSCRIBERS, Services.EMAIL, Services.SMS, Services.OTP, Services.STORAGE, Services.BLOG, Services.PUSH, Services.AI];
+
+    for (const service of services) {
+      await tx.monthlyUsage.upsert({
+        where: { workspaceId_service_month: { workspaceId: member.workspaceId, service, month } },
+        update: {
+          subscriberLimit: plan.subscriberLimit,
+          emailLimit: plan.emailLimit,
+          smsLimit: plan.smsLimit,
+          otpLimit: plan.otpLimit,
+          storageLimit: Math.floor(plan.storageLimit),
+          blogLimit: plan.blogLimit,
+          pushLimit: plan.pushLimit,
+          aiLimit: plan.aiLimit
+        },
+        create: {
+          id: dropid('mus'),
+          workspaceId: member.workspaceId,
+          service,
+          month,
+          subscriberLimit: plan.subscriberLimit,
+          emailLimit: plan.emailLimit,
+          smsLimit: plan.smsLimit,
+          otpLimit: plan.otpLimit,
+          storageLimit: Math.floor(plan.storageLimit),
+          blogLimit: plan.blogLimit,
+          pushLimit: plan.pushLimit,
+          aiLimit: plan.aiLimit,
+          unitsUsed: 0,
+          currentSubscribers: 0,
+          currentEmailsSent: 0,
+          currentStorageUsed: 0,
+          currentSmsSent: 0,
+          currentOtpSent: 0,
+          currentAiCalls: 0,
+          currentBlogsCount: 0,
+          currentPushSent: 0,
+          topUpUnitsUsed: 0,
+          topUpCost: 0
+        }
+      });
+    }
 
     // Send notification
     await NotificationService.create({
       userId: member.user.id,
       type: 'SUBSCRIPTION_CREATED',
-      variables: {
-        plan: tier,
-        workspace: member.workspace.name,
-        email: customer.email,
-        limits: `Subscribers: ${dbPlan.subscriberLimit}, SMS: ${dbPlan.smsLimit}, Email: ${dbPlan.emailLimit}`,
-      },
-      metadata: {
-        subscriptionId: subscription.id,
-        transactionId: transaction.id,
-        limits: {
-          subscribers: dbPlan.subscriberLimit,
-          email: dbPlan.emailLimit,
-          sms: dbPlan.smsLimit,
-          otp: dbPlan.otpLimit,
-          storage: dbPlan.storageLimit
-        },
-      },
-      actionUrl: `/dashboard/${member.workspaceId}/billing`,
+      variables: { plan: plan.tier, workspace: member.workspace.name },
+      metadata: { subscriptionId: subscription.id, limits: { subscribers: plan.subscriberLimit, email: plan.emailLimit } },
+      actionUrl: `/dashboard/${member.workspaceId}/billing`
     });
-
-    console.log(`[Webhook:${requestId}] Subscription created with limits:`, {
-      workspaceId: member.workspaceId,
-      subscriptionId: subscription.id,
-      transactionId: transaction.id,
-      tier,
-      limits: {
-        subscribers: dbPlan.subscriberLimit,
-        email: dbPlan.emailLimit,
-        sms: dbPlan.smsLimit,
-        otp: dbPlan.otpLimit,
-        storage: dbPlan.storageLimit
-      },
-    });
-
-    return { 
-      processed: true, 
-      subscriptionId: subscription.id,
-      transactionId: transaction.id,
-      limits: {
-        subscribers: dbPlan.subscriberLimit,
-        email: dbPlan.emailLimit,
-        sms: dbPlan.smsLimit,
-        otp: dbPlan.otpLimit,
-        storage: dbPlan.storageLimit
-      },
-    };
   });
+
+  console.log(`[Webhook:${requestId}] Subscription created:`, { email: customer.email, tier });
 }
 
+// ============================================================
+// SUBSCRIPTION RENEWAL HANDLER
+// ============================================================
 async function handleSubscriptionRenewal(data: any, requestId: string) {
-  const { customer, subscription_code, amount, next_payment_date, invoice_code } = data;
-  
-  console.log(`[Webhook:${requestId}] Processing subscription.renewal:`, {
-    customer: customer?.email,
-    subscription_code,
-    amount: amount / 100,
-    next_payment_date,
-  });
+  const { customer, subscription_code, amount, next_payment_date } = data;
+  const amountNaira = amount / 100;
 
   const subscription = await db.workspaceSubscription.findFirst({
     where: { paymentRef: subscription_code },
-    include: { workspace: true },
+    include: { workspace: true }
   });
 
   if (!subscription) {
     console.log(`[Webhook:${requestId}] Subscription not found:`, subscription_code);
-    return { processed: false, reason: 'subscription_not_found' };
+    return;
   }
 
-  const member = await db.workspaceMember.findFirst({
-    where: { workspaceId: subscription.workspaceId, role: 'OWNER' },
-    include: { user: true },
-  });
-
-  return await db.$transaction(async (tx) => {
-    // Get plan details from database - NO HARDCODED FALLBACK
-    const dbPlan = await tx.plan.findFirst({
-      where: { tier: subscription.tier, isArchived: false },
+  await db.$transaction(async (tx) => {
+    // Get plan from database
+    const plan = await tx.plan.findFirst({
+      where: { tier: subscription.tier, isActive: true }
     });
 
-    if (!dbPlan) {
-      throw new Error(`Plan not found in database for tier: ${subscription.tier}. Please ensure plans are seeded.`);
+    if (!plan) {
+      throw new Error(`Plan ${subscription.tier} not found`);
     }
 
-    const invoice = await tx.invoice.create({
-      data: {
-        id: dropid('inv'),
-        workspaceId: subscription.workspaceId,
-        invoiceNumber: `REN-${Date.now()}`,
-        amount: amount / 100,
-        discount: 0,
-        finalAmount: amount / 100,
-        status: InvoiceStatus.PAID,
-        paidAt: new Date(),
-        periodStart: subscription.currentPeriodEnd,
-        periodEnd: new Date(next_payment_date),
-        paymentRef: invoice_code || subscription_code,
-        metadata: {
-          type: 'subscription_renewal',
-          subscriptionCode: subscription_code,
-          customerEmail: customer?.email,
-        },
-      },
-    });
-
-    const updatedSubscription = await tx.workspaceSubscription.update({
+    // Update subscription period
+    await tx.workspaceSubscription.update({
       where: { id: subscription.id },
       data: {
         currentPeriodStart: subscription.currentPeriodEnd,
         currentPeriodEnd: new Date(next_payment_date),
         status: SubscriptionStatus.ACTIVE,
-        updatedAt: new Date(),
-      },
+        updatedAt: new Date()
+      }
     });
 
-    // Update workspace subscription status (ensure it's active)
+    // Ensure workspace is active
     await tx.workspace.update({
       where: { id: subscription.workspaceId },
-      data: {
-        planSubscriptionStatus: PlanSubscriptionStatus.ACTIVE,
-        updatedAt: new Date(),
-      },
+      data: { planSubscriptionStatus: PlanSubscriptionStatus.ACTIVE }
     });
 
-    // Optionally reset usage counts for the new period
-    // Uncomment if you want to reset usage at renewal
-    
-    await tx.workspace.update({
-      where: { id: subscription.workspaceId },
-      data: {
-        currentEmailsSent: 0,
-        currentSmsSent: 0,
-        currentOtpSent: 0,
-        currentFilesUsed: 0,
-      },
-    });
-    
+    // Update monthly usage for new period
+    const month = new Date().toISOString().slice(0, 7);
+    const services = [Services.EMAIL, Services.SMS, Services.OTP];
 
-    const transaction = await tx.subscriptionTransaction.create({
+    for (const service of services) {
+      await tx.monthlyUsage.upsert({
+        where: { workspaceId_service_month: { workspaceId: subscription.workspaceId, service, month } },
+        update: {
+          emailLimit: plan.emailLimit,
+          smsLimit: plan.smsLimit,
+          otpLimit: plan.otpLimit
+        },
+        create: {
+          id: dropid('mus'),
+          workspaceId: subscription.workspaceId,
+          service,
+          month,
+          subscriberLimit: plan.subscriberLimit,
+          emailLimit: plan.emailLimit,
+          smsLimit: plan.smsLimit,
+          otpLimit: plan.otpLimit,
+          storageLimit: Math.floor(plan.storageLimit),
+          blogLimit: plan.blogLimit,
+          pushLimit: plan.pushLimit,
+          aiLimit: plan.aiLimit,
+          unitsUsed: 0,
+          currentSubscribers: 0,
+          currentEmailsSent: 0,
+          currentStorageUsed: 0,
+          currentSmsSent: 0,
+          currentOtpSent: 0,
+          currentAiCalls: 0,
+          currentBlogsCount: 0,
+          currentPushSent: 0,
+          topUpUnitsUsed: 0,
+          topUpCost: 0
+        }
+      });
+    }
+
+    // Create renewal transaction
+    await tx.subscriptionTransaction.create({
       data: {
         id: dropid('stxn'),
         workspaceId: subscription.workspaceId,
         subscriptionId: subscription.id,
         type: 'SUBSCRIPTION_RENEWAL',
         status: 'COMPLETED',
-        amount: amount / 100,
-        description: `Subscription renewal for ${subscription.tier} plan`,
-        referenceId: invoice_code || subscription_code,
-        invoiceId: invoice.id,
-        metadata: {
-          tier: subscription.tier,
-          amount: amount / 100,
-          nextPaymentDate: next_payment_date,
-          customerEmail: customer?.email,
-          limits: {
-            subscribers: dbPlan.subscriberLimit,
-            email: dbPlan.emailLimit,
-            sms: dbPlan.smsLimit,
-            otp: dbPlan.otpLimit,
-            storage: dbPlan.storageLimit
-          },
-        },
-      },
+        amount: amountNaira,
+        description: `${subscription.tier} plan renewal`,
+        referenceId: subscription_code,
+        metadata: { tier: subscription.tier, amount: amountNaira }
+      }
     });
-
-    if (member) {
-      await NotificationService.create({
-        userId: member.user.id,
-        type: 'SUBSCRIPTION_RENEWED',
-        variables: {
-          plan: subscription.tier,
-          amount: (amount / 100).toLocaleString(),
-          limits: `Subscribers: ${dbPlan.subscriberLimit}, SMS: ${dbPlan.smsLimit}`,
-        },
-        metadata: {
-          subscriptionId: subscription.id,
-          transactionId: transaction.id,
-          invoiceId: invoice.id,
-          limits: {
-            subscribers: dbPlan.subscriberLimit,
-            email: dbPlan.emailLimit,
-            sms: dbPlan.smsLimit,
-            otp: dbPlan.otpLimit,
-            storage: dbPlan.storageLimit
-          },
-        },
-        actionUrl: `/dashboard/${subscription.workspaceId}/billing/invoices/${invoice.id}`,
-      });
-    }
-
-    console.log(`[Webhook:${requestId}] Subscription renewed with limits:`, {
-      workspaceId: subscription.workspaceId,
-      subscriptionId: subscription.id,
-      transactionId: transaction.id,
-      tier: subscription.tier,
-      limits: {
-        subscribers: dbPlan.subscriberLimit,
-        email: dbPlan.emailLimit,
-        sms: dbPlan.smsLimit,
-        otp: dbPlan.otpLimit,
-        storage: dbPlan.storageLimit
-      },
-      newPeriodEnd: next_payment_date,
-    });
-
-    return { 
-      processed: true, 
-      subscriptionId: subscription.id, 
-      transactionId: transaction.id, 
-      limits: {
-        subscribers: dbPlan.subscriberLimit,
-        email: dbPlan.emailLimit,
-        sms: dbPlan.smsLimit,
-        otp: dbPlan.otpLimit,
-        storage: dbPlan.storageLimit
-      },
-    };
   });
+
+  console.log(`[Webhook:${requestId}] Subscription renewed:`, { subscription_code, amount: amountNaira });
 }
 
+// ============================================================
+// SUBSCRIPTION DISABLE/CANCEL HANDLER
+// ============================================================
 async function handleSubscriptionDisable(data: any, requestId: string) {
-  const { customer, subscription_code } = data;
-  
-  console.log(`[Webhook:${requestId}] Processing subscription.disable:`, {
-    customer: customer?.email,
-    subscription_code,
-  });
-
-  const subscription = await db.workspaceSubscription.findFirst({
-    where: { paymentRef: subscription_code },
-    include: { workspace: true },
-  });
-
-  if (!subscription) {
-    return { processed: false, reason: 'subscription_not_found' };
-  }
-
-  const result = await db.$transaction(async (tx) => {
-    // Get FREE plan limits from database - NO HARDCODED FALLBACK
-    const dbPlan = await tx.plan.findFirst({
-      where: { tier: SubscriptionTier.FREE, isArchived: false },
-    });
-
-    if (!dbPlan) {
-      throw new Error('FREE plan not found in database. Please ensure plans are seeded.');
-    }
-
-    // Update subscription
-    const updatedSub = await tx.workspaceSubscription.update({
-      where: { id: subscription.id },
-      data: { 
-        status: SubscriptionStatus.CANCELED, 
-        cancelledAt: new Date() 
-      },
-    });
-
-    // Downgrade workspace to FREE plan
-    await tx.workspace.update({
-      where: { id: subscription.workspaceId },
-      data: {
-        plan: SubscriptionTier.FREE,
-        planSubscriptionStatus: PlanSubscriptionStatus.INACTIVE,
-        subscriberLimit: dbPlan.subscriberLimit,
-        emailLimit: dbPlan.emailLimit,
-        smsLimit: dbPlan.smsLimit,
-        otpLimit: dbPlan.otpLimit,
-        fileLimit: Math.floor(dbPlan.storageLimit),
-        updatedAt: new Date(),
-      },
-    });
-
-    return { updatedSub, dbPlan };
-  });
-
-  const { dbPlan } = result;
-
-  const member = await db.workspaceMember.findFirst({
-    where: { workspaceId: subscription.workspaceId, role: 'OWNER' },
-    include: { user: true },
-  });
-
-  if (member) {
-    await NotificationService.create({
-      userId: member.user.id,
-      type: 'SUBSCRIPTION_CANCELLED',
-      variables: {
-        plan: subscription.tier,
-        endDate: subscription.currentPeriodEnd.toLocaleDateString(),
-        newPlan: 'FREE',
-        limits: `New limits: Subscribers: ${dbPlan.subscriberLimit}`,
-      },
-      metadata: {
-        subscriptionId: subscription.id,
-        oldTier: subscription.tier,
-        newTier: SubscriptionTier.FREE,
-        limits: {
-          subscribers: dbPlan.subscriberLimit,
-          email: dbPlan.emailLimit,
-          sms: dbPlan.smsLimit,
-          otp: dbPlan.otpLimit,
-          storage: dbPlan.storageLimit
-        },
-      },
-      actionUrl: `/dashboard/${subscription.workspaceId}/billing`,
-    });
-  }
-
-  console.log(`[Webhook:${requestId}] Subscription disabled and workspace downgraded to FREE:`, {
-    subscription_code,
-    oldTier: subscription.tier,
-    newLimits: {
-      subscribers: dbPlan.subscriberLimit,
-      email: dbPlan.emailLimit,
-      sms: dbPlan.smsLimit,
-      otp: dbPlan.otpLimit,
-      storage: dbPlan.storageLimit
-    },
-  });
-
-  return { processed: true };
+  const { subscription_code } = data;
+  await downgradeToFreePlan(subscription_code, requestId, 'disable');
 }
 
 async function handleSubscriptionCancel(data: any, requestId: string) {
-  const { customer, subscription_code } = data;
-  
-  console.log(`[Webhook:${requestId}] Processing subscription.cancel:`, {
-    customer: customer?.email,
-    subscription_code,
-  });
+  const { subscription_code } = data;
+  await downgradeToFreePlan(subscription_code, requestId, 'cancel');
+}
 
+async function downgradeToFreePlan(subscriptionCode: string, requestId: string, event: string) {
   const subscription = await db.workspaceSubscription.findFirst({
-    where: { paymentRef: subscription_code },
-    include: { workspace: true },
+    where: { paymentRef: subscriptionCode },
+    include: { workspace: true }
   });
 
   if (!subscription) {
-    return { processed: false, reason: 'subscription_not_found' };
+    console.log(`[Webhook:${requestId}] Subscription not found:`, subscriptionCode);
+    return;
   }
 
-  const result = await db.$transaction(async (tx) => {
-    // Get FREE plan limits from database - NO HARDCODED FALLBACK
-    const dbPlan = await tx.plan.findFirst({
-      where: { tier: SubscriptionTier.FREE, isArchived: false },
+  await db.$transaction(async (tx) => {
+    // Get FREE plan from database
+    const freePlan = await tx.plan.findFirst({
+      where: { tier: SubscriptionTier.FREE, isActive: true, isArchived: false }
     });
 
-    if (!dbPlan) {
-      throw new Error('FREE plan not found in database. Please ensure plans are seeded.');
+    if (!freePlan) {
+      throw new Error('FREE plan not found in database');
     }
 
-    // Update subscription
-    const updatedSub = await tx.workspaceSubscription.update({
+    // Update subscription status
+    await tx.workspaceSubscription.update({
       where: { id: subscription.id },
-      data: { 
-        status: SubscriptionStatus.CANCELED, 
-        cancelledAt: new Date() 
-      },
+      data: {
+        status: SubscriptionStatus.CANCELED,
+        cancelledAt: new Date()
+      }
     });
 
-    // Downgrade workspace to FREE plan
+    // Downgrade workspace to FREE plan limits
     await tx.workspace.update({
       where: { id: subscription.workspaceId },
       data: {
         plan: SubscriptionTier.FREE,
         planSubscriptionStatus: PlanSubscriptionStatus.INACTIVE,
-        subscriberLimit: dbPlan.subscriberLimit,
-        emailLimit: dbPlan.emailLimit,
-        smsLimit: dbPlan.smsLimit,
-        otpLimit: dbPlan.otpLimit,
-        fileLimit: Math.floor(dbPlan.storageLimit),
-        updatedAt: new Date(),
-      },
+        subscriberLimit: freePlan.subscriberLimit,
+        emailLimit: freePlan.emailLimit,
+        smsLimit: freePlan.smsLimit,
+        otpLimit: freePlan.otpLimit,
+        blogLimit: freePlan.blogLimit,
+        pushLimit: freePlan.pushLimit,
+        aiLimit: freePlan.aiLimit,
+        storageLimit: Math.floor(freePlan.storageLimit),
+        updatedAt: new Date()
+      }
     });
 
-    return { updatedSub, dbPlan };
-  });
+    // Update monthly usage records with FREE limits
+    const month = new Date().toISOString().slice(0, 7);
+    const services = [Services.SUBSCRIBERS, Services.EMAIL, Services.SMS, Services.OTP, Services.STORAGE, Services.BLOG, Services.PUSH, Services.AI];
 
-  const { dbPlan } = result;
-
-  const member = await db.workspaceMember.findFirst({
-    where: { workspaceId: subscription.workspaceId, role: 'OWNER' },
-    include: { user: true },
-  });
-
-  if (member) {
-    await NotificationService.create({
-      userId: member.user.id,
-      type: 'SUBSCRIPTION_CANCELLED',
-      variables: {
-        plan: subscription.tier,
-        endDate: subscription.currentPeriodEnd.toLocaleDateString(),
-        newPlan: 'FREE',
-        limits: `New limits: Subscribers: ${dbPlan.subscriberLimit}`,
-      },
-      metadata: {
-        subscriptionId: subscription.id,
-        oldTier: subscription.tier,
-        newTier: SubscriptionTier.FREE,
-        limits: {
-          subscribers: dbPlan.subscriberLimit,
-          email: dbPlan.emailLimit,
-          sms: dbPlan.smsLimit,
-          otp: dbPlan.otpLimit,
-          storage: dbPlan.storageLimit
+    for (const service of services) {
+      await tx.monthlyUsage.upsert({
+        where: { workspaceId_service_month: { workspaceId: subscription.workspaceId, service, month } },
+        update: {
+          subscriberLimit: freePlan.subscriberLimit,
+          emailLimit: freePlan.emailLimit,
+          smsLimit: freePlan.smsLimit,
+          otpLimit: freePlan.otpLimit,
+          storageLimit: Math.floor(freePlan.storageLimit),
+          blogLimit: freePlan.blogLimit,
+          pushLimit: freePlan.pushLimit,
+          aiLimit: freePlan.aiLimit
         },
-      },
-      actionUrl: `/dashboard/${subscription.workspaceId}/billing`,
+        create: {
+          id: dropid('mus'),
+          workspaceId: subscription.workspaceId,
+          service,
+          month,
+          subscriberLimit: freePlan.subscriberLimit,
+          emailLimit: freePlan.emailLimit,
+          smsLimit: freePlan.smsLimit,
+          otpLimit: freePlan.otpLimit,
+          storageLimit: Math.floor(freePlan.storageLimit),
+          blogLimit: freePlan.blogLimit,
+          pushLimit: freePlan.pushLimit,
+          aiLimit: freePlan.aiLimit,
+          unitsUsed: 0,
+          currentSubscribers: 0,
+          currentEmailsSent: 0,
+          currentStorageUsed: 0,
+          currentSmsSent: 0,
+          currentOtpSent: 0,
+          currentAiCalls: 0,
+          currentBlogsCount: 0,
+          currentPushSent: 0,
+          topUpUnitsUsed: 0,
+          topUpCost: 0
+        }
+      });
+    }
+
+    // Send notification to owner
+    const owner = await tx.workspaceMember.findFirst({
+      where: { workspaceId: subscription.workspaceId, role: 'OWNER' },
+      include: { user: true }
     });
-  }
 
-  console.log(`[Webhook:${requestId}] Subscription cancelled and workspace downgraded to FREE:`, {
-    subscription_code,
-    oldTier: subscription.tier,
-    newLimits: {
-      subscribers: dbPlan.subscriberLimit,
-      email: dbPlan.emailLimit,
-      sms: dbPlan.smsLimit,
-      otp: dbPlan.otpLimit,
-      storage: dbPlan.storageLimit
-    },
+    if (owner) {
+      await NotificationService.create({
+        userId: owner.user.id,
+        type: 'SUBSCRIPTION_CANCELLED',
+        variables: {
+          plan: subscription.tier,
+          newPlan: 'FREE',
+          limits: `Subscribers: ${freePlan.subscriberLimit}, Email: ${freePlan.emailLimit}`
+        },
+        metadata: { oldTier: subscription.tier, newTier: SubscriptionTier.FREE },
+        actionUrl: `/dashboard/${subscription.workspaceId}/billing`
+      });
+    }
   });
 
-  return { processed: true };
+  console.log(`[Webhook:${requestId}] Workspace downgraded to FREE:`, {
+    subscription: subscriptionCode,
+    event
+  });
 }
 
-async function handleSubscriptionExpiring(data: any, requestId: string) {
-  const { customer, subscription_code, next_payment_date } = data;
-  
-  console.log(`[Webhook:${requestId}] Processing subscription.expiring:`, {
-    customer: customer?.email,
-    subscription_code,
-    next_payment_date,
-  });
-
-  const subscription = await db.workspaceSubscription.findFirst({
-    where: { paymentRef: subscription_code },
-    include: { workspace: true },
-  });
-
-  if (!subscription) {
-    return { processed: false, reason: 'subscription_not_found' };
-  }
-
-  const daysUntilExpiry = Math.ceil(
-    (new Date(subscription.currentPeriodEnd).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  const member = await db.workspaceMember.findFirst({
-    where: { workspaceId: subscription.workspaceId, role: 'OWNER' },
-    include: { user: true },
-  });
-
-  if (member) {
-    await NotificationService.create({
-      userId: member.user.id,
-      type: 'SUBSCRIPTION_EXPIRING',
-      variables: {
-        plan: subscription.tier,
-        days: daysUntilExpiry.toString(),
-      },
-      metadata: {
-        subscriptionId: subscription.id,
-        expiryDate: subscription.currentPeriodEnd,
-      },
-      actionUrl: `/dashboard/${subscription.workspaceId}/billing`,
-    });
-  }
-
-  return { processed: true };
-}
-
-async function handleExpiringCard(data: any, requestId: string) {
-  const { customer, authorization } = data;
-  
-  console.log(`[Webhook:${requestId}] Processing expiring card:`, {
-    customer: customer?.email,
-    last4: authorization?.last4,
-    expMonth: authorization?.exp_month,
-    expYear: authorization?.exp_year,
-  });
-
-  const member = await db.workspaceMember.findFirst({
-    where: { user: { email: customer.email } },
-    include: { workspace: true, user: true },
-  });
-
-  if (!member) {
-    return { processed: false, reason: 'workspace_not_found' };
-  }
-
-  await NotificationService.create({
-    userId: member.user.id,
-    type: 'CARD_EXPIRING',
-    variables: {
-      last4: authorization.last4,
-      expMonth: authorization.exp_month,
-      expYear: authorization.exp_year,
-    },
-    metadata: {
-      last4: authorization.last4,
-      expMonth: authorization.exp_month,
-      expYear: authorization.exp_year,
-      customerEmail: customer.email,
-    },
-    actionUrl: `/dashboard/${member.workspaceId}/billing`,
-  });
-
-  console.log(`[Webhook:${requestId}] Card expiring notification created for:`, {
-    workspaceId: member.workspaceId,
-    userId: member.user.id,
-  });
-
-  return { processed: true };
-}
-
-async function handleTransfer(data: any, requestId: string) {
-  console.log(`[Webhook:${requestId}] Transfer event:`, {
-    status: data.status,
-    reference: data.reference,
-    amount: data.amount / 100,
-    recipient: data.recipient?.name,
-  });
-
-  return { processed: true };
-}
-
+// ============================================================
+// HELPER: Map Paystack plan code to SubscriptionTier
+// ============================================================
 function mapPlanCodeToTier(planCode: string): SubscriptionTier {
   const upperCode = planCode.toUpperCase();
   
-  // Map Paystack plan codes to tiers
-  const starterCode = process.env.PAYSTACK_STARTER_PLAN_CODE?.toUpperCase() || 'PLN_VK1EE3KTB6F379T';
-  const professionalCode = process.env.PAYSTACK_PROFESSIONAL_PLAN_CODE?.toUpperCase() || 'PLN_C4OYWRNQHUSKHXQ';
-  const businessCode = process.env.PAYSTACK_BUSINESS_PLAN_CODE?.toUpperCase() || 'PLN_OLURHWSSFCM75K3';
-  
-  if (upperCode.includes('STARTER') || upperCode === starterCode) return SubscriptionTier.STARTER;
-  if (upperCode.includes('PROFESSIONAL') || upperCode === professionalCode) return SubscriptionTier.PROFESSIONAL;
-  if (upperCode.includes('BUSINESS') || upperCode === businessCode) return SubscriptionTier.BUSINESS;
+  if (upperCode.includes('STARTER')) return SubscriptionTier.STARTER;
+  if (upperCode.includes('PROFESSIONAL')) return SubscriptionTier.PROFESSIONAL;
+  if (upperCode.includes('BUSINESS')) return SubscriptionTier.BUSINESS;
   
   return SubscriptionTier.FREE;
 }
+

@@ -481,7 +481,7 @@ export default function AdminSettingsPage() {
         { key: 'STORAGE', label: 'Storage Overage (GB)' },
         { key: 'BLOG', label: 'Blog Service' },
         { key: 'PUSH', label: 'Push Notification' },
-        { key: 'API', label: 'API Usage' },
+        { key: 'AI', label: 'AI Usage' },
         { key: 'SUBSCRIBERS', label: 'Subscriber Service' },
     ];
 

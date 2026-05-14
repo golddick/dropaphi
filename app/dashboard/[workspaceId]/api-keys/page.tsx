@@ -70,8 +70,9 @@ export default function ApiKeysPage() {
   } = useApiKeyStore();
 
   const { currentWorkspace } = useWorkspaceStore();
-  const { subscription } = useSubscriptionStore();
+  const { subscription, isLoading: isSubscriptionLoading } = useSubscriptionStore();
   const workspaceId = useWorkspaceID();
+
 
 
   useEffect(() => {
@@ -192,7 +193,7 @@ export default function ApiKeysPage() {
     }
   };
 
-  const isFreePlan = subscription?.tier === 'FREE';
+  const isFreePlan = !isSubscriptionLoading && subscription?.tier === 'FREE';
 
   // Get current expiration options based on selected environment
   const currentExpirationOptions = EXPIRATION_OPTIONS[formData.environment];
@@ -218,13 +219,8 @@ export default function ApiKeysPage() {
             API Keys
           </h1>
           <p style={{ color: '#666666' }}>
-            Manage API keys for authenticating requests to the Drop API
+            Manage API keys for authenticating requests to the DropAPHI
           </p>
-          {workspaceId && (
-            <p className="text-xs mt-1 text-gray-500">
-              Workspace ID: {workspaceId}
-            </p>
-          )}
         </div>
         <Button
           onClick={() => setShowCreateForm(true)}

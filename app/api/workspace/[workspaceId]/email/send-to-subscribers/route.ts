@@ -155,15 +155,6 @@ export async function POST(
       return err("No active subscribers found", 404, "NO_SUBSCRIBERS");
     }
 
-    // Check email limit
-    // if (workspace.currentEmailsSent + subscribers.length > workspace.emailLimit) {
-    //   return err(
-    //     "Email limit exceeded",
-    //     403,
-    //     "LIMIT_EXCEEDED",
-    //     `Used ${workspace.currentEmailsSent}/${workspace.emailLimit} emails. This would send ${subscribers.length} more.`
-    //   );
-    // }
 
     // Check email limit using BillingService
     const limitCheck = await BillingService.checkLimit(workspaceId, Services.EMAIL, subscribers.length);
@@ -197,7 +188,7 @@ export async function POST(
           "{{email}}": subscriber.email,
           "{{subscriber_id}}": subscriber.id,
           "{{workspace_name}}": workspace.name || "",
-          "{{unsubscribe_url}}": `${process.env.NEXTAUTH_URL || "https://app.dropaphi.xyz"}/unsubscribe?email=${encodeURIComponent(subscriber.email)}&workspace=${workspaceId}`,
+          "{{unsubscribe_url}}": `${process.env.NEXTAUTH_URL || "https://dropaphi.xyz"}/unsubscribe?email=${encodeURIComponent(subscriber.email)}&workspace=${workspaceId}`,
         };
 
         Object.entries(replacements).forEach(([placeholder, value]) => {
@@ -258,9 +249,9 @@ export async function POST(
         const result = await mailSender.sendEmail({
           to: subscriber.email,
           subject,
-          html: personalizedHtml,
-          text: personalizedText, 
-          fromEmail: sender.email,
+          html: personalizedHtml, 
+          text: personalizedText,  
+          fromEmail: sender.email, 
           fromName: sender.name,
           workspaceId:workspaceId,
           campaignId:campaignId,
@@ -285,13 +276,6 @@ export async function POST(
           // Deduct credits (handles bundle, wallet, and cumulative counters)
           await BillingService.deductCredits(workspaceId, Services.EMAIL, subscribers.length);
 
-          // Update workspace count
-          // await db.workspace.update({
-          //   where: { id: workspaceId },
-          //   data: {
-          //     currentEmailsSent: { increment: 1 },
-          //   },
-          // });
 
           successful.push({
             emailId,

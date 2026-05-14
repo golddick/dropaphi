@@ -39,6 +39,9 @@ export default function DashboardPage() {
           ? workspaces 
           : await fetchWorkspaces();
 
+          console.log('Workspace list:', workspaceList);
+          console.log('Workspace :', workspaces);
+
         // Redirect based on workspace availability
         if (workspaceList.length > 0) {
           router.replace(`/dashboard/${workspaceList[0].id}/overview`);

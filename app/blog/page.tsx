@@ -23,7 +23,7 @@ export default function BlogPage() {
   useEffect(() => {
     async function fetchPosts() {
       try {
-        const res = await fetch('/api/admin/blog?isApproved=true&status=PUBLISHED');
+        const res = await fetch('/api/blog?isApproved=true&status=PUBLISHED');
         const data = await res.json();
         if (data.success) {
           setPosts(data.data.posts);

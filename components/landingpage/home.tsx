@@ -50,7 +50,7 @@ export const DashboardMockup = () => (
     <circle cx="60" cy="23" r="5.5" fill="#28C840"/>
     {/* URL bar */}
     <rect x="280" y="13" width="200" height="20" rx="6" fill="#1E1E1E"/>
-    <text x="295" y="27" fontFamily="monospace" fontSize="10" fill="#444">app.dropaphi.com/wsb677755/dashboard</text>
+    <text x="295" y="27" fontFamily="monospace" fontSize="10" fill="#444">app.dropaphi.com/wsb65/dashboard</text>
 
     {/* Sidebar */}
     <rect x="0" y="46" width="178" height="454" fill="#101010"/>

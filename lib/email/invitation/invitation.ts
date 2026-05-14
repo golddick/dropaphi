@@ -9,11 +9,10 @@
 // lib/email/invitation/invitation.ts
 import { db } from '@/lib/db';
 import { getInvitationEmailHtml, getInvitationEmailText } from '../templates/workspace-invitation';
-import { sendEmail } from '../auth/email';
 import { nodemailerService } from '@/lib/stores/workspace/workspace-email-sender';
 
 interface InvitationData {
-  id: string;
+  id: string; 
   workspaceId: string;
   email: string;
   role: string;
@@ -71,8 +70,8 @@ async function getWorkspaceSender(workspaceId: string): Promise<WorkspaceSender 
     // Final fallback to environment
     console.log('[Invitation] No workspace email, using environment fallback');
     return {
-      email: process.env.DEFAULT_FROM_EMAIL || 'noreply@dropaphi.com',
-      name: process.env.DEFAULT_FROM_NAME || 'Drop API',
+      email: process.env.MAIL_FROM || 'mailby@dropaphi.com',
+      name: process.env.NAME_FROM || 'DropAPHI',
       verified: false,
     };
   } catch (error) {

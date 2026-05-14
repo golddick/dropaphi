@@ -15,7 +15,7 @@ export interface Plan {
       push: number;
       api: number;
       ai: number;
-      storage: number; // in MB
+      storage: number; // in gb
     };
   paystackPlanCode?: string;
 }

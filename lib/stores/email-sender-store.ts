@@ -70,10 +70,10 @@ interface EmailSenderStore {
   fetchSenders: (workspaceId: string) => Promise<void>;
   addSender: (workspaceId: string, data: { email: string; name: string; isDomain?: boolean }) => Promise<EmailSender>;
   updateSender: (workspaceId: string, id: string, data: Partial<EmailSender>) => Promise<EmailSender>;
-  deleteSender: (id: string) => Promise<void>;
+  deleteSender: (id: string, workspaceId: string) => Promise<void>;
   sendVerificationCode: (workspaceId: string, email: string) => Promise<void>;
   verifySender: (workspaceId: string, data: { email: string; code: string; senderId: string }) => Promise<void>;
-  checkDNSRecords: (senderId: string) => Promise<{ spf: boolean; dkim: boolean }>;
+  checkDNSRecords: (senderId: string, workspaceId: string) => Promise<{ spf: boolean; dkim: boolean }>;
   setCurrentSender: (sender: EmailSender | null) => void;
   clearError: () => void;
 }
@@ -201,8 +201,8 @@ export const useEmailSenderStore = create<EmailSenderStore>()(
       },
 
       // Delete sender
-      deleteSender: async (id: string) => {
-        const workspaceId = get().currentSender?.workspaceId;
+      deleteSender: async (id: string, workspaceId: string ) => {
+
         if (!workspaceId) {
           set({ error: 'No workspace ID' });
           return;
@@ -246,7 +246,7 @@ export const useEmailSenderStore = create<EmailSenderStore>()(
         }));
 
         try {
-          await apiFetch(`/api/workspace/${workspaceId}/email-senders/verify/send`, {
+          await apiFetch(`/api/workspace/${workspaceId}/email-senders/initiate-verify`, {
             method: 'POST',
             body: JSON.stringify({ email }),
           });
@@ -307,7 +307,7 @@ export const useEmailSenderStore = create<EmailSenderStore>()(
         set({ isLoading: true, error: null });
 
         try {
-          const response = await apiFetch(`/api/workspace/${workspaceId}/email-senders/verify`, {
+          const response = await apiFetch(`/api/workspace/${workspaceId}/email-senders/verify-otp`, {
             method: 'POST',
             body: JSON.stringify(data),
           });
@@ -339,16 +339,16 @@ export const useEmailSenderStore = create<EmailSenderStore>()(
       },
 
       // Check DNS records (SPF, DKIM)
-      checkDNSRecords: async (senderId: string) => {
+      checkDNSRecords: async (senderId: string, workspaceId: string) => {
         const sender = get().senders.find((s) => s.id === senderId);
         if (!sender) {
           throw new Error('Sender not found');
         }
 
         set({ isLoading: true, error: null });
-
+ 
         try {
-          const response = await apiFetch(`/api/email-senders/${senderId}/dns-check`);
+          const response = await apiFetch(`/api/workspace/${workspaceId}/email-senders/${senderId}/dns-check`);
           
           if (response.success && response.data?.sender) {
             const updatedSender = response.data.sender;

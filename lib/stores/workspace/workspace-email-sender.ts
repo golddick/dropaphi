@@ -1,6 +1,6 @@
 // lib/email/nodemailer.service.ts
 import nodemailer from 'nodemailer';
-import { transporter } from '@/lib/transport';
+import { transporter } from '@/lib/inAppTransporter/transport';
 
 export interface EmailOptions {
   to: string | string[];
@@ -29,7 +29,7 @@ class NodemailerService {
   private defaultFromName: string;
 
   constructor() {
-    this.defaultFromEmail = process.env.MAIL_FROM || 'noreply@dropaphi.com';
+    this.defaultFromEmail = process.env.MAIL_FROM || 'mailby@dropaphi.com';
     this.defaultFromName = process.env.NAME_FROM || 'Drop API';
     
     // Use the shared transporter

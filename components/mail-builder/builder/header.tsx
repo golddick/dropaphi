@@ -136,7 +136,7 @@ export function EmailBuilderHeader({
                 <span className="hidden sm:inline">Preview</span>
               </Button>
             )}
-            {onExport && (
+            {/* {onExport && (
               <Button
                 size="sm"
                 variant="outline"
@@ -147,7 +147,7 @@ export function EmailBuilderHeader({
                 <Download className="w-4 h-4 mr-1" />
                 <span className="hidden sm:inline">Export</span>
               </Button>
-            )}
+            )} */}
             {
               onSaveTemplate && (
                 <Button

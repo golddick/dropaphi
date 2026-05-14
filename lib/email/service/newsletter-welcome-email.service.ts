@@ -1,8 +1,7 @@
 // lib/email/services/welcome-email.service.ts
 import { db } from "@/lib/db";
-import { emailSender, EmailOptions } from "./email-sender.service";
-import { isServiceActive } from "@/lib/services/service-status";
-import { Services } from "@prisma/client";
+import { emailSender, EmailOptions } from "./email-sender.service"; 
+
 
 interface WelcomeEmailOptions {
   workspaceId: string;
@@ -35,11 +34,6 @@ class WelcomeEmailService {
    */
   async sendWelcomeEmail({ workspaceId, subscriber, templateId, customVariables = {} }: WelcomeEmailOptions) {
     try {
-      // Check if EMAIL service is globally active
-      const emailActive = await isServiceActive(Services.EMAIL);
-      if (!emailActive) {
-        return { success: false, error: 'Email service is currently disabled system-wide' };
-      }
 
       // Get workspace details
       const workspace = await db.workspace.findUnique({
@@ -107,7 +101,7 @@ class WelcomeEmailService {
     }
   }
 
-  /**
+  /** 
    * Find template by ID or name
    */
   private async findTemplate(workspaceId: string, templateId?: string) {
@@ -128,6 +122,7 @@ class WelcomeEmailService {
         workspaceId,
         OR: [
           { name: "Newsletter_welcome" },
+          { name: "Newsletter" },
           { name: "welcome_email" },
           { name: { contains: "welcome", mode: 'insensitive' } }
         ],
@@ -299,9 +294,8 @@ class WelcomeEmailService {
           </div>
           
           <div class="footer">
-            <p>&copy; ${variables.year} DropAphi.</p>
             <p>This email was sent by DropAphi.</p>
-            <p>You received this email because you subscribed at ${variables.workspaceName}.</p>
+            <p>You received this email because you subscribed to ${variables.workspaceName}.</p>
           </div>
         </div>
       </body>

@@ -28,14 +28,7 @@ interface TopUpModalProps {
   onSuccess?: () => void;
 }
 
-const pricingFallback: Record<string, { amount: number; price: number }> = {
-  email: { amount: 1000, price: 5000 }, // 1000 emails for 5000 NGN
-  sms: { amount: 500, price: 4000 },
-  otp: { amount: 200, price: 3000 },
-  blog: { amount: 5, price: 2000 },
-  push: { amount: 5000, price: 1000 },
-  api: { amount: 10000, price: 5000 },
-};
+
 
 interface PricingInfo {
     amount: number;

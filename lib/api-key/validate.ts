@@ -2,7 +2,6 @@
 import { db } from "@/lib/db";
 import { NextRequest } from "next/server";
 import { isValidKeyFormat, getKeyEnvironment } from "./utils";
-import { UsageService } from "@/lib/billing/usage";
 
 export interface ApiKeyInfo {
   id: string;
@@ -50,7 +49,7 @@ export async function validateApiKey(req: NextRequest): Promise<{
       };
     }
 
-    // Find the API key in database
+    // Find the API key in database with workspace and subscription
     const keyRecord = await db.apiKey.findFirst({
       where: { 
         key: apiKey,
@@ -58,13 +57,10 @@ export async function validateApiKey(req: NextRequest): Promise<{
       },
       include: {
         workspace: {
-          select: {
-            id: true,
-            name: true,
+          include: {
             subscription: {
-              select: {
-                tier: true,
-                status: true,
+              include: {
+                plan: true
               }
             }
           }
@@ -113,27 +109,24 @@ export async function validateApiKey(req: NextRequest): Promise<{
       };
     }
 
-    // 2. Check API Usage Limits (PLAN + WALLET)
-    const usageCheck = await UsageService.checkUsage(keyRecord.workspaceId, "api");
-    if (!usageCheck.allowed) {
+    // 2. Check if plan allows API access
+    const plan = keyRecord.workspace.subscription.plan;
+    if (!plan || !plan.devApiAccess) {
       return {
         valid: false,
-        error: "API usage limit reached. Please upgrade your plan or top up your wallet.",
-        status: 429
+        error: "Your current plan does not include API access. Please upgrade to a plan that includes API access.",
+        status: 403
       };
     }
 
-    // 3. Consume API usage and update key record
-    await Promise.all([
-      UsageService.consumeUsage(keyRecord.workspaceId, "api"),
-      db.apiKey.update({
-        where: { id: keyRecord.id },
-        data: { 
-          lastUsedAt: new Date(),
-          usageCount: { increment: 1 }
-        }
-      })
-    ]);
+    // 3. Update API key last used timestamp
+    await db.apiKey.update({
+      where: { id: keyRecord.id },
+      data: { 
+        lastUsedAt: new Date(),
+        usageCount: { increment: 1 }
+      }
+    });
 
     return {
       valid: true,
