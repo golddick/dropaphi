@@ -57,9 +57,9 @@ function StatsCard() {
 
       {/* Stat blocks */}
       {[
-        { label: 'FOUNDED',          val: '2021',        sub: 'Lagos, Nigeria',    color: '#DC143C', y: 96  },
+        { label: 'FOUNDED',          val: '2025',        sub: 'Lagos, Nigeria',    color: '#DC143C', y: 96  },
         { label: 'CUSTOMERS',        val: '5,000+',      sub: 'Active businesses', color: '#3B82F6', y: 180 },
-        { label: 'MESSAGES / DAY',   val: '50M+',        sub: 'All channels',      color: '#22C55E', y: 264 },
+        { label: 'MESSAGES',         val: '1M+',        sub: 'All channels',      color: '#22C55E', y: 264 },
         { label: 'UPTIME SLA',       val: '99.9%',       sub: 'Enterprise grade',  color: '#F97316', y: 348 },
       ].map(({ label, val, sub, color, y }) => (
         <g key={label}>
@@ -90,18 +90,6 @@ export default function AboutPage() {
   
   return (
     <div className="overflow-x-hidden bg-white">
-      {/* <style jsx>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400&display=swap');
-        
-        @keyframes tick {
-          to { transform: translateX(-50%); }
-        }
-        @keyframes pulse-dot {
-          0%,100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.5); opacity: 0.5; }
-        }
-        .pulse { animation: pulse-dot 2s ease-in-out infinite; }
-      `}</style> */}
       
       <Navigation user={user} />
 
@@ -127,7 +115,7 @@ export default function AboutPage() {
               <span className="text-red-600">For Africa.</span>
             </h1>
             <p className="font-['Plus_Jakarta_Sans'] text-lg text-white/55 leading-relaxed max-w-xl">
-              Drop APHI was founded with one mission — make reliable communication infrastructure accessible to every developer and business building on the continent.
+              DropAPHI was founded with one mission: to make reliable infrastructure accessible to every developer and business building on the continent.
             </p>
           </motion.div>
         </div>
@@ -144,16 +132,16 @@ export default function AboutPage() {
                 Origin
               </div>
               <h2 className="font-['Bricolage_Grotesque'] text-[clamp(1.8rem,3.5vw,2.6rem)] font-extrabold tracking-tight text-gray-900 leading-tight mb-5">
-                Started in a Ibadan,<br /><span className="text-red-600">now serving thousands</span>
+                Started as a small project,<br /><span className="text-red-600">now serving thousands</span>
               </h2>
               <p className="font-['Plus_Jakarta_Sans'] text-base text-gray-600 leading-relaxed mb-5">
-                We built Drop APHI after experiencing firsthand how fragmented and unreliable communication tools were for African developers. Global providers charged international rates, delivered inconsistently, and had zero understanding of local carrier dynamics.
+                We built DropAPHI after experiencing firsthand how fragmented and unreliable communication tools were for African developers. Global providers charged international rates, delivered inconsistently, and had zero understanding of local carrier dynamics.
               </p>
               <p className="font-['Plus_Jakarta_Sans'] text-base text-gray-600 leading-relaxed mb-5">
-                So we built our own — from the ground up, with direct carrier partnerships across 30+ African markets, local routing intelligence, and a developer experience that actually makes sense.
+                So we built our own from the ground up, with direct carrier partnerships across 30+ African markets, local routing intelligence, and a developer experience that actually makes sense.
               </p>
               <p className="font-['Plus_Jakarta_Sans'] text-base text-gray-600 leading-relaxed mb-9">
-                Today Drop APHI powers communication for e-commerce platforms, fintech companies, healthcare providers, and SaaS products across the continent.
+                Today DropAPHI powers communication for e-commerce platforms, fintech companies, healthcare providers, and SaaS products across the continent.
               </p>
               <div className="flex gap-3 flex-wrap">
                 <Link href="/signup" className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg font-['Bricolage_Grotesque'] font-bold hover:bg-red-700 transition-all hover:-translate-y-0.5 shadow-lg shadow-red-600/25">
@@ -180,17 +168,17 @@ export default function AboutPage() {
               The Problem
             </div>
             <h2 className="font-['Bricolage_Grotesque'] text-[clamp(2rem,4vw,2.8rem)] font-extrabold tracking-tight text-gray-900 max-w-lg leading-tight">
-              Why Africa needed a native solution
+              Why Africa needed our native solution
             </h2>
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {[
               { n: '01', title: 'Unreliable Delivery', desc: 'Global providers failed to deliver consistently across African carriers and networks.' },
-              { n: '02', title: 'Prohibitive Costs', desc: 'International rates made communication costs unsustainable for growing local businesses.' },
+              { n: '02', title: 'Prohibitive Costs', desc: 'International rates made infrastructure costs unsustainable for growing local businesses.' },
               { n: '03', title: 'Zero Local Support', desc: 'No understanding of African timezones, local regulations, or regional carrier requirements.' },
-              { n: '04', title: 'Complex Integration', desc: 'Fragmented vendor landscape meant stitching 4–5 SDKs together just to send a message.' },
-              { n: '05', title: 'No Regulatory Fit', desc: 'Foreign platforms lacked awareness of NDPC, GDPR-Africa, and local compliance needs.' },
+              { n: '04', title: 'Complex Integration', desc: 'Fragmented vendor landscape meant stitching 4–5 SDKs together just to develop.' },
+              { n: '05', title: 'No Regulatory Fit', desc: 'Foreign platforms lacked awareness of GDPR-Africa, and local compliance needs.' },
               { n: '06', title: 'Everything Siloed', desc: 'SMS, Email, OTP, Storage — no single provider offered them all. Until now.' },
             ].map(({ n, title, desc }, i) => (
               <motion.div
@@ -201,7 +189,7 @@ export default function AboutPage() {
                 viewport={{ once: true }}
                 className="bg-white border border-gray-200 rounded-xl p-7 hover:border-red-300 hover:shadow-xl hover:-translate-y-1 transition-all relative"
               >
-                <span className="font-['Bricolage_Grotesque'] absolute top-4 right-5 text-3xl font-black text-[rgba(220,20,60,0.08)] tracking-tighter">{n}</span>
+                <span className="font-['Bricolage_Grotesque'] absolute top-4 right-5 text-3xl font-black text-destructive tracking-tighter">{n}</span>
                 <div className="w-1 h-9 bg-red-600 rounded mb-4" />
                 <h3 className="font-['Bricolage_Grotesque'] text-base font-bold text-gray-900 mb-2.5">{title}</h3>
                 <p className="font-['Plus_Jakarta_Sans'] text-sm text-gray-500 leading-relaxed">{desc}</p>
@@ -265,15 +253,15 @@ export default function AboutPage() {
               From the Founders
             </div>
             <blockquote className="font-['Bricolage_Grotesque'] text-[clamp(1.5rem,3.5vw,2.4rem)] font-bold text-gray-900 leading-tight tracking-tight mb-10">
-              "Africa doesn't need adapted tools. It needs tools that were built here, for here — with the nuance and depth that only comes from living the problem yourself."
+              "Africa doesn't need adapted tools. It needs tools that were built here, for here with the nuance and depth that only comes from facing the problem yourself."
             </blockquote>
             <div className="flex items-center gap-3.5 justify-center">
               <div className="w-11 h-11 rounded-full bg-red-600 flex items-center justify-center font-['Bricolage_Grotesque'] font-extrabold text-base text-white shrink-0">
                 G
               </div>
               <div className="text-left">
-                <p className="font-['Bricolage_Grotesque'] font-bold text-sm text-gray-900">Golddick E.</p>
-                <p className="font-mono text-xs text-gray-400">Founder & CEO, Drop APHI</p>
+                <p className="font-['Bricolage_Grotesque'] font-bold text-sm text-gray-900">Goldick</p>
+                <p className="font-mono text-xs text-gray-400">Founder & CEO, DropAPHI</p>
               </div>
             </div>
           </motion.div>

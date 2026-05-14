@@ -47,7 +47,7 @@ export default function BlogPage() {
     title: featuredPost.title,
     excerpt: featuredPost.excerpt,
     author: featuredPost.author?.fullName || 'Golddick O.',
-    role: 'Founder & CEO',
+    role: featuredPost.author?.role || 'DropAPHI Team',
     date: featuredPost.publishedAt ? new Date(featuredPost.publishedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'March 12, 2025',
     readTime: calculateReadingTime(featuredPost.content),
   } : {
@@ -119,7 +119,7 @@ export default function BlogPage() {
         <div className="max-w-7xl mx-auto relative z-10">
           <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-900/20 border border-red-800/30 font-mono text-xs uppercase tracking-wider text-red-400 mb-6">
-              The Drop APHI Blog
+              The DropAPHI Blog
             </div>
             <h1 className="font-['Bricolage_Grotesque'] text-[clamp(2.6rem,5.5vw,4.4rem)] font-extrabold leading-[1.07] tracking-[-0.035em] mb-5 max-w-3xl">
               Engineering, product,<br />
