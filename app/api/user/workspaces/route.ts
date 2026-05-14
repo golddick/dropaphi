@@ -5,7 +5,7 @@ import { ok, serverError, validationError } from "@/lib/respond/response";
 import { requireAuth } from "@/lib/auth/auth-server";
 import { dropid } from "dropid";
 import { z } from "zod";
-import { SubscriptionTier, SubscriptionStatus } from "@prisma/client";
+import { SubscriptionStatus, SubscriptionTier } from "@/lib/generated/prisma";
 
 // ================= HELPERS =================
 

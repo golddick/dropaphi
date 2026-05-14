@@ -1,8 +1,8 @@
 // lib/services/notification.service.ts
 import { db } from "@/lib/db";
 import { dropid } from "dropid";
-import { NotificationType, NotificationPriority, NotificationChannel } from "@prisma/client";
 import { notificationTemplates } from "@/components/notification/notification-template";
+import { NotificationChannel, NotificationPriority, NotificationType } from "./generated/prisma";
 
 export interface CreateNotificationParams {
   userId: string;

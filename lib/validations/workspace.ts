@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { WorkspaceRole } from "@prisma/client";
+import { WorkspaceRole } from "../generated/prisma";
+
 
 export const workspaceSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),

@@ -3,10 +3,10 @@ import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth/auth-server";
 import { dropid } from "dropid";
 import { z } from "zod";
-import { ApiKeyStatus } from "@prisma/client";
 import { generateApiKey, maskApiKey } from "@/lib/api-key/utils";
 import { canCreateProductionKey } from "@/lib/api-key/queries";
 import { BillingService } from "@/lib/billing/billing-service";
+import { ApiKeyStatus } from "@/lib/generated/prisma";
 
 // ============================================================================
 // VALIDATION SCHEMAS

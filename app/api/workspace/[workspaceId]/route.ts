@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth/auth-server";
 import { updateWorkspaceSchema } from "@/lib/validations/workspace";
-import { WorkspaceRole } from "@prisma/client";
+import { WorkspaceRole } from "@/lib/generated/prisma";
 
 // GET /api/workspace/[workspaceId] - Get single workspace
 export async function GET(
@@ -18,7 +18,7 @@ export async function GET(
     
     // Authenticate user
     const auth = await requireAuth();
-    console.log(`✅ Authenticated user: ${auth.userId}`);
+    if (auth instanceof Response) return auth;
     
     console.log(`🔍 Looking for workspace: ${workspaceId}`);
 
@@ -126,6 +126,7 @@ export async function PATCH(
     console.log(`🚀 PATCH /api/workspace/${workspaceId} - Started`);
     
     const auth = await requireAuth();
+    if (auth instanceof Response) return auth;
     const json = await req.json();
     
     // Validate input
@@ -227,6 +228,7 @@ export async function DELETE(
     console.log(`🚀 DELETE /api/workspace/${workspaceId} - Started`);
     
     const auth = await requireAuth();
+    if (auth instanceof Response) return auth;
 
     // Check if user has access and is owner
     const member = await db.workspaceMember.findUnique({
