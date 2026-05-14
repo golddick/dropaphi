@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+# Block internal / sensitive routes
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /auth/
+Disallow: /_next/
+
+# Allow important public pages
+Allow: /docs/
+Allow: /blog/
+Allow: /pricing/
+
+# Sitemap
+Sitemap: https://dropaphi.xyz/sitemap.xml
