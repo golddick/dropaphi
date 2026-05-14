@@ -27,8 +27,8 @@ export default function DropIDDocs() {
               >
                 D
               </div>
-              <span className="font-bold text-lg" style={{ color: '#1A1A1A' }}>
-                Drop API
+              <span className="font-bold text-lg hidden md:inline" style={{ color: '#1A1A1A' }}>
+                DropAPHI
               </span>
             </Link>
             <div className="flex items-center gap-4">

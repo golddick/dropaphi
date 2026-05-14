@@ -48,12 +48,6 @@ export function QuickStats({ overview, isLoading }: QuickStatsProps) {
       icon: CheckCircle,
       color: '#2196F3',
     },
-    // {
-    //   label: 'Credit Balance',
-    //   value: '—',
-    //   icon: DollarSign,
-    //   color: '#FF9800',
-    // },
   ];
 
   return (

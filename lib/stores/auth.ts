@@ -58,7 +58,7 @@ interface AuthState {
 const apiFetch = async (url: string, options: RequestInit = {}) => {
   const response = await fetch(url, {
     ...options,
-    credentials: 'include',
+    // credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...options.headers,

@@ -114,10 +114,10 @@ export default function TermsPage() {
             </p>
             <div className="mt-6 flex items-center gap-4">
               <span className="font-mono text-xs text-[#444] px-3 py-1 rounded-md bg-[#161616] border border-[#222]">
-                Last Updated: February 2024
+                Last Updated: February 2026
               </span>
               <span className="font-mono text-xs text-[#444] px-3 py-1 rounded-md bg-[#161616] border border-[#222]">
-                v1.1
+                v1.0
               </span>
             </div>
           </motion.div>
@@ -204,7 +204,7 @@ export default function TermsPage() {
             <div className="flex gap-4 flex-wrap">
               <div className="bg-[#141414] border border-[#222] rounded-lg p-3.5 px-5">
                 <p className="font-mono text-xs text-[#555] mb-1">EMAIL</p>
-                <p className="font-['Plus_Jakarta_Sans'] text-sm text-white">legal@dropaphi.com</p>
+                <p className="font-['Plus_Jakarta_Sans'] text-sm text-white">legal@dropaphi.xyz</p>
               </div>
               <div className="bg-[#141414] border border-[#222] rounded-lg p-3.5 px-5">
                 <p className="font-mono text-xs text-[#555] mb-1">ADDRESS</p>

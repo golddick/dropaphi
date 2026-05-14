@@ -201,7 +201,7 @@ export async function GET(
     const otpSuccess = await db.otpRequest.count({
       where: {
         workspaceId,
-        // status: 'VERIFIED',
+        status: 'VERIFIED',
         createdAt: {
           gte: new Date(new Date().setDate(1)),
         },

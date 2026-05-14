@@ -61,7 +61,7 @@ export default function EmailBuilderDocsPage() {
           <div className="w-8 h-8 bg-[#DC143C] rounded-lg flex items-center justify-center">
             <Send size={18} className="text-white" />
           </div>
-          <span className="font-bold text-xl tracking-tight docs-title">DropAphi</span>
+          <span className="font-bold text-xl tracking-tight docs-title hidden md:inline">DropAPHI</span>
         </Link>
         <div className="flex gap-4">
           <Link href="/docs">

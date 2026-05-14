@@ -239,7 +239,7 @@ Get file metadata and URLs.
               <div className="flex h-8 w-8 items-center justify-center rounded font-bold text-white text-sm bg-[#DC143C]">
                 D
               </div>
-              <span className="font-bold text-lg text-[#1A1A1A]">DropAPHI Docs</span>
+              <span className="font-bold text-lg text-[#1A1A1A] hidden md:inline">DropAPHI Docs</span>
             </Link>
             <div className="flex items-center gap-4">
               <button 
