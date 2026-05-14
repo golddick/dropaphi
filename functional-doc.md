@@ -1,7 +1,7 @@
 # Functional Documentation - DropAPHI
 
 ## Overview
-DropAPHI is a comprehensive API platform for messaging (Email, SMS, WhatsApp) and workspace management. It provides a robust billing engine, admin controls, and a developer-friendly dashboard.
+DropAPHI is a unified application infrastructure platform that replaces five separate vendors with a single API.
 
 ## Core Features
 
