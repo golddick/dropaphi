@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: { fileId: string } }
 ) {
   try {
-    const { fileId } = params;
+    const { fileId } = await params;
 
     // Get file record from database
     const file = await db.platformFile.findUnique({
@@ -74,7 +74,7 @@ export async function HEAD(
   { params }: { params: { fileId: string } }
 ) {
   try {
-    const { fileId } = params;
+    const { fileId } = await params;
 
     const file = await db.platformFile.findUnique({
       where: { id: fileId },

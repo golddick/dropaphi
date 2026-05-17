@@ -1,102 +1,3 @@
-
-
-
-
-// // app/layout.tsx
-// import type { Metadata } from 'next'
-// import { Analytics } from '@vercel/analytics/next'
-// import './globals.css'
-// import { RootLayoutClient } from './layout-client'
-// import { Toaster } from 'sonner'
-// import { ThemeProvider } from '@/components/theme-provider'
-// import localFont from 'next/font/local';
-
-// // Using locally hosted fonts to avoid build-time network fetches
-// // Fonts located at app/public/fonts (already in repo)
-// const ubuntuSans = localFont({
-//   src: [
-//     { path: './public/fonts/Ubuntu-Light.ttf', weight: '300', style: 'normal' },
-//     { path: './public/fonts/Ubuntu-Italic.ttf', weight: '400', style: 'italic' },
-//     { path: './public/fonts/Ubuntu-Regular.ttf', weight: '400', style: 'normal' },
-//     { path: './public/fonts/Ubuntu-Medium.ttf', weight: '500', style: 'normal' },
-//     { path: './public/fonts/Ubuntu-MediumItalic.ttf', weight: '500', style: 'italic' },
-//     { path: './public/fonts/Ubuntu-Bold.ttf', weight: '700', style: 'normal' },
-//     { path: './public/fonts/Ubuntu-BoldItalic.ttf', weight: '700', style: 'italic' },
-//   ],
-//   variable: '--font-sans',
-//   display: 'swap',
-// });
-
-// export const metadata: Metadata = {
-//   title: 'DropAPHI - Unified Communication Infrastructure',
-//   description: 'DropAPHI: SMS, Email, OTP, and File Storage APIs for Users',
-//   generator: 'sixthgrid',
-//   icons: {
-//     icon: [
-//       {
-//         url: '/icon-light-32x32.png',
-//         media: '(prefers-color-scheme: light)',
-//       },
-//       {
-//         url: '/icon-dark-32x32.png',
-//         media: '(prefers-color-scheme: dark)',
-//       },
-//       {
-//         url: '/icon.svg',
-//         type: 'image/svg+xml',
-//       },
-//     ],
-//     apple: '/apple-icon.png',
-//   },
-// }
-
-// export default function RootLayout({
-//   children,
-// }: Readonly<{
-//   children: React.ReactNode
-// }>) {
-//   return (
-//     <html className={`${ubuntuSans.variable}`} suppressHydrationWarning>
-//       <body className="antialiased">
-//         <RootLayoutClient>
-//           <ThemeProvider
-//             attribute="class"
-//             defaultTheme="system"
-//             enableSystem
-//             disableTransitionOnChange
-//           >
-//             {children}
-//           </ThemeProvider>
-//           <Toaster position='bottom-center' />
-//         </RootLayoutClient>
-//         <Analytics />
-//       </body>
-//     </html>
-//   )
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // app/layout.tsx
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
@@ -154,25 +55,27 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/icon-light-32x32.png',
+        url: '/image/drop-logo.png',
         media: '(prefers-color-scheme: light)',
+        type: 'image/png',
       },
       {
-        url: '/icon-dark-32x32.png',
+        url: '/image/drop-logo.png',
         media: '(prefers-color-scheme: dark)',
+        type: 'image/png',
       },
       {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
+        url: '/image/drop-logo.png',
+        type: 'image/png',
       },
     ],
-    apple: '/apple-icon.png',
+    apple: '/image/drop-logo.png',
   },
 
   openGraph: {
-    title: 'DropAPHI - Unified Messaging API',
+    title: 'DropAPHI - A Unified infrastructure Platform ',
     description:
-      'Replace Twilio, SendGrid, and Firebase with one API. Send Email, SMS, WhatsApp, verify users, and scale faster.',
+      'A unified infrastructure platform that replaces five separate vendors with a single API..',
     url: 'https://dropaphi.xyz',
     siteName: 'DropAPHI',
     images: [
@@ -189,7 +92,7 @@ export const metadata: Metadata = {
 
   twitter: {
     card: 'summary_large_image',
-    title: 'DropAPHI - Messaging API for Developers',
+    title: 'DropAPHI - A Unified infrastructure Platform ',
     description:
       'Send Email, SMS, WhatsApp, OTP, and manage storage with one simple API.',
     images: ['/image/drop-logo.jpg'],
