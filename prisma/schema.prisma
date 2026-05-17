@@ -33,11 +33,13 @@ model User {
   updatedAt              DateTime                @updatedAt @map("updated_at")
   role                   UserRole                @default(USER)
   notificationPreference NotificationPreference?
+  platformFiles          PlatformFile[]
   notifications          Notification[]
   refreshTokens          RefreshToken[]
   sessions               UserSession[]
   workspaceMembers       WorkspaceMember[]
   blogPosts              BlogPost[]
+  complaints             Complaint[]
 
   @@map("users")
 }
@@ -1046,6 +1048,131 @@ model NotificationDeliveryLog {
   @@index([notificationId])
   @@index([status])
   @@map("notification_delivery_logs")
+}
+
+
+model DemoVideo {
+  id          String    @id @default(cuid())
+  category    DemoCategory
+  title       String
+  description String?
+  duration    String    // e.g. "1:02" - auto-read from video after upload
+  tag         String
+  tagColor    String
+  src         String    // CDN URL of uploaded video
+  poster      String    // CDN URL of poster/thumbnail
+  steps       Json      // Store steps array as JSON
+  codeSnippet String?   @map("code_snippet")
+  isPublished Boolean   @default(false) @map("is_published")
+  isFeatured  Boolean   @default(false) @map("is_featured")
+  sortOrder   Int       @default(0) @map("sort_order")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@index([isPublished])
+  @@index([isFeatured])
+  @@index([sortOrder])
+  @@map("demo_videos")
+}
+
+model PlatformFile {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  type         String    // video, thumbnail, avatar, document, etc.
+  entityType   String    @map("entity_type") // demo, avatar, blog, general
+  entityId     String?   @map("entity_id")
+  name         String
+  originalName String    @map("original_name")
+  mimeType     String    @map("mime_type")
+  size         Float     // in MB
+  storageKey   String    @unique @map("storage_key")
+  cdnUrl       String    @map("cdn_url")
+  directUrl    String    @map("direct_url")
+  metadata     Json?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([entityType])
+  @@index([entityId])
+  @@map("platform_files")
+}
+
+
+model Complaint {
+  id        String          @id @default(cuid())
+  userId    String?         @map("user_id")
+  name      String
+  email     String
+  category  String
+  subject   String
+  message   String
+  status    ComplaintStatus @default(OPEN)
+  replies   Json            @default("[]")
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+  user      User?           @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("complaints")
+}
+
+model ContactInfo {
+  id         String   @id @default(cuid())
+  type       ContactType
+  label      String
+  value      String
+  href       String
+  description String?
+  icon       String?
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([type])
+  @@index([isActive])
+  @@index([sortOrder])
+  @@map("contact_info")
+}
+
+model SystemStatus {
+  id          String   @id @default(cuid())
+  status      String   @default("operational") // operational, degraded, down
+  message     String?
+  lastChecked DateTime @default(now()) @map("last_checked")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("system_status")
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum ContactType {
+  EMAIL
+  DISCORD
+  TWITTER
+  GITHUB
+  OTHER
+}
+
+enum DemoCategory {
+  SMS
+  Email
+  OTP_2FA      @map("OTP / 2FA")
+  FILE_STORAGE @map("File Storage")
+  PUSH         @map("Push ")
+  BLOG         @map("Blog")
 }
 
 enum UserStatus {

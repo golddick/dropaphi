@@ -18,7 +18,7 @@ export interface InitializeCustomSubscriptionParams {
 export async function initializeCustomSubscription({ 
   email, 
   amount, 
-  metadata 
+  metadata  
 }: InitializeCustomSubscriptionParams) {
   try {
     console.log('📤 [Paystack] Initializing custom subscription:', { 

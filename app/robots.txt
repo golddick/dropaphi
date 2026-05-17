@@ -14,3 +14,4 @@ Allow: /pricing/
 
 # Sitemap
 Sitemap: https://dropaphi.xyz/sitemap.xml
+

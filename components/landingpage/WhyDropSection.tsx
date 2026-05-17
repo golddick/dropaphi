@@ -14,7 +14,7 @@ const features = [
 
 export default function WhyDropSection() {
   return (
-    <section className="bg-black text-white py-24 px-6">
+    <section className="bg-background text-foreground py-24 px-6">
       <div className="max-w-7xl mx-auto">
         <motion.div 
           initial={{ opacity: 0, y: 24 }} 
@@ -39,13 +39,13 @@ export default function WhyDropSection() {
               whileInView={{ opacity: 1, y: 0 }} 
               transition={{ duration: 0.5, delay: i * 0.07 }} 
               viewport={{ once: true }} 
-              className="bg-[#141414] border border-white/10 rounded-xl p-7 hover:border-red-600/40 hover:shadow-xl hover:-translate-y-1 transition-all"
+              className="bg-card border border-border rounded-xl p-7 hover:border-red-600/40 hover:shadow-xl hover:-translate-y-1 transition-all"
             >
               <div className="w-11 h-11 rounded-lg bg-red-600/10 border border-red-600/20 flex items-center justify-center text-red-600 mb-4.5">
                 {feature.icon}
               </div>
               <h3 className="font-[Bricolage_Grotesque] text-base font-bold mb-2.5">{feature.title}</h3>
-              <p className="font-sans text-sm text-white/40 leading-relaxed">{feature.desc}</p>
+              <p className="font-sans text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
             </motion.div>
           ))}
         </div>

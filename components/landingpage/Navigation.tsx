@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import Image from 'next/image';
+import { ThemeToggle } from '../theme-toggle';
 
 interface NavigationProps {
   user: any;
@@ -9,13 +11,23 @@ interface NavigationProps {
 
 export default function Navigation({ user }: NavigationProps) {
   return (
-    <nav className="sticky top-0 z-50 bg-white/92 backdrop-blur-xl border-b border-gray-100">
+    <nav className="sticky top-0 z-50 bg-background backdrop-blur-xl border-none">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 no-underline">
-          <div className="w-8 h-8 bg-red-600 rounded-md flex items-center justify-center font-[Bricolage_Grotesque] font-extrabold text-white">
-            D
-          </div>
-          <span className="font-[Bricolage_Grotesque] font-extrabold text-lg text-gray-900">
+          <div
+          className="flex h-8 w-8 items-center justify-center rounded overflow-hidden bg-background"
+          style={{ backgroundColor: '#1A1A1A' }}
+        >
+          <Image
+            src="/image/drop-logo.png"
+            alt="Dropaphi Logo"
+            width={24}
+            height={24}
+            className="object-contain"
+            priority
+          />
+        </div>
+          <span className="font-extrabold text-lg text-secondary-foreground">
             Drop<span className="text-red-600">APHI</span>
           </span>
         </Link>
@@ -24,13 +36,13 @@ export default function Navigation({ user }: NavigationProps) {
           {[
             ['About', '/about'],
             ['Blog', '/blog'],
-            ['DropID', '/docs/dropid'],
+            ['Drop-id', '/docs/dropid'],
             ['Docs', '/docs']
           ].map(([label, href]) => (
             <a 
               key={label} 
               href={href} 
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors no-underline"
+              className="text-sm text-foreground hover:text-muted-foreground transition-colors no-underline"
             >
               {label}
             </a>
@@ -38,14 +50,15 @@ export default function Navigation({ user }: NavigationProps) {
         </div>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           {!user ? (
             <>
-              <Link href="/auth/login" className="hidden md:block text-sm text-gray-600 hover:text-gray-900 no-underline">
+              <Link href="/auth/login" className="hidden md:block text-sm text-foreground hover:text-muted-foreground no-underline">
                 Sign In
               </Link>
               <Link 
                 href="/auth/signup" 
-                className="inline-flex items-center gap-2 px-5 py-2 bg-red-600 text-white rounded-lg font-[Bricolage_Grotesque] font-bold text-sm hover:bg-red-700 transition-all hover:-translate-y-0.5 shadow-lg shadow-red-600/25 no-underline"
+                className="inline-flex items-center gap-2 px-5 py-2 bg-red-600 text-white rounded-lg font-bold text-sm hover:bg-red-700 transition-all hover:-translate-y-0.5 shadow-lg shadow-red-600/25 no-underline"
               >
                 Get Started <ArrowRight size={14} />
               </Link>
@@ -53,7 +66,7 @@ export default function Navigation({ user }: NavigationProps) {
           ) : (
             <Link 
               href="/dashboard" 
-              className="inline-flex items-center gap-2 px-5 py-2 bg-red-600 text-white rounded-lg font-[Bricolage_Grotesque] font-bold text-sm hover:bg-red-700 transition-all hover:-translate-y-0.5 shadow-lg shadow-red-600/25 no-underline"
+              className="inline-flex items-center gap-2 px-5 py-2 bg-red-600 text-white rounded-lg font-bold text-sm hover:bg-red-700 transition-all hover:-translate-y-0.5 shadow-lg shadow-red-600/25 no-underline"
             >
               Dashboard
             </Link>

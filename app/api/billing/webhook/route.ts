@@ -114,6 +114,17 @@ async function handleTopUp(data: any, requestId: string) {
     amount: amountNaira
   });
 
+  // Convert string values to numbers
+  const quantity = parseInt(metadata.quantity, 10);
+  const bonusCredits = parseInt(metadata.bonusCredits || '0', 10);
+  
+  // Validate conversion
+  if (isNaN(quantity) || isNaN(bonusCredits)) {
+    throw new Error(`Invalid credit values: quantity=${metadata.quantity}, bonus=${metadata.bonusCredits}`);
+  }
+  
+  const totalCredits = quantity + bonusCredits;
+
   await db.$transaction(async (tx) => {
     // 1. Update invoice
     const invoice = await tx.invoice.update({
@@ -153,8 +164,7 @@ async function handleTopUp(data: any, requestId: string) {
       });
     }
 
-    // 3. Add credits to the specific wallet field
-    const totalCredits = metadata.quantity + (metadata.bonusCredits || 0);
+    // 3. Add credits to the specific wallet field (now using number)
     const updateData: any = {};
     updateData[metadata.walletField] = { increment: totalCredits };
 
@@ -172,13 +182,13 @@ async function handleTopUp(data: any, requestId: string) {
         type: 'TOPUP',
         status: 'COMPLETED',
         amount: amountNaira,
-        description: `Added ${totalCredits} ${metadata.serviceType} credits (${metadata.quantity} purchased + ${metadata.bonusCredits || 0} bonus)`,
+        description: `Added ${totalCredits} ${metadata.serviceType} credits (${quantity} purchased + ${bonusCredits} bonus)`,
         referenceId: reference,
         invoiceId: invoice.id,
         metadata: {
           serviceType: metadata.serviceType,
-          quantity: metadata.quantity,
-          bonusCredits: metadata.bonusCredits || 0,
+          quantity: quantity,
+          bonusCredits: bonusCredits,
           totalCredits,
           paymentChannel: channel,
           amountPaid: amountNaira
@@ -186,6 +196,7 @@ async function handleTopUp(data: any, requestId: string) {
       }
     });
 
+    // Rest of your code remains the same...
     // 5. Update promo code usage if applicable
     if (metadata.promoCode && invoice.promoCodeId) {
       await tx.promoCode.update({
@@ -210,9 +221,9 @@ async function handleTopUp(data: any, requestId: string) {
         id: dropid('alt'),
         workspaceId: metadata.workspaceId,
         title: "Top-up Successful",
-        message: metadata.bonusCredits 
-          ? `Successfully added ${metadata.quantity.toLocaleString()} ${metadata.serviceType} credits + ${metadata.bonusCredits} bonus credits!`
-          : `Successfully added ${metadata.quantity.toLocaleString()} ${metadata.serviceType} credits.`,
+        message: bonusCredits 
+          ? `Successfully added ${quantity.toLocaleString()} ${metadata.serviceType} credits + ${bonusCredits} bonus credits!`
+          : `Successfully added ${quantity.toLocaleString()} ${metadata.serviceType} credits.`,
         type: "success"
       }
     });
@@ -230,12 +241,12 @@ async function handleTopUp(data: any, requestId: string) {
         variables: {
           amount: totalCredits.toLocaleString(),
           type: metadata.serviceType,
-          bonus: metadata.bonusCredits ? ` + ${metadata.bonusCredits} bonus` : ''
+          bonus: bonusCredits ? ` + ${bonusCredits} bonus` : ''
         },
         metadata: { 
           serviceType: metadata.serviceType, 
-          quantity: metadata.quantity,
-          bonusCredits: metadata.bonusCredits,
+          quantity: quantity,
+          bonusCredits: bonusCredits,
           totalCredits 
         },
         actionUrl: `/dashboard/${metadata.workspaceId}/billing`
@@ -245,17 +256,14 @@ async function handleTopUp(data: any, requestId: string) {
     console.log(`[Webhook:${requestId}] Top-up completed:`, {
       workspaceId: metadata.workspaceId,
       serviceType: metadata.serviceType,
-      quantity: metadata.quantity,
-      bonusCredits: metadata.bonusCredits,
+      quantity: quantity,
+      bonusCredits: bonusCredits,
       totalCredits,
       amount: amountNaira
     });
   });
 }
 
-// ============================================================
-// SUBSCRIPTION PAYMENT HANDLER
-// ============================================================
 async function handleSubscriptionPayment(data: any, requestId: string) {
   const { reference, amount, metadata, customer, channel, authorization } = data;
   const amountNaira = amount / 100;

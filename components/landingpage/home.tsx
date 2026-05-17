@@ -233,47 +233,62 @@ export const DashboardMockup = () => (
 );
 
 export const ApiFlowDiagram = () => (
-  <svg viewBox="0 0 640 360" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
-    <rect width="640" height="360" rx="20" fill="#FAFAFA" stroke="#F0F0F0" strokeWidth="1"/>
-    <rect x="30" y="140" width="120" height="80" rx="12" fill="white" stroke="#E0E0E0" strokeWidth="1.5"/>
-    <rect x="46" y="156" width="32" height="32" rx="8" fill="#1A1A1A"/>
-    <text x="54" y="177" fontFamily="sans-serif" fontSize="12" fontWeight="700" fill="white">{'</>'}</text>
-    <text x="38" y="210" fontFamily="sans-serif" fontSize="10" fontWeight="600" fill="#333">Your App</text>
-    {/* <text x="44" y="224" fontFamily="sans-serif" fontSize="8" fill="#999">Node / Python / PHP</text> */}
-    <line x1="152" y1="180" x2="248" y2="180" stroke="#DC143C" strokeWidth="2" strokeDasharray="6 3"/>
-    <polygon points="248,174 260,180 248,186" fill="#DC143C"/>
-    <rect x="172" y="164" width="56" height="16" rx="4" fill="#DC143C"/>
-    <text x="180" y="175" fontFamily="sans-serif" fontSize="8" fontWeight="600" fill="white">API Request</text>
-    <rect x="260" y="110" width="120" height="140" rx="14" fill="#1A1A1A"/>
-    <rect x="268" y="118" width="104" height="24" rx="6" fill="#DC143C"/>
-    <text x="278" y="134" fontFamily="sans-serif" fontSize="10" fontWeight="700" fill="white">DropAPHI Core</text>
-    {['Route', 'Queue', 'Deliver', 'Track'].map((t, i) => (
-      <g key={t}>
-        <rect x="272" y={150 + i * 22} width="96" height="16" rx="4" fill="#222"/>
-        <circle cx="284" cy={158 + i * 22} r="3" fill="#DC143C"/>
-        <text x="292" y={162 + i * 22} fontFamily="sans-serif" fontSize="9" fill="#888">{t}</text>
-      </g>
-    ))}
-    {[
-      { label: 'SMS', y: 60, color: '#F97316' },
-      { label: 'Email', y: 130, color: '#3B82F6' },
-      { label: 'WhatsApp', y: 200, color: '#22C55E' },
-      { label: 'OTP', y: 270, color: '#A855F7' }
-    ].map(({ label, y, color }) => (
-      <g key={label}>
-        <line x1="382" y1={y + 20} x2="458" y2={y + 20} stroke={color} strokeWidth="1.5" strokeDasharray="5 3"/>
-        <polygon points={`458,${y + 14} 470,${y + 20} 458,${y + 26}`} fill={color}/>
-        <rect x="472" y={y} width="90" height="40" rx="8" fill="white" stroke="#F0F0F0" strokeWidth="1"/>
-        <circle cx="490" cy={y + 20} r="8" fill={color} opacity="0.15"/>
-        <text x="487" y={y + 24} fontFamily="sans-serif" fontSize="10" fill={color}>●</text>
-        <text x="504" y={y + 24} fontFamily="sans-serif" fontSize="10" fontWeight="600" fill="#333">{label}</text>
-      </g>
-    ))}
-    <path d="M 262 260 Q 190 310 90 260 Q 70 250 90 220" stroke="#DC143C" strokeWidth="1.5" strokeDasharray="5 3" fill="none"/>
-    <polygon points="84,222 90,208 96,222" fill="#DC143C"/>
-    <rect x="148" y="288" width="70" height="16" rx="4" fill="white" stroke="#EEE" strokeWidth="1"/>
-    <text x="156" y="299" fontFamily="sans-serif" fontSize="8" fill="#888">Webhook / Response</text>
-  </svg>
+  <div className="bg-background text-foreground">
+    <svg viewBox="0 0 640 360" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+      {/* Main background */}
+      <rect width="640" height="360" rx="20" className=" stroke-border" strokeWidth="1"/>
+      
+      {/* Your App box */}
+      <rect x="30" y="140" width="120" height="80" rx="12" className="fill-background stroke-border" strokeWidth="1.5"/>
+      <rect x="46" y="156" width="32" height="32" rx="8" className="fill-card"/>
+      <text x="54" y="177" fontFamily="sans-serif" fontSize="12" fontWeight="700" className="fill-card-foreground">{'</>'}</text>
+      <text x="38" y="210" fontFamily="sans-serif" fontSize="10" fontWeight="600" className="fill-foreground">Your App</text>
+      
+      {/* API Request arrow */}
+      <line x1="152" y1="180" x2="248" y2="180" stroke="#DC143C" strokeWidth="2" strokeDasharray="6 3"/>
+      <polygon points="248,174 260,180 248,186" fill="#DC143C"/>
+      <rect x="172" y="164" width="56" height="16" rx="4" fill="#DC143C"/>
+      <text x="180" y="175" fontFamily="sans-serif" fontSize="8" fontWeight="600" fill="white">API Request</text>
+      
+      {/* DropAPHI Core box */}
+      <rect x="260" y="110" width="120" height="140" rx="14" className="fill-card stroke-border" strokeWidth="1"/>
+      <rect x="268" y="118" width="104" height="24" rx="6" className="bg-primary fill-primary"/>
+      <text x="278" y="134" fontFamily="sans-serif" fontSize="10" fontWeight="700" className="fill-destructive">DropAPHI Core</text>
+      
+      {/* Core services list */}
+      {['Route', 'Queue', 'Deliver', 'Track'].map((t, i) => (
+        <g key={t}>
+          <rect x="272" y={150 + i * 22} width="96" height="16" rx="4" className="fill-muted"/>
+          <circle cx="284" cy={158 + i * 22} r="3" className="fill-primary"/>
+          <text x="292" y={162 + i * 22} fontFamily="sans-serif" fontSize="9" className="fill-muted-foreground">{t}</text>
+        </g>
+      ))}
+      
+      {/* Service endpoints */}
+      {[
+        { label: 'SMS', y: 60, color: '#F97316' },
+        { label: 'Email', y: 130, color: '#3B82F6' },
+        { label: 'Storage', y: 200, color: '#22C55E' },
+        { label: 'Blog', y: 200, color: '#DC143C' },
+        { label: 'OTP', y: 270, color: '#A855F7' }
+      ].map(({ label, y, color }) => (
+        <g key={label}>
+          <line x1="382" y1={y + 20} x2="458" y2={y + 20} stroke={color} strokeWidth="1.5" strokeDasharray="5 3"/>
+          <polygon points={`458,${y + 14} 470,${y + 20} 458,${y + 26}`} fill={color}/>
+          <rect x="472" y={y} width="90" height="40" rx="8" className="fill-background stroke-border" strokeWidth="1"/>
+          <circle cx="490" cy={y + 20} r="8" fill={color} opacity="0.15"/>
+          <text x="487" y={y + 24} fontFamily="sans-serif" fontSize="10" fill={color}>●</text>
+          <text x="504" y={y + 24} fontFamily="sans-serif" fontSize="10" fontWeight="600" className="fill-foreground">{label}</text>
+        </g>
+      ))}
+      
+      {/* Response loop back */}
+      <path d="M 262 260 Q 190 310 90 260 Q 70 250 90 220" stroke="#DC143C" strokeWidth="1.5" strokeDasharray="5 3" fill="none"/>
+      <polygon points="84,222 90,208 96,222" fill="#DC143C"/>
+      <rect x="148" y="288" width="70" height="16" rx="4" className="fill-background stroke-border" strokeWidth="1"/>
+      <text x="156" y="299" fontFamily="sans-serif" fontSize="8" className="fill-muted-foreground"> Response</text>
+    </svg>
+  </div>
 );
 
 export const DropIdDemo = () => (
@@ -284,16 +299,16 @@ export const DropIdDemo = () => (
     <circle cx="22" cy="22" r="5" fill="#FF5F57"/>
     <circle cx="40" cy="22" r="5" fill="#FEBC2E"/>
     <circle cx="58" cy="22" r="5" fill="#28C840"/>
-    <text x="76" y="27" fontFamily="monospace" fontSize="11" fill="#444">dropid_demo.js</text>
+    <text x="76" y="27" fontFamily="monospace" fontSize="11" fill="#444">dropid.js</text>
     <text x="28" y="78" fontFamily="monospace" fontSize="11" fill="#555">// Before — UUID hell</text>
     <rect x="20" y="88" width="560" height="36" rx="6" fill="#1A1A1A"/>
     <text x="34" y="108" fontFamily="monospace" fontSize="11" fill="#FF5F57">User 550e8400-e29b-41d4-a916-446655440000 not found</text>
     <text x="28" y="148" fontFamily="monospace" fontSize="11" fill="#555">// After — Human-readable</text>
     <rect x="20" y="158" width="560" height="36" rx="6" fill="#162016"/>
     <text x="34" y="178" fontFamily="monospace" fontSize="11" fill="#4ADE80">User <tspan fill="#FDE68A">user_a3f2b9c1d4e5</tspan> not found</text>
-    <text x="28" y="220" fontFamily="monospace" fontSize="11" fill="#555">$ npm install drop-api-id</text>
+    <text x="28" y="220" fontFamily="monospace" fontSize="11" fill="#555">$ npm install drop-id</text>
     <rect x="20" y="232" width="560" height="90" rx="8" fill="#141414"/>
-    <text x="34" y="256" fontFamily="monospace" fontSize="11" fill="#C792EA">import <tspan fill="#CDD6F4">{'{ dropid }'}</tspan> <tspan fill="#C792EA">from</tspan> <tspan fill="#A6E3A1">'drop-api-id'</tspan>;</text>
+    <text x="34" y="256" fontFamily="monospace" fontSize="11" fill="#C792EA">import <tspan fill="#CDD6F4">{'{ dropid }'}</tspan> <tspan fill="#C792EA">from</tspan> <tspan fill="#A6E3A1">'drop-id'</tspan>;</text>
     <text x="34" y="278" fontFamily="monospace" fontSize="11" fill="#89B4FA">dropid<tspan fill="#CDD6F4">('user')</tspan>         <tspan fill="#444">→ user_a3f2b9c1d4e5</tspan></text>
     <text x="34" y="298" fontFamily="monospace" fontSize="11" fill="#89B4FA">dropid<tspan fill="#CDD6F4">('order', 'acme')</tspan>  <tspan fill="#444">→ acme_order_x7k9m2n4</tspan></text>
     <rect x="430" y="56" width="150" height="50" rx="10" fill="#1A1A1A" stroke="#252525" strokeWidth="1"/>
@@ -303,37 +318,46 @@ export const DropIdDemo = () => (
 );
 
 export const AnalyticsMockup = () => (
-  <svg viewBox="0 0 560 320" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
-    <rect width="560" height="320" rx="16" fill="white" stroke="#F0F0F0" strokeWidth="1"/>
-    <text x="24" y="40" fontFamily="sans-serif" fontSize="16" fontWeight="800" fill="#111">Real-time Analytics</text>
-    <text x="24" y="58" fontFamily="sans-serif" fontSize="11" fill="#999">Live delivery dashboard</text>
-    {[['284K', 'SMS', '#DC143C'], ['99.2%', 'Delivered', '#22C55E'], ['48K', 'OTP', '#3B82F6'], ['12K', 'Email', '#F97316']].map(([v, l, c], i) => (
-      <g key={l}>
-        <rect x={24 + i * 132} y="74" width="118" height="54" rx="10" fill="#FAFAFA" stroke="#F0F0F0" strokeWidth="1"/>
-        <text x={34 + i * 132} y="98" fontFamily="sans-serif" fontSize="18" fontWeight="800" fill="#111">{v}</text>
-        <rect x={34 + i * 132} y="106" width="36" height="12" rx="4" fill={c} opacity="0.12"/>
-        <text x={38 + i * 132} y="116" fontFamily="sans-serif" fontSize="8" fontWeight="600" fill={c}>{l}</text>
-      </g>
-    ))}
-    <rect x="16" y="142" width="528" height="130" rx="10" fill="#FAFAFA"/>
-    <defs>
-      <linearGradient id="areaGrad2" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#DC143C" stopOpacity="0.2"/>
-        <stop offset="100%" stopColor="#DC143C" stopOpacity="0"/>
-      </linearGradient>
-    </defs>
-    <path d="M30,250 C60,230 90,210 120,220 C150,230 180,190 210,175 C240,160 270,185 300,165 C330,145 360,170 390,150 C420,130 450,155 480,140 C500,130 520,135 530,130 L530,260 L30,260 Z" fill="url(#areaGrad2)"/>
-    <path d="M30,250 C60,230 90,210 120,220 C150,230 180,190 210,175 C240,160 270,185 300,165 C330,145 360,170 390,150 C420,130 450,155 480,140 C500,130 520,135 530,130" stroke="#DC143C" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-    {[[120,220],[210,175],[300,165],[390,150],[480,140]].map(([cx,cy],i) => (
-      <circle key={i} cx={cx} cy={cy} r="5" fill="white" stroke="#DC143C" strokeWidth="2"/>
-    ))}
-    <rect x="282" y="140" width="76" height="36" rx="6" fill="#DC143C"/>
-    <text x="296" y="156" fontFamily="sans-serif" fontSize="9" fontWeight="700" fill="white">Apr 15</text>
-    <text x="296" y="168" fontFamily="sans-serif" fontSize="11" fontWeight="800" fill="white">12,842</text>
-    {['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug'].map((m, i) => (
-      <text key={m} x={32 + i * 68} y="280" fontFamily="sans-serif" fontSize="9" fill="#CCC">{m}</text>
-    ))}
-  </svg>
+  <div className="bg-background text-foreground">
+    <svg viewBox="0 0 560 320" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+      <rect width="560" height="320" rx="16" className="fill-background stroke-border" strokeWidth="1"/>
+      <text x="24" y="40" fontFamily="sans-serif" fontSize="16" fontWeight="800" className="fill-foreground">Real-time Analytics</text>
+      <text x="24" y="58" fontFamily="sans-serif" fontSize="11" className="fill-muted-foreground">Live delivery dashboard</text>
+      
+      {[['284K', 'SMS', '#DC143C'], ['99.2%', 'Delivered', '#22C55E'], ['48K', 'OTP', '#3B82F6'], ['12K', 'Email', '#F97316']].map(([v, l, c], i) => (
+        <g key={l}>
+          <rect x={24 + i * 132} y="74" width="118" height="54" rx="10" className="fill-muted stroke-border" strokeWidth="1"/>
+          <text x={34 + i * 132} y="98" fontFamily="sans-serif" fontSize="18" fontWeight="800" className="fill-foreground">{v}</text>
+          <rect x={34 + i * 132} y="106" width="36" height="12" rx="4" fill={c} opacity="0.12"/>
+          <text x={38 + i * 132} y="116" fontFamily="sans-serif" fontSize="8" fontWeight="600" fill={c}>{l}</text>
+        </g>
+      ))}
+      
+      <rect x="16" y="142" width="528" height="130" rx="10" className="fill-muted"/>
+      
+      <defs>
+        <linearGradient id="areaGrad2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#DC143C" stopOpacity="0.2"/>
+          <stop offset="100%" stopColor="#DC143C" stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      
+      <path d="M30,250 C60,230 90,210 120,220 C150,230 180,190 210,175 C240,160 270,185 300,165 C330,145 360,170 390,150 C420,130 450,155 480,140 C500,130 520,135 530,130 L530,260 L30,260 Z" fill="url(#areaGrad2)"/>
+      <path d="M30,250 C60,230 90,210 120,220 C150,230 180,190 210,175 C240,160 270,185 300,165 C330,145 360,170 390,150 C420,130 450,155 480,140 C500,130 520,135 530,130" stroke="#DC143C" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+      
+      {[[120,220],[210,175],[300,165],[390,150],[480,140]].map(([cx,cy],i) => (
+        <circle key={i} cx={cx} cy={cy} r="5" className="fill-background stroke-primary" strokeWidth="2"/>
+      ))}
+      
+      <rect x="282" y="140" width="76" height="36" rx="6" fill="#DC143C"/>
+      <text x="296" y="156" fontFamily="sans-serif" fontSize="9" fontWeight="700" fill="white">Apr 15</text>
+      <text x="296" y="168" fontFamily="sans-serif" fontSize="11" fontWeight="800" fill="white">12,842</text>
+      
+      {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'].map((m, i) => (
+        <text key={m} x={32 + i * 68} y="280" fontFamily="sans-serif" fontSize="9" className="fill-muted-foreground">{m}</text>
+      ))}
+    </svg>
+  </div>
 );
 
 
@@ -342,7 +366,7 @@ export default function LandingPage() {
   const { user } = useAuthStore();
 
   return (
-    <main className="font-sans overflow-x-hidden bg-white">
+    <main className="overflow-x-hidden bg-background text-foreground">
       
       <Navigation user={user} />
       <HeroSection />
@@ -350,7 +374,7 @@ export default function LandingPage() {
       <ServicesSection />
       <DropIdSection />
       <AnalyticsSection />
-      <UseCasesSection />
+      {/* <UseCasesSection /> */}
       <WhyDropSection />
       <PricingSection />
       <TestimonialsSection />
@@ -363,7 +387,7 @@ export default function LandingPage() {
 /* ─── Ticker Component ─── */
 export function Ticker() {
   return (
-    <div className="bg-black border-t border-b border-gray-900 py-3 overflow-hidden">
+    <div className="bg-black border-t border-b border-border py-3 overflow-hidden">
       <div className="overflow-hidden">
         <div className="flex animate-[tick_28s_linear_infinite] w-max">
           {[...Array(2)].map((_, k) => (
@@ -371,7 +395,7 @@ export function Ticker() {
               {['SMS API', 'Email API', 'WhatsApp', 'OTP Service', 'File Storage', 'DropID SDK', 'Pan-African', '99.9% SLA', 'Open Source', '2K+ Businesses'].map((item, j) => (
                 <span 
                   key={j} 
-                  className={`font-mono text-xs uppercase tracking-widest px-7 border-r border-gray-800 whitespace-nowrap ${
+                  className={` text-xs uppercase tracking-widest px-7 border-r border-border whitespace-nowrap ${
                     j % 2 === 0 ? 'text-white/40' : 'text-red-600'
                   }`}
                 >

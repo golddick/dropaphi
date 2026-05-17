@@ -11,7 +11,7 @@ const testimonials = [
 
 export default function TestimonialsSection() {
   return (
-    <section className="bg-gray-50 border-t border-gray-200 py-20 px-6">
+    <section className="bg-background border-t border-border py-20 px-6">
       <div className="max-w-7xl mx-auto">
         <motion.div 
           initial={{ opacity: 0, y: 20 }} 
@@ -23,7 +23,7 @@ export default function TestimonialsSection() {
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gray-50 border border-gray-200 font-mono text-xs uppercase tracking-wider text-gray-600 mb-4">
             Testimonials
           </div>
-          <h2 className="font-[Bricolage_Grotesque] text-[clamp(1.6rem,3vw,2.2rem)] font-extrabold tracking-tight text-gray-900">
+          <h2 className=" text-[clamp(1.6rem,3vw,2.2rem)] font-extrabold tracking-tight text-foreground">
             Trusted by builders across Africa
           </h2>
         </motion.div>
@@ -32,7 +32,7 @@ export default function TestimonialsSection() {
           {testimonials.map(({ quote, name, role }, i) => (
             <motion.div 
               key={i} 
-              className="bg-white border border-gray-200 rounded-xl p-7 hover:border-red-300 hover:shadow-xl transition-all"
+              className="bg-card border border-border rounded-xl p-7 hover:border-red-300 hover:shadow-xl transition-all"
               initial={{ opacity: 0, y: 20 }} 
               whileInView={{ opacity: 1, y: 0 }} 
               transition={{ duration: 0.5, delay: i * 0.1 }} 
@@ -43,10 +43,10 @@ export default function TestimonialsSection() {
                   <Star key={j} size={14} className="fill-red-600 text-red-600" />
                 ))}
               </div>
-              <p className="font-sans text-sm text-gray-700 leading-relaxed mb-5">"{quote}"</p>
+              <p className=" text-sm text-muted-foreground leading-relaxed mb-5">"{quote}"</p>
               <div>
-                <p className="font-[Bricolage_Grotesque] font-bold text-sm text-gray-900">{name}</p>
-                <p className="font-mono text-xs text-gray-400">{role}</p>
+                <p className=" font-bold text-sm text-foreground">{name}</p>
+                <p className=" text-xs text-muted-foreground">{role}</p>
               </div>
             </motion.div>
           ))}

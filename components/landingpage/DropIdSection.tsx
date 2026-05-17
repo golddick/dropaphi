@@ -7,7 +7,7 @@ import { DropIdDemo } from './home';
 
 export default function DropIdSection() {
   return (
-    <section id="dropid" className="bg-black text-white py-24 px-6">
+    <section id="dropid" className="bg-background text-foreground py-24 px-6">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <motion.div 
@@ -19,10 +19,10 @@ export default function DropIdSection() {
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-900/20 border border-red-800/30 font-mono text-xs uppercase tracking-wider text-red-400 mb-6">
               Open Source · MIT License
             </div>
-            <h2 className="font-[Bricolage_Grotesque] text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tight leading-tight mb-5">
-              DropID —<br /><span className="text-red-600">IDs That Make Sense</span>
+            <h2 className=" text-[clamp(2rem,4vw,3rem)] font-extrabold tracking-tight leading-tight mb-5">
+              DropID<br /><span className="text-red-600">IDs That Make Sense</span>
             </h2>
-            <p className="font-sans text-base text-white/50 leading-relaxed mb-9">
+            <p className=" text-base text-foreground leading-relaxed mb-9">
               Stop debugging cryptic UUIDs. DropID generates human-readable, crypto-secure identifiers that speed up debugging and make every log readable at a glance.
             </p>
             {[
@@ -35,8 +35,8 @@ export default function DropIdSection() {
                   <span className="text-white text-xs">✓</span>
                 </div>
                 <div>
-                  <p className="font-[Bricolage_Grotesque] font-bold text-sm mb-0.5">{title}</p>
-                  <p className="font-mono text-xs text-white/35">{desc}</p>
+                  <p className=" font-bold text-sm mb-0.5 text-foreground">{title}</p>
+                  <p className=" text-xs text-muted-foreground">{desc}</p>
                 </div>
               </div>
             ))}
@@ -45,10 +45,10 @@ export default function DropIdSection() {
                 Read Docs
               </Link>
               <a 
-                href="https://npmjs.com/package/drop-api-id" 
+                href="https://npmjs.com/package/drop-id" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="inline-flex items-center gap-2 px-6 py-3 bg-transparent border border-white/20 text-white/70 rounded-lg font-[Bricolage_Grotesque] font-semibold hover:border-white/40 hover:text-white transition-all"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-black border border-border text-white rounded-lg font-[Bricolage_Grotesque] font-semibold hover:border-white/40 hover:text-white transition-all"
               >
                 View on npm
               </a>
