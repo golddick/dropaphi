@@ -109,32 +109,32 @@ export default function BlogPage() {
   }
 
   return (
-    <div className="overflow-x-hidden bg-white">
+    <div className="overflow-x-hidden bg-background">
       <Navigation user={user} />
 
-      <section className="bg-black text-white px-6 py-24 relative overflow-hidden">
+      <section className="bg-background text-foreground px-6 py-24 relative overflow-hidden">
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:48px_48px]" />
         <div className="absolute top-1/2 left-[40%] -translate-x-1/2 -translate-y-3/5 w-[700px] h-[500px] bg-[radial-gradient(ellipse,rgba(220,20,60,0.12)_0%,transparent_65%)] pointer-events-none" />
         
         <div className="max-w-7xl mx-auto relative z-10">
           <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-900/20 border border-red-800/30 font-mono text-xs uppercase tracking-wider text-red-400 mb-6">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-900/20 border border-red-800/30 text-xs uppercase tracking-wider text-red-400 mb-6">
               The DropAPHI Blog
             </div>
-            <h1 className="font-['Bricolage_Grotesque'] text-[clamp(2.6rem,5.5vw,4.4rem)] font-extrabold leading-[1.07] tracking-[-0.035em] mb-5 max-w-3xl">
+            <h1 className=" text-[clamp(2.6rem,5.5vw,4.4rem)] font-extrabold leading-[1.07] tracking-[-0.035em] text-foreground mb-5 max-w-3xl">
               Engineering, product,<br />
               <span className="text-red-600">and building for Africa.</span>
             </h1>
-            <p className="font-['Plus_Jakarta_Sans'] text-base text-white/50 leading-relaxed max-w-lg">
+            <p className=" text-base text-muted-foreground leading-relaxed max-w-lg">
               Deep dives, tutorials, and stories from the team building Africa's communication infrastructure.
             </p>
           </motion.div>
         </div>
       </section>
 
-      <section className="bg-white px-6 py-20">
+      <section className="bg-background text-foreground px-6 py-20">
         <div className="max-w-7xl mx-auto">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gray-50 border border-gray-200 font-mono text-xs uppercase tracking-wider text-gray-600 mb-6">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gray-50 border border-border text-xs uppercase tracking-wider text-gray-600 mb-6">
             Featured Post
           </div>
 
@@ -208,7 +208,7 @@ export default function BlogPage() {
         </div>
       </section>
 
-      <section className="bg-gray-50 px-6 py-20 border-t border-gray-200">
+      <section className="bg-background px-6 py-20 border-t border-border">
         <div className="max-w-7xl mx-auto">
           <div className="flex gap-2 flex-wrap mb-12">
             {CATEGORIES.map((cat, i) => (
@@ -240,7 +240,7 @@ export default function BlogPage() {
                 viewport={{ once: true }}
               >
                 <Link href={`/blog/${post.slug}`} className="no-underline">
-                  <div className="bg-white border border-gray-200 rounded-xl overflow-hidden cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                  <div className="bg-card border border-border rounded-xl overflow-hidden cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                     <BlogCover color={post.tagColor} tag={post.tag} index={i} />
                     <div className="p-6">
                       <div className="flex items-center gap-2 mb-3.5">
@@ -254,29 +254,29 @@ export default function BlogPage() {
                         >
                           {post.tag}
                         </span>
-                        <span className="font-mono text-xs text-gray-400 flex items-center gap-1">
+                        <span className="font-mono text-xs text-muted-foreground flex items-center gap-1">
                           <Clock size={10} /> {post.readTime}
                         </span>
                       </div>
 
-                      <h3 className="font-['Bricolage_Grotesque'] text-base font-bold text-gray-900 leading-tight tracking-tight mb-2.5">
+                      <h3 className=" text-base font-bold text-foreground leading-tight tracking-tight mb-2.5">
                         {post.title}
                       </h3>
-                      <p className="font-['Plus_Jakarta_Sans'] text-xs text-gray-500 leading-relaxed mb-5 line-clamp-2">
+                      <p className=" text-xs text-muted-foreground leading-relaxed mb-5 line-clamp-2">
                         {post.excerpt}
                       </p>
 
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <div 
-                            className="w-6 h-6 rounded-full flex items-center justify-center font-['Bricolage_Grotesque'] font-extrabold text-xs text-white flex-shrink-0"
+                            className="w-6 h-6 rounded-full flex items-center justify-center  font-extrabold text-xs text-foreground flex-shrink-0"
                             style={{ background: post.tagColor }}
                           >
                             {post.author[0]}
                           </div>
                           <div>
-                            <p className="font-['Bricolage_Grotesque'] font-bold text-xs text-gray-900">{post.author}</p>
-                            <p className="font-mono text-[0.62rem] text-gray-400">{post.date}</p>
+                            <p className=" font-bold text-xs text-foreground">{post.author}</p>
+                            <p className="text-[0.62rem] text-muted-foreground">{post.date}</p>
                           </div>
                         </div>
                         <ArrowRight size={14} className="text-red-600" />
@@ -290,13 +290,13 @@ export default function BlogPage() {
         </div>
       </section>
 
-      <section className="bg-black px-6 py-20">
+      <section className="bg-[#0a0a0a] px-6 py-20">
         <div className="max-w-2xl mx-auto text-center">
           <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} viewport={{ once: true }}>
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-900/20 border border-red-800/30 font-mono text-xs uppercase tracking-wider text-red-400 mb-5">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-900/20 border border-red-800/30 text-xs uppercase tracking-wider text-red-400 mb-5">
               Newsletter
             </div>
-            <h2 className="font-['Bricolage_Grotesque'] text-[clamp(1.8rem,4vw,2.6rem)] font-extrabold tracking-tight leading-tight text-white mb-4">
+            <h2 className=" text-[clamp(1.8rem,4vw,2.6rem)] font-extrabold tracking-tight leading-tight text-white mb-4">
               Engineering updates,<br /><span className="text-red-600">straight to your inbox</span>
             </h2>
             <p className="font-['Plus_Jakarta_Sans'] text-sm text-white/45 leading-relaxed mb-8">
@@ -306,7 +306,7 @@ export default function BlogPage() {
               <input
                 type="email"
                 placeholder="your@email.com"
-                className="flex-1 min-w-[200px] px-4 py-3 rounded-lg bg-[#141414] border border-[#222] text-white font-['Plus_Jakarta_Sans'] text-sm outline-none"
+                className="flex-1 min-w-[200px] px-4 py-3 rounded-lg bg-transparent border border-border text-white font-['Plus_Jakarta_Sans'] text-sm outline-none"
               />
               <button className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg font-['Bricolage_Grotesque'] font-bold hover:bg-red-700 transition-all flex-shrink-0">
                 Subscribe <ArrowRight size={14} />

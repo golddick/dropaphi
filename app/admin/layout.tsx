@@ -14,6 +14,10 @@ import {
   Gift,
   Building2,
   PenTool,
+  Videotape,
+  User2,
+  BanknoteIcon,
+  PhoneIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -40,7 +44,7 @@ const adminMenuItems = [
   },
   {
     label: 'Plans',
-    icon: Settings,
+    icon: BanknoteIcon,
     href: '/admin/plans',
   },
   {
@@ -52,6 +56,21 @@ const adminMenuItems = [
     label: 'Blog Management',
     icon: PenTool,
     href: '/admin/blog',
+  },
+  {
+    label: 'Contact Info',
+    icon: PhoneIcon,
+    href: '/admin/contact-info',
+  },
+  {
+    label: 'Demo Uploads',
+    icon: Videotape,
+    href: '/admin/demo',
+  },
+  {
+    label: 'Complaints',
+    icon: User2,
+    href: '/admin/complaints',
   },
   {
     label: 'Settings',

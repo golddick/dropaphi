@@ -16,6 +16,16 @@ import {
 import { NotificationService } from "@/lib/notification.service";
 import crypto from 'crypto'; 
 
+// Helper function to safely parse numeric values from metadata
+function parseNumericValue(value: any, defaultValue: number = 0): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = parseInt(value, 10);
+    return isNaN(parsed) ? defaultValue : parsed;
+  }
+  return defaultValue;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -31,7 +41,41 @@ export async function GET(req: NextRequest) {
       return err('No transaction reference provided', 400);
     }
 
-    // Verify the transaction with Paystack
+    // Check if already processed by webhook (idempotency check)
+    const existingTransaction = await db.subscriptionTransaction.findFirst({
+      where: { referenceId: transactionRef }
+    });
+
+    if (existingTransaction) {
+      console.log('ℹ️ [VERIFY_PAYMENT] Transaction already processed by webhook:', transactionRef);
+      
+      // Get workspaceId from existing transaction
+      const successUrl = new URL(`/dashboard/${existingTransaction.workspaceId}/billing`, process.env.NEXT_PUBLIC_APP_URL);
+      successUrl.searchParams.set('status', 'success');
+      successUrl.searchParams.set('reference', transactionRef);
+      successUrl.searchParams.set('already_processed', 'true');
+      return Response.redirect(successUrl.toString());
+    }
+
+    // Wait a moment to see if webhook is just delayed
+    console.log('⏳ [VERIFY_PAYMENT] Waiting for potential webhook processing...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Check again after delay
+    const retryCheck = await db.subscriptionTransaction.findFirst({
+      where: { referenceId: transactionRef }
+    });
+
+    if (retryCheck) {
+      console.log('ℹ️ [VERIFY_PAYMENT] Webhook processed during delay:', transactionRef);
+      const successUrl = new URL(`/dashboard/${retryCheck.workspaceId}/billing`, process.env.NEXT_PUBLIC_APP_URL);
+      successUrl.searchParams.set('status', 'success');
+      successUrl.searchParams.set('reference', transactionRef);
+      successUrl.searchParams.set('already_processed', 'true');
+      return Response.redirect(successUrl.toString());
+    }
+
+    // Verify the transaction with Paystack (webhook hasn't processed yet)
     const verificationResult = await verifyTransaction(transactionRef);
     
     if (!verificationResult || !verificationResult.status) {
@@ -94,7 +138,7 @@ export async function GET(req: NextRequest) {
           data: { status: InvoiceStatus.FAILED }
         });
 
-        return { failed: true };
+        return { failed: true, workspaceId };
       }
 
       // 3. Get workspace and wallet
@@ -266,7 +310,7 @@ export async function GET(req: NextRequest) {
         });
 
         // Create transaction record
-        const transaction = await tx.subscriptionTransaction.create({
+        await tx.subscriptionTransaction.create({
           data: {
             id: dropid('stxn'),
             workspaceId,
@@ -301,19 +345,40 @@ export async function GET(req: NextRequest) {
           });
         }
 
-        return { success: true, type: 'subscription', invoiceId: invoice.id, workspaceId, subscription };
+        return { success: true, type: 'subscription', invoiceId: invoice.id, workspaceId };
 
       } else if (isTopUp) {
         // ============================================================
-        // TOP-UP PAYMENT
+        // TOP-UP PAYMENT - FIXED VERSION
         // ============================================================
-        console.log('💰 Processing Top-up for:', workspaceId, { serviceType, quantity, bonusCredits, walletField });
+        console.log('💰 Processing Top-up for:', workspaceId, { 
+          serviceType, 
+          quantity, 
+          bonusCredits, 
+          walletField 
+        });
 
         if (!workspace.wallet) {
           throw new Error(`Wallet not found for workspace: ${workspaceId}`);
         }
 
-        const totalCredits = (quantity || 0) + (bonusCredits || 0);
+        // FIX: Convert string values to numbers safely
+        const quantityNum = parseNumericValue(quantity, 0);
+        const bonusCreditsNum = parseNumericValue(bonusCredits, 0);
+        const usageRateNum = parseNumericValue(usageRate, 1);
+        
+        // Validate conversion
+        if (isNaN(quantityNum) || isNaN(bonusCreditsNum)) {
+          throw new Error(`Invalid credit values: quantity=${quantity}, bonusCredits=${bonusCredits}`);
+        }
+        
+        const totalCredits = quantityNum + bonusCreditsNum;
+        
+        console.log('💰 [VERIFY_PAYMENT] Credit calculation:', {
+          quantity: quantityNum,
+          bonusCredits: bonusCreditsNum,
+          totalCredits
+        });
         
         // Update wallet with service-specific credits
         if (walletField && walletField !== 'balance') {
@@ -340,9 +405,9 @@ export async function GET(req: NextRequest) {
             id: dropid('alt'),
             workspaceId,
             title: "Top-up Successful",
-            message: bonusCredits 
-              ? `Successfully added ${quantity?.toLocaleString()} ${serviceType} credits + ${bonusCredits} bonus credits!`
-              : `Successfully added ${quantity?.toLocaleString()} ${serviceType} credits.`,
+            message: bonusCreditsNum 
+              ? `Successfully added ${quantityNum.toLocaleString()} ${serviceType} credits + ${bonusCreditsNum} bonus credits!`
+              : `Successfully added ${quantityNum.toLocaleString()} ${serviceType} credits.`,
             type: "success"
           }
         });
@@ -365,10 +430,10 @@ export async function GET(req: NextRequest) {
             invoiceId: invoice.id,
             metadata: { 
               serviceType, 
-              quantity, 
-              bonusCredits, 
+              quantity: quantityNum,
+              bonusCredits: bonusCreditsNum,
               totalCredits,
-              usageRate 
+              usageRate: usageRateNum
             }
           }
         });
@@ -386,9 +451,14 @@ export async function GET(req: NextRequest) {
             variables: {
               amount: totalCredits.toLocaleString(),
               type: serviceType,
-              bonus: bonusCredits ? ` + ${bonusCredits} bonus` : ''
+              bonus: bonusCreditsNum ? ` + ${bonusCreditsNum} bonus` : ''
             },
-            metadata: { serviceType, quantity, bonusCredits, totalCredits },
+            metadata: { 
+              serviceType, 
+              quantity: quantityNum, 
+              bonusCredits: bonusCreditsNum, 
+              totalCredits 
+            },
             actionUrl: `/dashboard/${workspaceId}/billing/wallet`
           });
         }
@@ -406,10 +476,19 @@ export async function GET(req: NextRequest) {
               promoCodeId: invoice.promoCodeId,
               workspaceId,
               invoiceId: invoice.id,
-              discountAmount: discount || 0,
+              discountAmount: parseNumericValue(discount, 0),
             }
           });
         }
+
+        console.log('✅ [VERIFY_PAYMENT] Top-up completed:', {
+          workspaceId,
+          serviceType,
+          quantity: quantityNum,
+          bonusCredits: bonusCreditsNum,
+          totalCredits,
+          amount: verificationResult.data.amount / 100
+        });
 
         return { success: true, type: 'topup', invoiceId: invoice.id, workspaceId };
       }
@@ -418,7 +497,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (result.failed) {
-      const failureUrl = new URL(`/dashboard/${workspaceId}/billing`, process.env.NEXT_PUBLIC_APP_URL);
+      const failureUrl = new URL(`/dashboard/${result.workspaceId}/billing`, process.env.NEXT_PUBLIC_APP_URL);
       failureUrl.searchParams.set('status', 'failed');
       return Response.redirect(failureUrl.toString());
     }
@@ -431,7 +510,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Redirect to success page
-    const successUrl = new URL(`/dashboard/${workspaceId}/billing`, process.env.NEXT_PUBLIC_APP_URL);
+    const successUrl = new URL(`/dashboard/${result.workspaceId}/billing`, process.env.NEXT_PUBLIC_APP_URL);
     successUrl.searchParams.set('status', 'success');
     successUrl.searchParams.set('reference', transactionRef);
     if (result.type) successUrl.searchParams.set('type', result.type);

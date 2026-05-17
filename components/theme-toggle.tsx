@@ -1,40 +1,81 @@
-"use client"
+// components/ui/theme-toggle.tsx
+'use client';
 
-import * as React from "react"
-import { Moon, Sun } from "lucide-react"
-import { useTheme } from "next-themes"
+import { useState, useEffect } from 'react';
+import { useTheme } from 'next-themes';
+import { Sun, Moon, Laptop, ChevronDown } from 'lucide-react';
 
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+export function ThemeToggle() {
+  const [mounted, setMounted] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
 
-export function ModeToggle() {
-  const { setTheme } = useTheme()
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className="h-9 w-9 animate-pulse bg-muted rounded-lg" />;
+  }
+
+  const getIcon = () => {
+    if (theme === 'dark') return <Sun size={16} />;
+    if (theme === 'light') return <Moon size={16} />;
+    return <Laptop size={16} />;
+  };
+
+  const getLabel = () => {
+    if (theme === 'dark') return 'Dark';
+    if (theme === 'light') return 'Light';
+    return 'System';
+  };
+
+  const themes = [
+    { value: 'light', label: 'Light', icon: Sun },
+    { value: 'dark', label: 'Dark', icon: Moon },
+    { value: 'system', label: 'System', icon: Laptop },
+  ];
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon">
-          <Sun className="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-          <Moon className="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
-          <span className="sr-only">Toggle theme</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => setTheme("light")}>
-          Light
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")}>
-          Dark
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")}>
-          System
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors w-full"
+      >
+        {getIcon()}
+        <span className="text-sm flex-1 text-left">{getLabel()}</span>
+        <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute top-full left-0 right-0 mt-1 bg-popover rounded-lg shadow-lg border z-20 overflow-hidden">
+            {themes.map((themeOption) => {
+              const Icon = themeOption.icon;
+              const isActive = theme === themeOption.value;
+              
+              return (
+                <button
+                  key={themeOption.value}
+                  onClick={() => {
+                    setTheme(themeOption.value);
+                    setIsOpen(false);
+                  }}
+                  className={`flex items-center gap-3 w-full px-3 py-2 text-sm transition-colors ${
+                    isActive 
+                      ? 'bg-primary/10 text-primary' 
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  <Icon size={16} />
+                  <span>{themeOption.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }

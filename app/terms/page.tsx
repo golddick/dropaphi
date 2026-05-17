@@ -89,34 +89,31 @@ export default function TermsPage() {
   const { user } = useAuthStore();
   
   return (
-    <div className="overflow-x-hidden bg-white">
-      {/* <style jsx>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=DM+Mono:wght@300;400&display=swap');
-      `}</style> */}
+    <div className="overflow-x-hidden bg-background">
       
       <Navigation user={user} />
 
       {/* ── HERO — dark ── */}
-      <section className="bg-black text-white px-6 py-24 relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-3/5 w-[700px] h-[500px] bg-[radial-gradient(ellipse,rgba(220,20,60,0.1)_0%,transparent_65%)] pointer-events-none" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(220,20,60,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(220,20,60,0.035)_1px,transparent_1px)] bg-[size:48px_48px]" />
+      <section className="bg-transparent text-foreground px-6 py-24 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-3/5 w-175 h-125 bg-[radial-gradient(ellipse,rgba(220,20,60,0.1)_0%,transparent_65%)] pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(220,20,60,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(220,20,60,0.035)_1px,transparent_1px)] bg-size-[48px_48px]" />
         
         <div className="max-w-7xl mx-auto relative z-10">
           <motion.div initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-900/20 border border-red-800/30 font-mono text-xs uppercase tracking-wider text-red-400 mb-6">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-900/20 border border-red-800/30 text-xs uppercase tracking-wider text-red-400 mb-6">
               Legal
             </div>
-            <h1 className="font-['Bricolage_Grotesque'] text-[clamp(2.6rem,5.5vw,4.4rem)] font-extrabold leading-[1.07] tracking-[-0.035em] mb-5">
+            <h1 className=" text-[clamp(2.6rem,5.5vw,4.4rem)] font-extrabold leading-[1.07] tracking-[-0.035em] mb-5">
               Terms of Service
             </h1>
-            <p className="font-['Plus_Jakarta_Sans'] text-base text-white/50 leading-relaxed max-w-lg">
-              Please read these terms carefully before using Drop APHI. They govern your use of our platform and APIs.
+            <p className=" text-base text-foreground leading-relaxed max-w-lg">
+              Please read these terms carefully before using DropAPHI. They govern your use of our platform and APIs.
             </p>
             <div className="mt-6 flex items-center gap-4">
-              <span className="font-mono text-xs text-[#444] px-3 py-1 rounded-md bg-[#161616] border border-[#222]">
+              <span className="font-mono text-xs text-muted-foreground px-3 py-1 rounded-md bg-[#161616] border border-[#222]">
                 Last Updated: February 2026
               </span>
-              <span className="font-mono text-xs text-[#444] px-3 py-1 rounded-md bg-[#161616] border border-[#222]">
+              <span className=" text-xs text-muted-foreground px-3 py-1 rounded-md bg-[#161616] border border-[#222]">
                 v1.0
               </span>
             </div>
@@ -125,14 +122,14 @@ export default function TermsPage() {
       </section>
 
       {/* ── TOC — white ── */}
-      <section className="bg-white px-6 py-12 border-b border-gray-200">
+      <section className="bg-transparent px-6 py-12 border-b border-border">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-wrap gap-2.5">
             {SECTIONS.map(({ heading }, i) => (
               <a 
                 key={i} 
                 href={`#ts-${i}`}
-                className="font-mono text-xs px-3.5 py-1.5 rounded-full bg-gray-50 border border-gray-200 text-gray-600 no-underline transition-all hover:border-red-600 hover:text-red-600"
+                className="text-xs px-3.5 py-1.5 rounded-full bg-card border border-border text-muted-foreground no-underline transition-all hover:border-red-600 hover:text-red-600"
               >
                 {heading.split('. ')[1] || heading}
               </a>
@@ -142,7 +139,7 @@ export default function TermsPage() {
       </section>
 
       {/* ── CONTENT — white ── */}
-      <section className="bg-white px-6 py-20">
+      <section className="bg-transparent px-6 py-12 border-b border-border">
         <div className="max-w-3xl mx-auto">
           <div className="flex flex-col gap-0">
             {SECTIONS.map(({ icon, heading, content, list }, i) => (
@@ -153,25 +150,25 @@ export default function TermsPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
                 viewport={{ once: true }}
-                className="py-10 border-b border-gray-100 last:border-0"
+                className="py-10 border-b border-border last:border-0"
               >
                 <div className="flex gap-5 items-start">
-                  <div className="w-11 h-11 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center text-red-600 flex-shrink-0 mt-1">
+                  <div className="w-11 h-11 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shrink-0 mt-1">
                     {icon}
                   </div>
                   <div className="flex-1">
-                    <h2 className="font-['Bricolage_Grotesque'] text-xl font-extrabold text-gray-900 mb-3.5 tracking-tight">
+                    <h2 className=" text-xl font-extrabold text-foreground mb-3.5 tracking-tight">
                       {heading}
                     </h2>
-                    <p className="font-['Plus_Jakarta_Sans'] text-sm text-gray-600 leading-relaxed mb-4">
+                    <p className=" text-sm text-muted-foreground leading-relaxed mb-4">
                       {content}
                     </p>
                     {list && (
                       <ul className="list-none p-0 flex flex-col gap-2">
                         {list.map((item, j) => (
                           <li key={j} className="flex gap-2.5 items-start">
-                            <span className="text-red-600 text-xs mt-1 flex-shrink-0">✓</span>
-                            <span className="font-['Plus_Jakarta_Sans'] text-sm text-gray-600 leading-relaxed">
+                            <span className="text-red-600 text-xs mt-1 shrink-0">✓</span>
+                            <span className=" text-sm text-muted-foreground leading-relaxed">
                               {item}
                             </span>
                           </li>
@@ -190,25 +187,25 @@ export default function TermsPage() {
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
-            className="mt-14 bg-black rounded-2xl p-8 md:p-9 border border-red-600/20"
+            className="mt-14 bg-black rounded-2xl p-8 md:p-9 border border-border"
           >
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-900/20 border border-red-800/30 font-mono text-xs uppercase tracking-wider text-red-400 mb-4">
               Contact
             </div>
-            <h3 className="font-['Bricolage_Grotesque'] text-2xl font-extrabold text-white mb-3">
+            <h3 className=" text-2xl font-extrabold text-white mb-3">
               Legal Questions?
             </h3>
-            <p className="font-['Plus_Jakarta_Sans'] text-sm text-white/50 leading-relaxed mb-6">
+            <p className=" text-sm text-white/50 leading-relaxed mb-6">
               For questions about these Terms of Service, please contact our legal team.
             </p>
             <div className="flex gap-4 flex-wrap">
               <div className="bg-[#141414] border border-[#222] rounded-lg p-3.5 px-5">
-                <p className="font-mono text-xs text-[#555] mb-1">EMAIL</p>
-                <p className="font-['Plus_Jakarta_Sans'] text-sm text-white">legal@dropaphi.xyz</p>
+                <p className=" text-xs text-[#555] mb-1">EMAIL</p>
+                <p className=" text-sm text-white">legal@dropaphi.xyz</p>
               </div>
               <div className="bg-[#141414] border border-[#222] rounded-lg p-3.5 px-5">
-                <p className="font-mono text-xs text-[#555] mb-1">ADDRESS</p>
-                <p className="font-['Plus_Jakarta_Sans'] text-sm text-white">Lagos, Nigeria</p>
+                <p className=" text-xs text-[#555] mb-1">ADDRESS</p>
+                <p className=" text-sm text-white">Lagos, Nigeria</p>
               </div>
             </div>
           </motion.div>

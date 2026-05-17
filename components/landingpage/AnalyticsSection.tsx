@@ -13,7 +13,7 @@ const features = [
 
 export default function AnalyticsSection() {
   return (
-    <section className="bg-white py-24 px-6">
+    <section className="bg-background py-24 px-6">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <motion.div 
@@ -22,7 +22,7 @@ export default function AnalyticsSection() {
             transition={{ duration: 0.8 }} 
             viewport={{ once: true }}
           >
-            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-5 overflow-hidden">
+            <div className="bg-background border border-border rounded-2xl p-5 overflow-hidden">
               <AnalyticsMockup />
             </div>
           </motion.div>
@@ -33,13 +33,13 @@ export default function AnalyticsSection() {
             transition={{ duration: 0.8 }} 
             viewport={{ once: true }}
           >
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-50 border border-red-200 font-mono text-xs uppercase tracking-wider text-red-600 mb-5">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-50 border border-red-200  text-xs uppercase tracking-wider text-red-600 mb-5">
               Real-time Analytics
             </div>
-            <h2 className="font-[Bricolage_Grotesque] text-[clamp(1.8rem,3.5vw,2.6rem)] font-extrabold tracking-tight leading-tight text-gray-900 mb-5">
+            <h2 className=" text-[clamp(1.8rem,3.5vw,2.6rem)] font-extrabold tracking-tight leading-tight text-foreground mb-5">
               See every message,<br /><span className="text-red-600">in real time</span>
             </h2>
-            <p className="font-sans text-base text-gray-600 leading-relaxed mb-9">
+            <p className="font-sans text-base text-muted-foreground leading-relaxed mb-9">
               Your dashboard tracks every message across every channel. Delivery rates, open rates, latency histograms — all live, all in one place.
             </p>
             {features.map(({ icon, title, desc }) => (
@@ -48,8 +48,8 @@ export default function AnalyticsSection() {
                   {icon}
                 </div>
                 <div>
-                  <p className="font-[Bricolage_Grotesque] font-bold text-sm text-gray-900 mb-1">{title}</p>
-                  <p className="font-sans text-sm text-gray-500">{desc}</p>
+                  <p className="font-[Bricolage_Grotesque] font-bold text-sm text-foreground mb-1">{title}</p>
+                  <p className="font-sans text-sm text-muted-foreground">{desc}</p>
                 </div>
               </div>
             ))}

@@ -21,6 +21,7 @@ export interface JwtPayload {
   sessionId: string; // ses_xxx
   iat?: number;
   exp?: number;
+  role?: string; // optional role claim
 }
 
 export interface AuthTokens {
