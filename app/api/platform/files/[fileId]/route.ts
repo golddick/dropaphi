@@ -5,10 +5,19 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { fileId: string } }
+  { params }: { params: Promise<{ fileId: string }> } 
 ) {
   try {
-    const { fileId } = await params;
+    const { fileId } = await params; // ← This is correct
+
+    console.log("Fetching file:", fileId);
+
+    if (!fileId) {
+      return NextResponse.json(
+        { error: "File ID is required" },
+        { status: 400 }
+      );
+    }
 
     // Get file record from database
     const file = await db.platformFile.findUnique({
@@ -16,11 +25,14 @@ export async function GET(
     });
 
     if (!file) {
+      console.log("File not found:", fileId);
       return NextResponse.json(
         { error: "File not found" },
         { status: 404 }
       );
     }
+
+    console.log("File found:", file.originalName, "Type:", file.mimeType);
 
     // Check if file is public or if user has access
     const isPublic = file.entityType === 'demo' || 
@@ -30,9 +42,7 @@ export async function GET(
     if (!isPublic) {
       // For private files, check authentication
       const authHeader = req.headers.get('authorization');
-      // You can add more sophisticated auth here
-      
-      // For now, allow if it's a demo or avatar
+      // Add your auth check here if needed
     }
 
     // Stream file from Supabase
@@ -52,7 +62,8 @@ export async function GET(
     const headers = new Headers();
     headers.set('Content-Type', file.mimeType);
     headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-    headers.set('Content-Disposition', `inline; filename="${file.originalName}"`);
+    headers.set('Content-Disposition', `inline; filename="${encodeURIComponent(file.originalName)}"`);
+    headers.set('Access-Control-Allow-Origin', '*'); // Allow CORS if needed
 
     // Return file
     return new NextResponse(data, {
@@ -71,10 +82,14 @@ export async function GET(
 // HEAD request for file metadata
 export async function HEAD(
   req: NextRequest,
-  { params }: { params: { fileId: string } }
+  { params }: { params: Promise<{ fileId: string }> } // ← Make sure type is Promise
 ) {
   try {
     const { fileId } = await params;
+
+    if (!fileId) {
+      return new NextResponse(null, { status: 400 });
+    }
 
     const file = await db.platformFile.findUnique({
       where: { id: fileId },
@@ -93,8 +108,9 @@ export async function HEAD(
     const headers = new Headers();
     headers.set('Content-Type', file.mimeType);
     headers.set('Content-Length', String(file.size * 1024 * 1024));
-    headers.set('Content-Disposition', `inline; filename="${file.originalName}"`);
+    headers.set('Content-Disposition', `inline; filename="${encodeURIComponent(file.originalName)}"`);
     headers.set('Last-Modified', file.createdAt.toUTCString());
+    headers.set('Access-Control-Allow-Origin', '*');
 
     return new NextResponse(null, {
       status: 200,
