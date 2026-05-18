@@ -1,0 +1,28 @@
+{
+  "name": "@dropaphi/node",
+  "version": "0.0.1",
+  "description": "Official DropAPHI Node.js SDK",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "pnpm build"
+  },
+  "keywords": [
+    "dropaphi",
+    "email api",
+    "otp",
+    "sms api",
+    "node sdk"
+  ],
+  "author": "DropAPHI",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}
