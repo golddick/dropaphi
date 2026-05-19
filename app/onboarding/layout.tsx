@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { ReactNode } from 'react';
 
 export default function OnboardingLayout({
@@ -6,7 +7,7 @@ export default function OnboardingLayout({
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#FAFAFA' }}>
+    <div className="min-h-screen bg-background" >
       {/* Progress Header */}
       <div
         className=""
@@ -15,12 +16,9 @@ export default function OnboardingLayout({
         <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1
-                className="text-2xl sm:text-3xl font-bold"
-                style={{ color: '#1A1A1A' }}
-              >
-                Drop APHI
-              </h1>
+              <span className="font-extrabold hidden md:block text-lg text-secondary-foreground">
+              Drop<span className="text-red-600">APHI</span>
+            </span>
               <p style={{ color: '#666666' }} className="text-sm mt-1">
                 Complete these steps to launch your workspace
               </p>
@@ -30,7 +28,14 @@ export default function OnboardingLayout({
                 className="flex h-10 w-10 items-center justify-center rounded font-bold text-white text-sm"
                 style={{ backgroundColor: '#DC143C' }}
               >
-                D
+                <Image
+                src="/image/drop-logo.png"
+                alt="Dropaphi Logo"
+                width={24}
+                height={24}
+                className="object-contain"
+                priority
+              />
               </div>
             </div>
           </div>

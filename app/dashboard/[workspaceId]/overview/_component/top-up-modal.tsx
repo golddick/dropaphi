@@ -152,7 +152,7 @@ export function TopUpModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[425px] bg-card border-border">
+      <DialogContent className="sm:max-w-106.25 bg-card border-border">
         {!isSuccess ? (
           <>
             <DialogHeader>
