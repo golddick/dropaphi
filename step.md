@@ -40,13 +40,13 @@ To make the SDKs installable via `npm install`, you need to build and publish th
 2. **Setup package.json**: (Ensure it has a build script using `tsup` or `tsc`).
 3. **Build**:
    ```bash
-   npm install
-   npm run build
+   pnpm install
+   pnpm run build
    ```
 4. **Publish**:
    ```bash
-   npm login
-   npm publish --access public
+   pnpm login
+   pnpm publish --access public
    ```
 
 ### @dropaphi/react (Frontend Components)

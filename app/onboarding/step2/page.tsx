@@ -162,8 +162,8 @@ export default function Step2Page() {
       <div className="mb-12">
         <div className="flex items-center justify-between mb-4">
           {[1, 2].map((step, idx) => (
-            <div key={step} className="flex items-center flex-1">
-              <div
+            <div key={step} className="flex  ">
+              <div 
                 className="flex h-10 w-10 items-center justify-center rounded-full font-bold text-white text-sm"
                 style={{
                   backgroundColor: step <= 2 ? '#DC143C' : '#E5E5E5',

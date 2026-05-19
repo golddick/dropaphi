@@ -27,7 +27,7 @@ export default function Navigation({ user }: NavigationProps) {
             priority
           />
         </div>
-          <span className="font-extrabold text-lg text-secondary-foreground">
+          <span className="font-extrabold hidden md:block text-lg text-secondary-foreground">
             Drop<span className="text-red-600">APHI</span>
           </span>
         </Link>
@@ -60,7 +60,7 @@ export default function Navigation({ user }: NavigationProps) {
                 href="/auth/signup" 
                 className="inline-flex items-center gap-2 px-5 py-2 bg-red-600 text-white rounded-lg font-bold text-sm hover:bg-red-700 transition-all hover:-translate-y-0.5 shadow-lg shadow-red-600/25 no-underline"
               >
-                Get Started <ArrowRight size={14} />
+                Get Started <ArrowRight size={14} className=" hidden md:block" />
               </Link>
             </>
           ) : (

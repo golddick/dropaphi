@@ -20,6 +20,7 @@ import {
   PhoneIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const adminMenuItems = [
   {
@@ -174,6 +175,9 @@ export default function AdminLayout({
             className="pt-6 border-t"
             style={{ borderColor: '#333333' }}
           >
+
+          <ThemeToggle />
+
             <button
               onClick={handleLogout}
               className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full"

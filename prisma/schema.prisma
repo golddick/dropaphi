@@ -713,7 +713,7 @@ model WebhookDelivery {
 model SubscriptionTransaction {
   id             String                      @id @default("")
   workspaceId    String                      @map("workspace_id")
-  subscriptionId String                      @map("subscription_id")
+  subscriptionId String?                      @map("subscription_id")
   type           SubscriptionTransactionType @default(SUBSCRIPTION_PAYMENT)
   status         TransactionStatus           @default(PENDING)
   amount         Decimal                     @db.Decimal(12, 2)
@@ -723,7 +723,7 @@ model SubscriptionTransaction {
   metadata       Json?
   createdAt      DateTime                    @default(now()) @map("created_at")
   invoice        Invoice?                    @relation(fields: [invoiceId], references: [id])
-  subscription   WorkspaceSubscription       @relation(fields: [subscriptionId], references: [id])
+  subscription   WorkspaceSubscription?       @relation(fields: [subscriptionId], references: [id])
   workspace      Workspace                   @relation(fields: [workspaceId], references: [id])
 
   @@index([workspaceId])

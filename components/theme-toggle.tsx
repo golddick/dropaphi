@@ -43,7 +43,7 @@ export function ThemeToggle() {
         className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors w-full"
       >
         {getIcon()}
-        <span className="text-sm flex-1 text-left">{getLabel()}</span>
+        <span className="text-sm flex-1 hidden md:block text-left">{getLabel()}</span>
         <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
@@ -69,7 +69,7 @@ export function ThemeToggle() {
                   }`}
                 >
                   <Icon size={16} />
-                  <span>{themeOption.label}</span>
+                  <span className='hidden md:block'>{themeOption.label}</span>
                 </button>
               );
             })}

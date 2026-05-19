@@ -12,7 +12,7 @@ import { Services } from "@/lib/generated/prisma";
 
 const topUpSchema = z.object({
   serviceType: z.enum(['email', 'sms', 'otp', 'blog', 'push', 'ai', 'storage']),
-  quantity: z.coerce.number().positive().min(1, "Quantity must be at least 1"),
+  quantity: z.coerce.number().positive().min(1, "Quantity must be at least 1"), 
   promoCode: z.string().optional(),
 });
 

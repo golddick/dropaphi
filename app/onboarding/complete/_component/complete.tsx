@@ -64,10 +64,10 @@ export default function CompletePage() {
               <div className="p-2 bg-red-100 rounded-lg">
                 <Zap size={18} style={{ color: '#DC143C' }} />
               </div>
-              <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>API Keys Ready</h3>
+              <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>API Keys Ready when you are</h3>
             </div>
             <p className="text-xs" style={{ color: '#666666' }}>
-              Your API credentials are generated and ready to use
+              Generate your API credentials on your dashboard 
             </p>
           </div>
 
@@ -106,37 +106,6 @@ export default function CompletePage() {
               Access comprehensive API docs and examples
             </p>
           </div>
-        </motion.div>
-
-        {/* Quick Start Guide */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.7, duration: 0.5 }}
-          className="w-full mb-8 p-6 rounded-lg"
-          style={{ backgroundColor: 'rgba(220, 20, 60, 0.05)', borderLeft: '4px solid #DC143C' }}
-        >
-          <h3 className="font-semibold mb-3" style={{ color: '#1A1A1A' }}>
-            Quick Start Guide
-          </h3>
-          <ol className="space-y-2 text-sm" style={{ color: '#666666' }}>
-            <li className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-red-600 text-white text-xs font-bold">1</span>
-              Go to API Keys and copy your credentials
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-red-600 text-white text-xs font-bold">2</span>
-              Check out the code examples in your dashboard
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-red-600 text-white text-xs font-bold">3</span>
-              Send your first SMS, Email, or OTP
-            </li>
-            <li className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-red-600 text-white text-xs font-bold">4</span>
-              Invite team members to collaborate
-            </li>
-          </ol>
         </motion.div>
 
         {/* CTA Buttons */}

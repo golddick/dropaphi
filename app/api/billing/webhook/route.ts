@@ -178,7 +178,7 @@ async function handleTopUp(data: any, requestId: string) {
       data: {
         id: dropid('stxn'),
         workspaceId: metadata.workspaceId,
-        subscriptionId: '',
+        subscriptionId: null,
         type: 'TOPUP',
         status: 'COMPLETED',
         amount: amountNaira,
