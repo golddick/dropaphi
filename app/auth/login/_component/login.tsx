@@ -203,7 +203,7 @@ export default function LoginContent() {
         <p style={{ color: '#666666' }} className="text-sm">
           {pendingInvitation 
             ? 'Login to accept your workspace invitation' 
-            : 'Sign in to your Drop API account'}
+            : 'Sign in to your DropAPHI account'}
         </p>
       </div>
 

@@ -214,11 +214,18 @@ export async function POST(
 
     const { name, environment, expiresIn, permissions, creditCap, rateLimit } = parsed.data;
 
-    // 7. Check plan feature: Dev API must be enabled
-    const devApiAllowed = await BillingService.hasDevApiAccess(workspaceId);
-    if (!devApiAllowed) {
-      return errorResponse("Developer API is not enabled for your current plan. Upgrade to a plan with Dev API access.", 403);
+    // 7. Check plan feature: Dev API must be enabled ONLY for LIVE environment
+    //    Skip this check for TEST environment
+    if (environment === 'live') {
+      const devApiAllowed = await BillingService.hasDevApiAccess(workspaceId);
+      if (!devApiAllowed) {
+        return errorResponse("Developer API is not enabled for your current plan. Upgrade to a plan with Dev API access.", 403);
+      }
     }
+    // const devApiAllowed = await BillingService.hasDevApiAccess(workspaceId);
+    // if (!devApiAllowed) {
+    //   return errorResponse("Developer API is not enabled for your current plan. Upgrade to a plan with Dev API access.", 403);
+    // }
 
     // 8. Check if production key creation is allowed
     if (environment === 'live') {

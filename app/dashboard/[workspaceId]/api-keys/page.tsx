@@ -215,10 +215,10 @@ export default function ApiKeysPage() {
         className="flex justify-between items-start"
       >
         <div>
-          <h1 className="text-3xl font-bold mb-2" style={{ color: '#1A1A1A' }}>
+          <h1 className="text-3xl font-bold mb-2 text-foreground" >
             API Keys
           </h1>
-          <p style={{ color: '#666666' }}>
+          <p className="text-muted-foreground">
             Manage API keys for authenticating requests to the DropAPHI
           </p>
         </div>
@@ -226,6 +226,7 @@ export default function ApiKeysPage() {
           onClick={() => setShowCreateForm(true)}
           disabled={isCreating || !workspaceId}
           style={{ backgroundColor: '#DC143C' }}
+          className='text-white'
         >
           <Plus size={18} className="mr-2" />
           Create New Key
@@ -267,12 +268,12 @@ export default function ApiKeysPage() {
           transition={{ delay: 0.1 }}
           className="grid grid-cols-1 md:grid-cols-4 gap-4"
         >
-          <div className="p-6 rounded-lg border bg-white">
+          <div className="p-6 rounded-lg border bg-card">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium" style={{ color: '#666666' }}>Total Keys</p>
+              <p className="text-sm font-medium text-foreground"  >Total Keys</p>
               <Key size={20} style={{ color: '#DC143C' }} />
             </div>
-            <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>
+            <p className="text-2xl font-bold text-muted-foreground" >
               {stats.totalKeys}
             </p>
             <p className="text-xs text-gray-500 mt-1">
@@ -280,9 +281,9 @@ export default function ApiKeysPage() {
             </p>
           </div>
 
-          <div className="p-6 rounded-lg border bg-white">
+          <div className="p-6 rounded-lg border bg-card">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium" style={{ color: '#666666' }}>Live Keys</p>
+              <p className="text-sm font-medium text-foreground">Live Keys</p>
               <Globe size={20} className="text-green-600" />
             </div>
             <p className="text-2xl font-bold text-green-600">
@@ -290,9 +291,9 @@ export default function ApiKeysPage() {
             </p>
           </div>
 
-          <div className="p-6 rounded-lg border bg-white">
+          <div className="p-6 rounded-lg border bg-card">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium" style={{ color: '#666666' }}>Test Keys</p>
+              <p className="text-sm font-medium text-foreground">Test Keys</p>
               <Lock size={20} className="text-yellow-600" />
             </div>
             <p className="text-2xl font-bold text-yellow-600">
@@ -300,12 +301,12 @@ export default function ApiKeysPage() {
             </p>
           </div>
 
-          <div className="p-6 rounded-lg border bg-white">
+          <div className="p-6 rounded-lg border bg-card">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium" style={{ color: '#666666' }}>API Calls</p>
+              <p className="text-sm font-medium text-foreground">API Calls</p>
               <Activity size={20} style={{ color: '#DC143C' }} />
             </div>
-            <p className="text-2xl font-bold" style={{ color: '#1A1A1A' }}>
+            <p className="text-2xl font-bold text-muted-foreground" >
               {stats.totalCalls.toLocaleString()}
             </p>
             <p className="text-xs text-gray-500 mt-1">
@@ -324,15 +325,15 @@ export default function ApiKeysPage() {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold mb-4" style={{ color: '#1A1A1A' }}>
+            <div className="bg-card rounded-lg border border-border p-6">
+              <h2 className="text-lg font-semibold mb-4 text-foreground" >
                 Create New API Key
               </h2>
               
               <form onSubmit={handleCreateKey} className="space-y-4">
                 {/* Key Name */}
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#1A1A1A' }}>
+                  <label className="block text-sm font-medium mb-2" >
                     Key Name
                   </label>
                   <Input
@@ -345,13 +346,13 @@ export default function ApiKeysPage() {
                 </div>
 
                 {/* Environment and Expiration in same row */}
-                <div className="flex gap-4 items-end">
+                <div className="flex items-center gap-4 ">
                   {/* Environment */}
                   <div className="flex-1">
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#1A1A1A' }}>
+                    <label className="block text-sm font-medium mb-2" >
                       Environment
                     </label>
-                    <div className="flex gap-4 border rounded-lg p-3 bg-gray-50">
+                    <div className="flex gap-4 border rounded-lg p-3 ">
                       <label className="flex items-center gap-2 flex-1 cursor-pointer">
                         <input
                           type="radio"
@@ -389,35 +390,38 @@ export default function ApiKeysPage() {
 
                   {/* Expiration */}
                   <div className="flex-1">
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#1A1A1A' }}>
-                      <div className="flex items-center gap-1">
-                        <Calendar size={14} />
-                        <span>Expires In</span>
+                    <label className="block text-sm font-medium mb-2" >
+                      <div className="flex items-center w-full justify-between gap-1">
+                       <div className=' flex items-center'> <Calendar size={14} />
+                        <span>Expires In</span></div>
+                       
+                        <div>
+                           {formData.environment === 'test' && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Test keys maximum 90 days expiration
+                            </p>
+                          )}
+                          {formData.environment === 'live' && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Live keys require minimum 90 days expiration
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </label>
                     <select
                       value={formData.expiresIn}
                       onChange={(e) => setFormData({ ...formData, expiresIn: e.target.value })}
-                      className="w-full px-3 py-2 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                      style={{ borderColor: '#E5E5E5' }}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                       disabled={!workspaceId}
                     >
                       {currentExpirationOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
+                        <option className=' bg-transparent text-muted-foreground' key={option.value} value={option.value}>
                           {option.label}
                         </option>
                       ))}
                     </select>
-                    {formData.environment === 'test' && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Test keys maximum 90 days expiration
-                      </p>
-                    )}
-                    {formData.environment === 'live' && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Live keys require minimum 90 days expiration
-                      </p>
-                    )}
+                   
                   </div>
                 </div>
 
@@ -454,14 +458,14 @@ export default function ApiKeysPage() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+        className="bg-card text-foreground rounded-lg border border-border overflow-hidden"
       >
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold" style={{ color: '#1A1A1A' }}>
+        <div className="p-6 border-b border-border">
+          <h2 className="text-xl font-semibold text-foreground" >
             Your API Keys
           </h2>
           {apiKeys.length > 0 && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Showing keys for workspace: {workspaceId}
             </p>
           )}
@@ -481,17 +485,17 @@ export default function ApiKeysPage() {
             </Button>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-border">
             {apiKeys.map((key) => {
               const isExpired = key.expiresAt && new Date(key.expiresAt) < new Date();
               const isCopied = copiedKey === key.id;
               
               return (
-                <div key={key.id} className="p-6 hover:bg-gray-50">
+                <div key={key.id} className="p-6 ">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-medium text-lg" style={{ color: '#1A1A1A' }}>
+                        <h3 className="font-medium text-lg text-foreground capitalize" >
                           {key.name}
                         </h3>
                         <span className={`text-xs px-2 py-1 rounded ${
@@ -563,11 +567,11 @@ export default function ApiKeysPage() {
                   </div>
 
                   {/* Always show full key */}
-                  <div className="mt-2 p-3 bg-gray-100 rounded-lg">
-                    <div className="flex items-center justify-between">
+                  <div className="mt-2 p-3 bg-card rounded-lg">
+                    <div className="flex w-full items-center justify-between">
                       <div className="flex-1">
-                        <p className="text-xs text-gray-500 mb-1">API Key:</p>
-                        <code className="text-sm font-mono break-all bg-white p-2 rounded border block">
+                        <p className="text-xs text-muted-foreground mb-1">API Key:</p>
+                        <code className="text-sm font-mono break-all bg-card text-muted-foreground p-2 rounded border block">
                           {key.maskedKey}
                         </code>
                       </div>
@@ -577,7 +581,7 @@ export default function ApiKeysPage() {
                             navigator.clipboard.writeText(key.key!);
                             toast.success('API key copied to clipboard!');
                           }}
-                          className="ml-3 p-2 bg-white rounded border cursor-pointer hover:bg-gray-50 shrink-0"
+                          className="ml-3 mt-2  p-2 bg-card text-muted-foreground  cursor-pointer shrink-0"
                           title="Copy raw key"
                         >
                           <Copy size={18} />
@@ -599,35 +603,35 @@ export default function ApiKeysPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 flex items-center justify-center z-50 p-4"
             onClick={() => setShowKeyModal(null)}
           >
             <motion.div
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.9 }}
-              className="bg-white rounded-lg max-w-lg w-full p-6"
+              className="bg-card text-muted-foreground rounded-lg max-w-lg w-full p-6"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-center mb-4">
                 <CheckCircle size={48} className="text-green-500 mx-auto mb-3" />
-                <h2 className="text-xl font-bold" style={{ color: '#1A1A1A' }}>
+                <h2 className="text-xl font-bold text-foreground">
                   API Key Created
                 </h2>
-                <p className="text-sm text-gray-600 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Your new API key is shown below. You can always view it in the list.
                 </p>
               </div>
 
-              <div className="bg-gray-100 p-4 rounded-lg mb-4">
-                <p className="text-xs text-gray-500 mb-2">Your API Key:</p>
+              <div className="bg-card text-muted-foreground p-4 rounded-lg mb-4">
+                <p className="text-xs text-muted-foreground mb-2">Your API Key:</p>
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 font-mono overflow-auto text-sm bg-white p-2 rounded border">
+                  <code className="flex-1 font-mono overflow-auto text-sm bg-card text-muted-foreground p-2 rounded border">
                     {showKeyModal.key}
                   </code>
                   <button
                     onClick={() => handleCopyKey(showKeyModal.key)}
-                    className="p-2 bg-white rounded border hover:bg-gray-50"
+                    className="p-2 bg-card text-muted-foreground border cursor-pointer shrink-0"
                   >
                     <Copy size={18} />
                   </button>

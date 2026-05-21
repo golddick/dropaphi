@@ -20,7 +20,7 @@ interface UsageChartProps {
 export function UsageChart({ data, totals, rates, isLoading }: UsageChartProps) {
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-80 bg-gray-50 rounded-lg">
+      <div className="flex items-center justify-center h-80 bg-card text-foreground rounded-lg">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     );
@@ -28,7 +28,7 @@ export function UsageChart({ data, totals, rates, isLoading }: UsageChartProps) 
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-80 bg-gray-50 rounded-lg">
+      <div className="flex items-center justify-center h-80 bg-card text-foreground rounded-lg">
         <p className="text-gray-500">No data available for this period</p>
       </div>
     );

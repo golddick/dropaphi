@@ -77,16 +77,16 @@ export function RecentActivity({ sms, emails, workspaceId }: RecentActivityProps
 
   if (allActivity.length === 0) {
     return (
-      <div className="p-8 text-center border rounded-lg" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E5E5' }}>
-        <p style={{ color: '#999999' }}>No recent activity</p>
+      <div className="p-8 text-center border rounded-lg bg-card border-border"  >
+        <p className=' text-muted-foreground'>No recent activity</p>
       </div>
     );
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden" style={{ backgroundColor: '#FFFFFF', borderColor: '#E5E5E5' }}>
-      <div className="px-6 py-4 border-b" style={{ borderColor: '#E5E5E5' }}>
-        <h2 className="font-bold" style={{ color: '#1A1A1A' }}>Recent Activity</h2>
+    <div className="border rounded-lg overflow-hidden bg-card border-border">
+      <div className="px-6 py-4 border-b border-border" >
+        <h2 className="font-bold text-muted-foreground" >Recent Activity</h2>
       </div>
 
       <div className="divide-y" style={{ borderColor: '#E5E5E5' }}>
