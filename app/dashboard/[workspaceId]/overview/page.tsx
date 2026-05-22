@@ -209,7 +209,7 @@ export default function OverviewPage() {
         transition={{ duration: 0.5 }}
       >
         <div
-          className="rounded-lg p-8 sm:p-12 bg-card border border-border bg-linear-to-br from-primary/5 to-primary/10"
+          className="rounded-lg p-8 sm:p-12 bg-card border border-border "
         >
           <h1 className="text-3xl sm:text-4xl font-bold mb-2 capitalize text-foreground">
             Welcome to {overview?.workspace?.name || 'Drop APHI'}
@@ -306,7 +306,7 @@ export default function OverviewPage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4, duration: 0.5 }}
         >
-          <h2 className="text-2xl font-bold mb-6" style={{ color: '#1A1A1A' }}>
+          <h2 className="text-2xl font-bold mb-6 text-muted-foreground" >
             Current Usage
           </h2>
 
@@ -333,107 +333,9 @@ export default function OverviewPage() {
               );
             })}
           </div>
-
-          {/*<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">*/}
-          {/*  {services.map((service: any) => {*/}
-          {/*    const key = service.statKey as keyof typeof overview.usage;*/}
-          {/*    const usageData = overview.usage[key] || { used: 0, limit: 0, percentage: 0 };*/}
-          {/*    const creditsKey = `${key}Credits` as keyof typeof overview.wallet;*/}
-          {/*    const credits = (overview.wallet?.[creditsKey] as number) || 0;*/}
-
-          {/*    return (*/}
-          {/*      <UsageProgress*/}
-          {/*        key={service.statKey}*/}
-          {/*        title={service.title.replace(' API', '').replace(' Service', '')}*/}
-          {/*        used={usageData.used}*/}
-          {/*        limit={usageData.limit}*/}
-          {/*        percentage={usageData.percentage}*/}
-          {/*        walletCredits={credits}*/}
-          {/*        color={service.color}*/}
-          {/*        icon={service.icon}*/}
-          {/*        unit={service.unit}*/}
-          {/*        onTopUp={() => setTopUpService({*/}
-          {/*          title: service.title,*/}
-          {/*          type: service.statKey,*/}
-          {/*          unit: service.unit*/}
-          {/*        })}*/}
-          {/*      />*/}
-          {/*    );*/}
-          {/*  })}*/}
-          {/*</div>*/}
         </motion.section>
       )}
 
-      {/* Services Grid */}
-      <motion.section
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        <h2 className="text-2xl font-bold mb-6 text-foreground">
-          Services
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {services.map((service: any) => {
-            const Icon = service.icon;
-            const stats = overview?.stats.total[service.statKey as keyof typeof overview.stats.total] || 0;
-            
-            return (
-              <motion.div
-                key={service.statKey}
-                variants={itemVariants}
-                className="group p-6 rounded-lg border transition-all cursor-pointer bg-card border-border hover:border-primary"
-              >
-                <Link href={`/dashboard/${workspaceId}${service.href}`} className="block h-full">
-                  <div className="flex items-start justify-between mb-4">
-                    <div
-                      className="p-3 rounded-lg bg-primary/10"
-                    >
-                      <Icon size={24} className="text-primary" />
-                    </div>
-                    <ArrowRight
-                      size={20}
-                      className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
-                  </div>
-                  <h3 className="text-lg font-bold mb-1 text-foreground">
-                    {service.title}
-                  </h3>
-                  <p className="text-sm mb-6 text-muted-foreground">
-                    {service.description}
-                  </p>
-                  <div className="flex gap-6 text-xs">
-                    <div>
-                      <p className="uppercase text-muted-foreground">
-                        {service.statKey === 'storage' ? 'FILES' : 'SENT'}
-                      </p>
-                      <p
-                        className="font-bold text-sm mt-1 text-foreground"
-                      >
-                        {service.statKey === 'storage' 
-                          ? `${stats} files` 
-                          : stats.toLocaleString()}
-                      </p>
-                    </div>
-                    {service.statKey !== 'storage' && (
-                      <div>
-                        <p className="uppercase text-muted-foreground">
-                          SUCCESS
-                        </p>
-                        <p
-                          className="font-bold text-sm mt-1 text-foreground"
-                        >
-                          {overview?.stats.success[service.statKey as keyof typeof overview.stats.success] || 0}%
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </Link>
-              </motion.div>
-            );
-          })}
-        </div>
-      </motion.section>
 
       {/* Recent Activity */}
       {overview && (
@@ -453,7 +355,7 @@ export default function OverviewPage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6, duration: 0.5 }}
         >
-          <h2 className="text-2xl font-bold mb-6" style={{ color: '#1A1A1A' }}>
+          <h2 className="text-2xl font-bold mb-6 text-muted-foreground" >
             Getting Started
           </h2>
           <div className="space-y-4">
@@ -480,23 +382,19 @@ export default function OverviewPage() {
             ].map((step) => (
               <Link key={step.icon} href={step.href}>
                 <div
-                  className="flex gap-4 p-4 rounded-lg border hover:border-red-600 transition-colors cursor-pointer"
-                  style={{
-                    backgroundColor: '#FFFFFF',
-                    borderColor: '#E5E5E5',
-                  }}
+                  className="flex gap-4 p-4 mt-4 rounded-lg border hover:border-red-600 transition-colors cursor-pointer bg-card border-border"
                 >
                   <div
-                    className="flex h-8 w-8 items-center justify-center rounded-full font-bold text-white flex-shrink-0"
+                    className="flex h-8 w-8 items-center justify-center rounded-full font-bold text-white shrink-0"
                     style={{ backgroundColor: '#DC143C' }}
                   >
                     {step.icon}
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm mb-1" style={{ color: '#1A1A1A' }}>
+                    <h3 className="font-bold text-sm mb-1 text-foreground" >
                       {step.title}
                     </h3>
-                    <p className="text-xs" style={{ color: '#666666' }}>
+                    <p className="text-xs text-muted-foreground" >
                       {step.description}
                     </p>
                   </div>

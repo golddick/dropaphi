@@ -19,8 +19,8 @@ export function QuickStats({ overview, isLoading }: QuickStatsProps) {
             className="p-6 rounded-lg border animate-pulse"
             style={{ backgroundColor: '#F5F5F5', borderColor: '#E5E5E5' }}
           >
-            <div className="h-4 w-24 bg-gray-200 rounded mb-4"></div>
-            <div className="h-8 w-16 bg-gray-300 rounded"></div>
+            <div className="h-4 w-24 bg-card rounded mb-4"></div>
+            <div className="h-8 w-16 bg-card rounded"></div>
           </div>
         ))}
       </div>
@@ -62,11 +62,7 @@ export function QuickStats({ overview, isLoading }: QuickStatsProps) {
         return (
           <div
             key={idx}
-            className="p-6 rounded-lg border"
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderColor: '#E5E5E5',
-            }}
+            className="p-6 rounded-lg border border-border bg-card"
           >
             <div className="flex items-start justify-between mb-2">
               <p className="text-sm" style={{ color: '#999999' }}>
@@ -74,7 +70,7 @@ export function QuickStats({ overview, isLoading }: QuickStatsProps) {
               </p>
               <Icon size={18} style={{ color: stat.color, opacity: 0.5 }} />
             </div>
-            <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#1A1A1A' }}>
+            <p className="text-2xl sm:text-3xl font-bold text-muted-foreground">
               {stat.value}
             </p>
           </div>

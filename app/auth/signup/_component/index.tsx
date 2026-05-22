@@ -93,7 +93,7 @@ export default function SignupPage() {
           Create Account
         </h1>
         <p style={{ color: '#666666' }} className="text-sm">
-          Get started with Drop APHI in minutes
+          Get started with DropAPHI in minutes
         </p>
       </div>
 
@@ -112,7 +112,7 @@ export default function SignupPage() {
             value={formData.name}
             onChange={handleInputChange}
             placeholder="John Doe"
-            className="w-full"
+            className="w-full bg-white"
           />
         </div>
 
@@ -130,7 +130,7 @@ export default function SignupPage() {
             value={formData.email}
             onChange={handleInputChange}
             placeholder="you@example.com"
-            className="w-full"
+            className="w-full bg-white"
           />
         </div>
 
@@ -202,7 +202,7 @@ export default function SignupPage() {
             value={formData.confirmPassword}
             onChange={handleInputChange}
             placeholder="••••••••"
-            className="w-full"
+            className="w-full bg-transparent"
           />
         </div>
 

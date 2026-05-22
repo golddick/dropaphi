@@ -1,3 +1,5 @@
+import Logo from "@/components/logo/logo";
+
 export default function AuthLayout({
   children,
 }: {
@@ -8,18 +10,10 @@ export default function AuthLayout({
       {/* Left Side - Branding */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col justify-between p-8 md:p-12"
-        style={{ backgroundColor: '#1A1A1A' }}
+        style={{ backgroundColor: '#0a0a0f' }}
       >
         <div>
-          <div className="flex items-center gap-2 mb-8">
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded font-bold text-white text-lg"
-              style={{ backgroundColor: '#DC143C' }}
-            >
-              D
-            </div>
-            <span className="font-bold text-2xl text-white">Drop API</span>
-          </div>
+          <Logo />
         </div>
 
         <div>
@@ -28,7 +22,7 @@ export default function AuthLayout({
               Communication at Scale
             </h1>
             <p className="text-gray-300 text-lg">
-              Send SMS, Email, OTP, and manage files with a single API. Simple, reliable, and built for Africa.
+              Send SMS, Email, OTP, and manage files with a single API. Simple, reliable.
             </p>
           </div>
 
@@ -54,7 +48,7 @@ export default function AuthLayout({
         </div>
 
         <p className="text-gray-400 text-sm">
-          © 2024 Drop API. All rights reserved.
+          © 2025 DropAPHI. All rights reserved.
         </p>
       </div>
 

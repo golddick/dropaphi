@@ -193,8 +193,6 @@ model MonthlyUsage {
   @@map("monthly_usages")
 }
 
-
-
 model WorkspaceMember {
   id          String        @id @default("")
   workspaceId String        @map("workspace_id")

@@ -20,7 +20,9 @@ export async function validateApiKey(req: NextRequest): Promise<{
 }> {
   try {
     // Get API key from X-API-Key header
-    const apiKey = req.headers.get("x-api-key");
+    const apiKey = req.headers.get("drop-api-key");
+
+    console.log(apiKey, 'apikey')
     
     if (!apiKey) {
       return { 

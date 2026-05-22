@@ -99,7 +99,7 @@ export function UsageProgress({
         />
       </div>
 
-      <div className="mt-4 pt-4 border-t border-border flex flex-col gap-3 flex-grow justify-end">
+      <div className="mt-4 pt-4 border-t border-border flex flex-col gap-3 grow justify-end">
         <div className="flex items-center justify-between text-xs">
           <span className="text-muted-foreground">Wallet Credits:</span>
           <span className={cn("font-medium", !isUnavailable && walletCredits > 0 ? "text-green-500" : "text-muted-foreground")}>
