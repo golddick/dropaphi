@@ -28,12 +28,11 @@ export async function GET(
     const isImage = file.originalName?.match(/\.(jpg|jpeg|png|gif|webp)$/i);
 
     // 🔥 Generate signed URL (valid for 60 seconds)
-    const { data, error } = await supabaseAdmin.storage
     
-      .from("workspace-files")
-      .createSignedUrl(file.storageKey, 60, {
-      download: isImage ? undefined : file.originalName,
-    });
+    const { data, error } = await supabaseAdmin.storage
+    .from("workspace-files")
+    .createSignedUrl(file.storageKey, 60);
+
 
     if (error || !data?.signedUrl) {
       return new Response(
