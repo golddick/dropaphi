@@ -27,7 +27,7 @@ export async function validateApiKey(req: NextRequest): Promise<{
     if (!apiKey) {
       return { 
         valid: false, 
-        error: "Missing API key. Provide via X-API-Key header",
+        error: "Missing API key. Provide via drop-api-key header",
         status: 401
       };
     }

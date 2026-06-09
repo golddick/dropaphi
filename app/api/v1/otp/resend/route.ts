@@ -8,6 +8,7 @@ import { checkWorkspaceOTPLimit, getWorkspaceEmailSender } from "@/lib/v1-api/wo
 import { generateOTP, encryptOTP, getDefaultOTPTemplate, getDefaultTextTemplate } from "@/lib/v1-api/otp/utils";
 import { handleCORS, addCORSHeaders } from "@/lib/cors";
 import { emailSender } from "@/lib/v1-api/email/OtpTransporter";
+// import { emailSender } from "@/lib/v1-api/email/OtpTransporter";
 
 // Helper function to get start of day
 function getStartOfDay(date: Date = new Date()): Date {

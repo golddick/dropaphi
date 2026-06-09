@@ -19,7 +19,7 @@ export function CreateWorkspaceModal({ isOpen, onClose, onCreateWorkspace }: Cre
     e.preventDefault();
     if (!workspaceName.trim()) return;
 
-    setIsLoading(true);
+    setIsLoading(true); 
     setError('');
 
     try {
