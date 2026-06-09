@@ -329,7 +329,7 @@ export async function POST(req: NextRequest) {
           id: dropid("sub"),
           workspaceId: workspace.id,
           tier: SubscriptionTier.FREE,
-          status: SubscriptionStatus.GRACE_PERIOD,
+          status: SubscriptionStatus.ACTIVE,
           monthlyPrice: freePlan.price,
           currentPeriodStart: now,
           currentPeriodEnd: periodEnd,

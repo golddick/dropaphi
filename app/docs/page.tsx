@@ -63,13 +63,13 @@ POST /v1/files/upload (Multipart)
 Max: 10MB. 
 
 GET /v1/files
-List workspace files.
+List workspace files. 
 
 GET /v1/files/[fileId]
 Get file metadata and URLs.
 
 ## 🤖 Agent Instructions
-1. Always use X-API-Key.
+1. Always use drop-api-key.
 2. Handle 429 by waiting (details.nextAttemptIn).
 3. Prefer HTML for emails.
 4. Use PRIVATE visibility for sensitive files.`;

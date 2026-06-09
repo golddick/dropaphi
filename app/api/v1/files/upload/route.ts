@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
       );
       return addCORSHeaders(response);
     }
-
+ 
     const { keyInfo } = validation;
     if (!keyInfo) {
       const response = NextResponse.json(
