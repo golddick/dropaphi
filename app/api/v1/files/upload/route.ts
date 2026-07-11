@@ -1,4 +1,4 @@
-// app/api/v1/storage/upload/route.ts
+// app/api/v1/files/upload/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { dropid } from "dropid";
