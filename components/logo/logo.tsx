@@ -19,7 +19,7 @@ const Logo = () => {
         priority
         />
     </div>
-        <span className="font-extrabold text-lg text-secondary-foreground">
+        <span className="font-extrabold text-lg text-secondary flex gap-2 items-center">
         Drop<span className="text-red-600">APHI</span>
         </span>
     </Link>
