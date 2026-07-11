@@ -181,11 +181,11 @@ export default function LoginContent() {
             <h3 className="font-medium mb-1" style={{ color: '#1A1A1A' }}>
               Workspace Invitation Pending
             </h3>
-            <p style={{ color: '#666666' }} className="text-sm mb-2">
+            <p className="text-sm mb-2">
               You've been invited to join <strong>{pendingInvitation.workspaceName}</strong> as{' '}
               <strong>{pendingInvitation.role}</strong>. Login to accept the invitation.
             </p>
-            <p className="text-xs" style={{ color: '#999999' }}>
+            <p className="text-xs" >
               Invited email: {pendingInvitation.email}
             </p>
           </div>
@@ -212,7 +212,7 @@ export default function LoginContent() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Email Field */}
         <div>
-          <label className="block text-sm font-medium mb-2" style={{ color: '#1A1A1A' }}>
+          <label className="block text-sm font-medium mb-2" >
             Email Address
           </label>
           <Input
@@ -221,7 +221,7 @@ export default function LoginContent() {
             value={formData.email}
             onChange={handleInputChange}
             placeholder="you@example.com"
-            className="w-full"
+            className="w-full bg-transparent"
             disabled={isLoading || isResending}
           />
         </div>
@@ -235,7 +235,7 @@ export default function LoginContent() {
               value={formData.password}
               onChange={handleInputChange}
               placeholder="••••••••"
-              className="w-full pr-10"
+              className="w-full pr-10 bg-transparent"
               disabled={isLoading || isResending}
             />
             <button
@@ -338,21 +338,16 @@ export default function LoginContent() {
       <div className="space-y-3">
         <Button
           variant="outline"
-          className="w-full hover:bg-gray-50 transition-colors"
+          className="w-full bg-black text-white hover:bg-gray-50 transition-colors"
           disabled={isLoading || isResending}
           onClick={() => toast.info('Google login coming soon!', { icon: '🚧' })}
         >
-          <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-            <path
-              fill="currentColor"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-            />
-          </svg>
+         
           Continue with Google
         </Button>
         <Button
           variant="outline"
-          className="w-full hover:bg-gray-50 transition-colors"
+          className="w-full bg-black text-white hover:bg-gray-50 transition-colors"
           disabled={isLoading || isResending}
           onClick={() => toast.info('GitHub login coming soon!', { icon: '🚧' })}
         >
