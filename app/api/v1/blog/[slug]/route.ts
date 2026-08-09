@@ -25,6 +25,15 @@ export async function GET(
     const { slug } = await params;
     const { keyInfo } = validation;
 
+    if (!keyInfo) {
+      return addCORSHeaders(
+        NextResponse.json(
+          { success: false, error: "Invalid API key information" },
+          { status: 401 }
+        )
+      );
+    }
+
     const post = await db.blogPost.findFirst({
       where: {
         slug,
