@@ -21,8 +21,40 @@ export async function GET(req: NextRequest) {
 
     const { keyInfo } = validation;
     const { searchParams } = new URL(req.url);
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "10", 10), 1), 50);
+
+    const pageParam = searchParams.get("page");
+    const limitParam = searchParams.get("limit");
+
+    const parseIntegerParam = (value: string | null) => {
+      if (value === null) return undefined;
+      if (!/^-?\d+$/.test(value)) return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) && Number.isSafeInteger(parsed) ? parsed : null;
+    };
+
+    const rawPage = parseIntegerParam(pageParam);
+    const rawLimit = parseIntegerParam(limitParam);
+
+    if (pageParam !== null && rawPage === null) {
+      return addCORSHeaders(
+        NextResponse.json(
+          { success: false, error: "Invalid page value" },
+          { status: 400 }
+        )
+      );
+    }
+
+    if (limitParam !== null && rawLimit === null) {
+      return addCORSHeaders(
+        NextResponse.json(
+          { success: false, error: "Invalid limit value" },
+          { status: 400 }
+        )
+      );
+    }
+
+    const page = rawPage !== undefined ? Math.max(1, rawPage) : 1;
+    const limit = rawLimit !== undefined ? Math.min(Math.max(rawLimit, 1), 50) : 10;
     const skip = (page - 1) * limit;
     const tag = searchParams.get("tag");
     const isFeatured = searchParams.get("isFeatured");

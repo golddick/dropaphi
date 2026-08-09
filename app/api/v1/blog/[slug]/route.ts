@@ -58,12 +58,10 @@ export async function GET(
       );
     }
 
-    db.blogPost
-      .update({
-        where: { id: post.id },
-        data: { viewCount: { increment: 1 } },
-      })
-      .catch(console.error);
+    await db.blogPost.update({
+      where: { id: post.id },
+      data: { viewCount: { increment: 1 } },
+    });
 
     return addCORSHeaders(
       NextResponse.json({

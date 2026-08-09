@@ -49,8 +49,6 @@ function getTemplateVariables(template: string): string[] {
       return ["type", "title", "icon", "message", "actionUrl", "actionText", "footer"];
     case "invite":
       return ["name", "workspaceName", "inviterName", "acceptUrl", "role", "expiresIn"];
-    case "otp":
-      return ["code", "expiry", "brandName"];
     default:
       return [];
   }

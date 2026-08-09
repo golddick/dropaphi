@@ -12,12 +12,12 @@ All API requests must include your API key in the `DROP-API-Key` header.
 
 **Example:**
 ```bash
-curl -H "DROP-API-Key: da_live_your_key" https://api.dropaphi.com/v1/...
+curl -H "DROP-API-Key: da_live_your_key" https://dropaphi.xyz/api/v1/...
 ```
 
 ---
 
-## � Blog API
+## 📰 Blog API
 
 ### List published blog posts
 `GET /v1/blog`
@@ -76,7 +76,7 @@ Get a single published blog post by its slug.
 
 ---
 
-## �📧 Email API
+## 📧 Email API
 
 ### Send Email
 `POST /v1/email/send`
@@ -99,7 +99,7 @@ Send a transactional or marketing email.
 ```
 
 - `to`: Recipient email (string or array).
-- `template`: Optional. Choose from `welcome`, `newsletter`, `marketing`, `notification`, `invite`, `otp`.
+- `template`: Optional. Choose from `welcome`, `newsletter`, `marketing`, `notification`, `invite`.
 - `attachments`: Optional array of `{ filename: string, content: string (base64) }`.
 
 ### Get Templates
@@ -114,7 +114,6 @@ The following built-in templates are available by default:
 - `marketing`
 - `notification`
 - `invite`
-- `otp`
 
 Use the `template` field on `POST /v1/email/send` to send one of these default templates.
 

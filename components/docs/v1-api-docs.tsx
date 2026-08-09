@@ -22,7 +22,7 @@ type CategoryDoc = {
   endpoints: EndpointDoc[];
 };
 
-const baseUrl = 'https://dropaphi.xyz';
+const baseUrl = 'https://dropaphi.xyz/api';
 
 const categories: CategoryDoc[] = [
   {
@@ -120,8 +120,7 @@ const categories: CategoryDoc[] = [
               { id: 'newsletter', name: 'Newsletter', variables: ['title', 'name', 'articles', 'unsubscribeUrl'] },
               { id: 'marketing', name: 'Marketing', variables: ['headline', 'subheadline', 'message', 'ctaUrl'] },
               { id: 'notification', name: 'Notification', variables: ['type', 'title', 'message', 'actionUrl'] },
-              { id: 'invite', name: 'Invite', variables: ['name', 'workspaceName', 'inviterName', 'acceptUrl'] },
-              { id: 'otp', name: 'OTP', variables: ['code', 'expiry', 'brandName'] }
+              { id: 'invite', name: 'Invite', variables: ['name', 'workspaceName', 'inviterName', 'acceptUrl'] }
             ]
           }
         },
@@ -510,9 +509,7 @@ export function V1ApiDocs() {
                           <div className="space-y-3">
                             <div className="text-sm font-semibold text-foreground">Sample request</div>
                             <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-xl border border-border/70 bg-muted/40 p-4 text-sm leading-6 text-foreground">
-{typeof endpoint.requestBody === 'string'
-  ? endpoint.requestBody
-  : JSON.stringify(endpoint.requestBody ?? {}, null, 2)}
+{buildSnippet(endpoint)}
                             </pre>
                           </div>
 
