@@ -47,6 +47,8 @@ function getTemplateVariables(template: string): string[] {
       return ["headline", "subheadline", "message", "features", "ctaUrl", "ctaText", "expiryDate", "company"];
     case "notification":
       return ["type", "title", "icon", "message", "actionUrl", "actionText", "footer"];
+    case "invite":
+      return ["name", "workspaceName", "inviterName", "acceptUrl", "role", "expiresIn"];
     default:
       return [];
   }

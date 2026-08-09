@@ -19,15 +19,13 @@ export async function validateApiKey(req: NextRequest): Promise<{
   status?: number;
 }> {
   try {
-    // Get API key from X-API-Key header
-    const apiKey = req.headers.get("drop-api-key");
+    // Get API key from DROP-API-Key header, fallback to x-api-key for compatibility
+    const apiKey = req.headers.get("drop-api-key") || req.headers.get("x-api-key");
 
-    console.log(apiKey, 'apikey')
-    
     if (!apiKey) {
       return { 
         valid: false, 
-        error: "Missing API key. Provide via drop-api-key header",
+        error: "Missing API key. Provide via DROP-API-Key header",
         status: 401
       };
     }

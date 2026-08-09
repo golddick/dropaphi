@@ -66,6 +66,18 @@ export const notification = (data: any) => layout(`
   ` : ''}
 `);
 
+export const invite = (data: any) => layout(`
+  <h2 style="color: #1a1a1a;">Invitation to Join ${data.workspaceName || 'a workspace'}</h2>
+  <p>Hello ${data.name || 'there'},</p>
+  <p>${data.inviterName || 'A workspace admin'} has invited you to join <strong>${data.workspaceName || 'a workspace'}</strong> on DropAphi.</p>
+  <div style="background: #f9f9f9; padding: 24px; margin: 24px 0; border-radius: 12px;">
+    <p style="margin: 0 0 12px;">Role: <strong>${data.role || 'MEMBER'}</strong></p>
+    <p style="margin: 0 0 12px;">Expires: <strong>${data.expiresIn || '48 hours'}</strong></p>
+    <a href="${data.acceptUrl || '#'}" class="button">Accept invitation</a>
+  </div>
+  <p>If you did not expect this invite, you can ignore this message.</p>
+`);
+
 export const otp = (data: any) => layout(`
   <h2 style="color: #1a1a1a;">Verification Code</h2>
   <p>Your verification code for <strong>${data.brandName || 'DropAPHI'}</strong> is:</p>

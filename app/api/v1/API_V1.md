@@ -4,15 +4,74 @@ DropAphi provides a suite of tools for Email delivery, OTP (One-Time Password) m
 
 ## 🛡️ Authentication
 
-All API requests must include your API key in the `X-API-Key` header.
+All API requests must include your API key in the `DROP-API-Key` header.
 
 | Header | Description |
 | :--- | :--- |
-| `X-API-Key` | Your secret API key (starts with `da_live_` or `da_test_`) |
+| `DROP-API-Key` | Your secret API key (starts with `da_live_` or `da_test_`) |
 
 **Example:**
 ```bash
-curl -H "X-API-Key: da_live_your_key" https://api.dropaphi.com/v1/...
+curl -H "DROP-API-Key: da_live_your_key" https://dropaphi.xyz/api/v1/...
+```
+
+---
+
+## 📰 Blog API
+
+### List published blog posts
+`GET /v1/blog`
+
+Fetch published posts for the workspace associated with your API key.
+
+**Query parameters:**
+- `page` (number, default `1`)
+- `limit` (number, default `10`, max `50`)
+- `tag` (string, optional)
+- `isFeatured` (boolean, optional)
+- `search` (string, optional)
+
+**Successful response:**
+```json
+{
+  "success": true,
+  "data": {
+    "posts": [
+      {
+        "id": "post_123",
+        "title": "Why communication matters",
+        "slug": "why-communication-matters",
+        "excerpt": "A short summary",
+        "publishedAt": "2026-08-01T00:00:00.000Z",
+        "author": { "fullName": "Jane Doe", "avatarUrl": "https://..." },
+        "workspace": { "name": "Acme", "slug": "acme" }
+      }
+    ],
+    "pagination": { "page": 1, "limit": 10, "total": 1, "pages": 1 }
+  }
+}
+```
+
+### Get blog post by slug
+`GET /v1/blog/{slug}`
+
+Get a single published blog post by its slug.
+
+**Successful response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "post_123",
+    "title": "Why communication matters",
+    "slug": "why-communication-matters",
+    "content": "<p>Full blog content</p>",
+    "excerpt": "A short summary",
+    "publishedAt": "2026-08-01T00:00:00.000Z",
+    "author": { "fullName": "Jane Doe", "avatarUrl": "https://...", "bio": "Writer" },
+    "workspace": { "name": "Acme", "slug": "acme", "logoUrl": "https://..." }
+  }
+}
 ```
 
 ---
@@ -40,13 +99,40 @@ Send a transactional or marketing email.
 ```
 
 - `to`: Recipient email (string or array).
-- `template`: Optional. Choose from `welcome`, `newsletter`, `marketing`, `notification`.
+- `template`: Optional. Choose from `welcome`, `newsletter`, `marketing`, `notification`, `invite`.
 - `attachments`: Optional array of `{ filename: string, content: string (base64) }`.
 
 ### Get Templates
 `GET /v1/email/templates`
 
 List available pre-built templates and their required variables.
+
+### Default Templates
+The following built-in templates are available by default:
+- `welcome`
+- `newsletter`
+- `marketing`
+- `notification`
+- `invite`
+
+Use the `template` field on `POST /v1/email/send` to send one of these default templates.
+
+**Example:**
+```json
+{
+  "to": "recipient@example.com",
+  "subject": "You're invited",
+  "template": "invite",
+  "templateData": {
+    "name": "Jane",
+    "workspaceName": "Acme Team",
+    "inviterName": "Alice",
+    "acceptUrl": "https://dropaphi.com/invite/abc123",
+    "role": "DEVELOPER",
+    "expiresIn": "48 hours"
+  }
+}
+```
 
 ### Get Email Status
 `GET /v1/email/[id]`
@@ -132,12 +218,14 @@ Resend the code if not received. Resets the expiry and attempts.
 Upload a file (Multipart Form Data).
 
 **Form Fields:**
-- `file`: The binary file.
+- `file`: The binary file field.
 - `metadata`: Optional JSON string (e.g., `{"visibility": "PUBLIC", "folder": "invoices"}`).
 
 **Limits:**
-- Maximum file size: 10MB.
-- Allowed types: Images, PDF, Text, Zip.
+- Maximum file size: 100MB for non-video files.
+- Maximum video size: 2MB per video file.
+- Allowed types: Images, video files, documents, archives, and text formats.
+- Use multipart/form-data with a valid boundary.
 
 ### List Files
 `GET /v1/files`
@@ -150,7 +238,7 @@ Upload a file (Multipart Form Data).
 ### Get File Details
 `GET /v1/files/[fileId]`
 
-Returns file metadata and access URLs. Private files require the `X-API-Key`.
+Returns file metadata and access URLs. Private files require the `DROP-API-Key`.
 
 ---
 
@@ -163,7 +251,7 @@ Returns file metadata and access URLs. Private files require the `X-API-Key`.
 ## 🤖 Agent Instructions (for AI)
 
 When using this API:
-1. **Always** include the `X-API-Key`.
+1. **Always** include the `DROP-API-Key`.
 2. **Handle 429** responses by waiting the suggested time in the `details.nextAttemptIn` field.
 3. **Prefer HTML** for emails unless requested otherwise.
 4. **Visibility**: Use `PRIVATE` for sensitive documents in the Files API.

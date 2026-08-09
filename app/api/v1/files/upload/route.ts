@@ -11,7 +11,9 @@ import { checkServiceStatus } from "@/lib/services/service-status";
 import { Services } from "@/lib/generated/prisma";
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+const MAX_VIDEO_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_MIME_TYPES = [
+  "video/mp4", "video/webm", "video/quicktime", "video/x-msvideo",
   "image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml",
   "image/bmp", "image/tiff", "application/pdf", "text/plain", "text/csv",
   "application/json", "application/xml", "application/rtf", "application/msword",
@@ -98,7 +100,22 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Parse form data
-    const formData = await req.formData();
+    let formData: FormData;
+    try {
+      formData = await req.formData();
+    } catch (error) {
+      console.error("[UPLOAD_ERROR] Failed to parse form data.", error);
+      const response = NextResponse.json(
+        {
+          success: false,
+          error: "Invalid multipart/form-data request.",
+          message: "Request body must be multipart/form-data with a valid boundary. Use browser FormData or curl -F.",
+        },
+        { status: 400 }
+      );
+      return addCORSHeaders(response);
+    }
+
     const file = formData.get("file") as File;
     const metadataStr = formData.get("metadata") as string | null;
 
@@ -130,21 +147,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Validate file size
-    if (file.size > MAX_FILE_SIZE) {
-      const response = NextResponse.json(
-        { 
-          success: false, 
-          error: "File too large",
-          maxSize: `${MAX_FILE_SIZE / 1024 / 1024}MB`,
-          yourSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`
-        },
-        { status: 400 }
-      );
-      return addCORSHeaders(response);
-    }
-
-    // 5. Validate mime type
+    // 4. Validate file type and size
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
       const response = NextResponse.json(
         { 
@@ -157,7 +160,24 @@ export async function POST(req: NextRequest) {
       return addCORSHeaders(response);
     }
 
-    // 6. Calculate file size in MB and storage units
+    const isVideo = file.type.startsWith("video/");
+    const maxAllowedSize = isVideo ? MAX_VIDEO_FILE_SIZE : MAX_FILE_SIZE;
+
+    if (file.size > maxAllowedSize) {
+      const response = NextResponse.json(
+        {
+          success: false,
+          error: isVideo ? "Video file too large" : "File too large",
+          maxSize: `${maxAllowedSize / 1024 / 1024}MB`,
+          yourSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+          fileType: file.type,
+        },
+        { status: 400 }
+      );
+      return addCORSHeaders(response);
+    }
+
+    // 5. Calculate file size in MB and storage units
     const fileSizeMB = bytesToMB(file.size);
     storageUnits = calculateStorageUnits(fileSizeMB);
     

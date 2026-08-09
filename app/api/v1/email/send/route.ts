@@ -20,7 +20,7 @@ const sendEmailSchema = z.object({
   html: z.string().optional(),
   text: z.string().optional(),
   brandName: z.string().optional(),
-  template: z.enum(["welcome", "newsletter", "marketing", "notification"]).optional(),
+  template: z.enum(["welcome", "newsletter", "marketing", "notification", "invite"]).optional(),
   templateData: z.record(z.any()).optional(),
   fromName: z.string().optional(),
   fromEmail: z.string().email().optional(),

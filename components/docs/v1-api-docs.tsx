@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Copy, FileText, Mail, ShieldCheck, Sparkles } from 'lucide-react';
+import { Check, Copy, ChevronDown, ChevronRight, FileText, Mail, ShieldCheck, Sparkles } from 'lucide-react';
 
 type EndpointDoc = {
   id: string;
@@ -22,7 +22,57 @@ type CategoryDoc = {
   endpoints: EndpointDoc[];
 };
 
+const baseUrl = 'https://dropaphi.xyz/api';
+
 const categories: CategoryDoc[] = [
+  {
+    title: 'Blog',
+    description: 'Fetch published workspace blog posts and view individual posts by slug.',
+    icon: FileText,
+    endpoints: [
+      {
+        id: 'blog-list',
+        method: 'GET',
+        path: '/v1/blog',
+        title: 'List blog posts',
+        summary: 'Fetch published blog posts from the workspace with pagination and optional tag filtering.',
+        auth: true,
+        responseExample: {
+          success: true,
+          data: {
+            posts: [
+              {
+                id: 'post_123',
+                title: 'Why communication matters',
+                slug: 'why-communication-matters',
+                excerpt: 'A short summary',
+                publishedAt: '2026-08-01T00:00:00.000Z'
+              }
+            ],
+            pagination: { page: 1, limit: 10, total: 1, pages: 1 }
+          }
+        }
+      },
+      {
+        id: 'blog-detail',
+        method: 'GET',
+        path: '/v1/blog/{slug}',
+        title: 'Get blog post by slug',
+        summary: 'Retrieve a single published blog post by its slug from the workspace.',
+        auth: true,
+        responseExample: {
+          success: true,
+          data: {
+            id: 'post_123',
+            title: 'Why communication matters',
+            slug: 'why-communication-matters',
+            content: '<p>Full blog content</p>',
+            author: { fullName: 'Jane Doe' }
+          }
+        }
+      }
+    ]
+  },
   {
     title: 'Email',
     description: 'Send transactional and marketing emails, inspect templates, and check delivery status.',
@@ -66,10 +116,15 @@ const categories: CategoryDoc[] = [
           success: true,
           data: {
             templates: [
-              { id: 'welcome', name: 'Welcome', variables: ['name', 'company', 'actionUrl'] }
+              { id: 'welcome', name: 'Welcome', variables: ['name', 'company', 'actionUrl'] },
+              { id: 'newsletter', name: 'Newsletter', variables: ['title', 'name', 'articles', 'unsubscribeUrl'] },
+              { id: 'marketing', name: 'Marketing', variables: ['headline', 'subheadline', 'message', 'ctaUrl'] },
+              { id: 'notification', name: 'Notification', variables: ['type', 'title', 'message', 'actionUrl'] },
+              { id: 'invite', name: 'Invite', variables: ['name', 'workspaceName', 'inviterName', 'acceptUrl'] }
             ]
           }
-        }
+        },
+        notes: ['Default templates are available via GET /v1/email/templates.', 'Use the template field on POST /v1/email/send to send a pre-built template.']
       },
       {
         id: 'email-status',
@@ -216,14 +271,17 @@ const categories: CategoryDoc[] = [
     description: 'Upload files, list workspace assets, and fetch metadata for private or public files.',
     icon: FileText,
     endpoints: [
-      {
+          {
         id: 'files-upload',
         method: 'POST',
         path: '/v1/files/upload',
         title: 'Upload file',
         summary: 'Upload a file as multipart form data and store it with metadata.',
         auth: true,
-        requestBody: 'multipart/form-data with a file field and optional metadata JSON',
+        requestBody: `curl -X POST "${baseUrl}/v1/files/upload" \
+  -H "DROP-API-Key: da_live_your_key" \
+  -F "file=@invoice.pdf" \
+  -F 'metadata={"visibility":"PUBLIC","folder":"invoices"}'`,
         responseExample: {
           success: true,
           data: {
@@ -234,7 +292,12 @@ const categories: CategoryDoc[] = [
             url: 'https://dropaphi.xyz/api/files/fil_123'
           }
         },
-        notes: ['The upload route accepts a file field named file.', 'Metadata can include folder, visibility, tags, and description.']
+        notes: [
+          'The upload route accepts a file field named file.',
+          'Metadata can include folder, visibility, tags, and description.',
+          'Video uploads are allowed, but video files are limited to 2MB each.',
+          'Use multipart/form-data with a valid boundary. Do not set Content-Type manually when using curl -F; curl will add the boundary automatically.'
+        ]
       },
       {
         id: 'files-list',
@@ -275,11 +338,13 @@ const categories: CategoryDoc[] = [
   }
 ];
 
-const baseUrl = 'https://dropaphi.xyz/api';
-
 function buildSnippet(endpoint: EndpointDoc) {
+  if (endpoint.method === 'POST' && typeof endpoint.requestBody === 'string') {
+    return endpoint.requestBody;
+  }
+
   const headerLines = [
-    `curl -X ${endpoint.method} \"${baseUrl}${endpoint.path}\" \\\n  -H \"DROP-API-Key: da_live_your_key\"` 
+    `curl -X ${endpoint.method} "${baseUrl}${endpoint.path}" \\n  -H "DROP-API-Key: da_live_your_key"`
   ];
 
   if (endpoint.method === 'POST' && endpoint.requestBody) {
@@ -288,14 +353,30 @@ function buildSnippet(endpoint: EndpointDoc) {
       : JSON.stringify(endpoint.requestBody, null, 2);
 
     const escapedBody = body.replace(/'/g, "\\'").replace(/\n/g, '\\n');
-    return `${headerLines[0]} \\\n  -H \"Content-Type: application/json\" \\\n  -d '${escapedBody}'`;
+    return `${headerLines[0]} \\n  -H "Content-Type: application/json" \\n  -d '${escapedBody}'`;
   }
 
   return headerLines[0];
 }
 
 export function V1ApiDocs() {
+  const allEndpointIds = categories.flatMap((category) => category.endpoints.map((endpoint) => endpoint.id));
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<string[]>(allEndpointIds);
+  const [navOpen, setNavOpen] = useState<Record<string, boolean>>(
+    Object.fromEntries(categories.map((category) => [category.title, true]))
+  );
+
+  const toggleEndpoint = (endpointId: string) => {
+    setExpandedIds((current) =>
+      current.includes(endpointId)
+        ? current.filter((id) => id !== endpointId)
+        : [...current, endpointId]
+    );
+  };
+
+  const expandAll = () => setExpandedIds(allEndpointIds);
+  const collapseAll = () => setExpandedIds([]);
 
   const copySnippet = async (endpoint: EndpointDoc) => {
     if (typeof navigator === 'undefined' || !navigator.clipboard) {
@@ -326,11 +407,51 @@ export function V1ApiDocs() {
         </div>
       </section>
 
-      <div className="space-y-6">
-        {categories.map((category) => {
-          const Icon = category.icon;
-          return (
-            <section key={category.title} className="space-y-4">
+
+      <div className="grid gap-8 lg:grid-cols-[minmax(280px,280px)_1fr]">
+        <aside className="block lg:block">
+          <div className="sticky top-24 rounded-2xl border border-border/70 bg-card/70 p-5 shadow-sm">
+            <div className="mb-5 text-sm font-semibold text-foreground">API navigation</div>
+            <div className="space-y-4 text-sm text-muted-foreground">
+              {categories.map((category) => (
+                <div key={category.title}>
+                        <button
+                    type="button"
+                    onClick={() => setNavOpen((current) => ({
+                      ...current,
+                      [category.title]: !current[category.title],
+                    }))}
+                    className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm font-semibold text-foreground transition hover:bg-muted"
+                  >
+                    <span>{category.title}</span>
+                    {navOpen[category.title] ? (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                  {navOpen[category.title] ? (
+                    <ul className="mt-2 space-y-2">
+                      {category.endpoints.map((endpoint) => (
+                        <li key={endpoint.id}>
+                          <a href={`#${endpoint.id}`} className="block rounded-lg px-2 py-1 transition hover:bg-muted hover:text-foreground">
+                            <span className="font-medium">{endpoint.method}</span> {endpoint.path}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <div className="space-y-6">
+          {categories.map((category) => {
+            const Icon = category.icon;
+            return (
+              <section key={category.title} className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="rounded-xl border border-border/70 bg-muted/40 p-2">
                   <Icon className="h-5 w-5" />
@@ -343,7 +464,7 @@ export function V1ApiDocs() {
 
               <div className="grid gap-4">
                 {category.endpoints.map((endpoint) => (
-                  <article key={endpoint.id} className="rounded-2xl border border-border/70 bg-card/70 p-5 shadow-sm">
+                  <article id={endpoint.id} key={endpoint.id} className="rounded-2xl border border-border/70 bg-card/70 p-5 shadow-sm">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="space-y-3">
                         <div className="flex flex-wrap items-center gap-2">
@@ -358,45 +479,62 @@ export function V1ApiDocs() {
                         </div>
                         <div className="flex flex-wrap gap-2 text-sm">
                           <span className="rounded-full border border-border/70 px-2.5 py-1 text-muted-foreground">
-                            {endpoint.auth ? 'Requires X-API-Key' : 'No auth required'}
+                            {endpoint.auth ? 'Requires DROP-API-Key' : 'No auth required'}
                           </span>
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => copySnippet(endpoint)}
-                        className="inline-flex items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-sm font-medium transition hover:bg-muted"
-                      >
-                        {copiedId === endpoint.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                        {copiedId === endpoint.id ? 'Copied' : 'Copy sample'}
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => toggleEndpoint(endpoint.id)}
+                          className="rounded-lg border border-border/70 bg-background px-3 py-2 text-sm font-medium transition hover:bg-muted"
+                        >
+                          {expandedIds.includes(endpoint.id) ? 'Collapse details' : 'Show details'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => copySnippet(endpoint)}
+                          className="inline-flex items-center gap-2 rounded-lg border border-border/70 bg-background px-3 py-2 text-sm font-medium transition hover:bg-muted"
+                        >
+                          {copiedId === endpoint.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                          {copiedId === endpoint.id ? 'Copied' : 'Copy sample'}
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="mt-5 grid gap-5 xl:grid-cols-[1.1fr,0.9fr]">
-                      <div className="space-y-3">
-                        <div className="text-sm font-semibold text-foreground">Sample request</div>
-                        <pre className="overflow-x-auto rounded-xl border border-border/70 bg-muted/40 p-4 text-sm leading-6 text-foreground">
-{typeof endpoint.requestBody === 'string'
-  ? endpoint.requestBody
-  : JSON.stringify(endpoint.requestBody ?? {}, null, 2)}
-                        </pre>
-                      </div>
+                    {expandedIds.includes(endpoint.id) ? (
+                      <div className="mt-5 space-y-5">
+                        <div className="grid gap-5 xl:grid-cols-[1.1fr,0.9fr]">
+                          <div className="space-y-3">
+                            <div className="text-sm font-semibold text-foreground">Sample request</div>
+                            <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-xl border border-border/70 bg-muted/40 p-4 text-sm leading-6 text-foreground">
+{buildSnippet(endpoint)}
+                            </pre>
+                          </div>
 
-                      <div className="space-y-3">
-                        <div className="text-sm font-semibold text-foreground">Expected response</div>
-                        <pre className="overflow-x-auto rounded-xl border border-border/70 bg-muted/40 p-4 text-sm leading-6 text-foreground">
+                          <div className="space-y-3">
+                            <div className="text-sm font-semibold text-foreground">Expected response</div>
+                            <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-xl border border-border/70 bg-muted/40 p-4 text-sm leading-6 text-foreground">
 {JSON.stringify(endpoint.responseExample ?? {}, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
+                            </pre>
+                          </div>
+                        </div>
 
-                    {endpoint.notes && endpoint.notes.length > 0 ? (
-                      <ul className="mt-5 list-disc space-y-2 pl-6 text-sm leading-7 text-muted-foreground">
-                        {endpoint.notes.map((note) => (
-                          <li key={note}>{note}</li>
-                        ))}
-                      </ul>
+                        {endpoint.notes && endpoint.notes.length > 0 ? (
+                          <ul className="mt-5 list-disc space-y-2 pl-6 text-sm leading-7 text-muted-foreground">
+                            {endpoint.notes.map((note) => (
+                              <li key={note}>{note}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {!expandedIds.includes(endpoint.id) ? (
+                      <div className="mt-4 rounded-xl border border-border/70 bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                        Details are hidden. Expand to see request and response examples.
+                      </div>
                     ) : null}
                   </article>
                 ))}
@@ -406,5 +544,8 @@ export function V1ApiDocs() {
         })}
       </div>
     </div>
-  );
+
+    </div>
+    );
+
 }

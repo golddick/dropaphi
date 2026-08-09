@@ -157,6 +157,7 @@ model Workspace {
   webhooks               Webhook[]
   alerts                 WorkspaceAlert[]
   members                WorkspaceMember[]
+  emailCampaign          EmailCampaign[]
   subscription           WorkspaceSubscription?
 
   @@map("workspaces")
@@ -444,7 +445,7 @@ model EmailCampaign {
   id          String              @id @default("")
   workspaceId String              @map("workspace_id")
   status      EmailCampaignStatus @default(ACTIVE) @map("campaign_status")
-  name        String              @unique @map("campaign_name")
+  name        String              @map("campaign_name")
   subject     String
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
@@ -453,6 +454,8 @@ model EmailCampaign {
   clickRate   Float?              @map("campaign_click_rate")
   lastSentAt  DateTime?           @map("campaign_last_sent_at")
   emails      Email[]
+  workspace   Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  @@unique([workspaceId, name])
 }
 
 model OtpRequest {
