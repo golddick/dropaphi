@@ -294,7 +294,7 @@ const categories: CategoryDoc[] = [
         },
         notes: [
           'The upload route accepts a file field named file.',
-          'Metadata can include folder, visibility, tags, and description.',
+          'Metadata can include folder, visibility, and filename.',
           'Video uploads are allowed, but video files are limited to 2MB each.',
           'Use multipart/form-data with a valid boundary. Do not set Content-Type manually when using curl -F; curl will add the boundary automatically.'
         ]

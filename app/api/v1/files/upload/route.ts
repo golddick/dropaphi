@@ -31,8 +31,6 @@ const ALLOWED_MIME_TYPES = [
 const uploadMetadataSchema = z.object({
   folder: z.string().optional(),
   visibility: z.enum(['PUBLIC', 'PRIVATE']).default('PUBLIC'),
-  tags: z.array(z.string()).optional(),
-  description: z.string().optional(),
   filename: z.string().optional(),
 });
 
@@ -99,17 +97,47 @@ export async function POST(req: NextRequest) {
       return addCORSHeaders(response);
     }
 
+    const contentType = req.headers.get("content-type");
+    console.log("[UPLOAD_INFO] Content-Type header:", contentType);
+
+    if (!contentType || !contentType.includes("multipart/form-data")) {
+      const response = NextResponse.json(
+        {
+          success: false,
+          error: "Invalid Content-Type header",
+          message: "Content-Type must be multipart/form-data with a valid boundary.",
+          contentType,
+        },
+        { status: 400 }
+      );
+      return addCORSHeaders(response);
+    }
+
+    if (!/boundary=/.test(contentType)) {
+      const response = NextResponse.json(
+        {
+          success: false,
+          error: "Missing multipart boundary",
+          message: "Content-Type must include a boundary parameter, e.g. multipart/form-data; boundary=----WebKitFormBoundary...",
+          contentType,
+        },
+        { status: 400 }
+      );
+      return addCORSHeaders(response);
+    }
+
     // 2. Parse form data
     let formData: FormData;
     try {
       formData = await req.formData();
     } catch (error) {
-      console.error("[UPLOAD_ERROR] Failed to parse form data.", error);
+      console.error("[UPLOAD_ERROR] Failed to parse form data.", { error, contentType });
       const response = NextResponse.json(
         {
           success: false,
           error: "Invalid multipart/form-data request.",
           message: "Request body must be multipart/form-data with a valid boundary. Use browser FormData or curl -F.",
+          contentType,
         },
         { status: 400 }
       );
@@ -284,8 +312,6 @@ export async function POST(req: NextRequest) {
           billingCost: deductionResult.success ? deductionResult.cost : null,
           billingStatus: deductionResult.success ? "SUCCESS" : "FAILED",
           folder: (metadata as any).folder,
-          tags: (metadata as any).tags,
-          description: (metadata as any).description,
         },
       },
     });
