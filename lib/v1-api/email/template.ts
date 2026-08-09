@@ -8,6 +8,7 @@ export const defaultTemplates = {
   newsletter: v1Templates.newsletter,
   marketing: v1Templates.marketing,
   notification: v1Templates.notification,
+  invite: v1Templates.invite,
   otp: v1Templates.otp,
 };
 
