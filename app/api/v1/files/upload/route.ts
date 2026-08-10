@@ -31,8 +31,6 @@ const ALLOWED_MIME_TYPES = [
 const uploadMetadataSchema = z.object({
   folder: z.string().optional(),
   visibility: z.enum(['PUBLIC', 'PRIVATE']).default('PUBLIC'),
-  tags: z.array(z.string()).optional(),
-  description: z.string().optional(),
   filename: z.string().optional(),
 });
 
@@ -99,17 +97,69 @@ export async function POST(req: NextRequest) {
       return addCORSHeaders(response);
     }
 
+    const contentType = req.headers.get("content-type");
+    console.log("[UPLOAD_INFO] Content-Type header:", contentType);
+
+    // Parse media type and parameters case-insensitively and extract boundary
+    function getMultipartBoundary(header: string | null): string | null {
+      if (!header) return null;
+      // Split into media type and params, trimming whitespace
+      const parts = header.split(';').map((p) => p.trim()).filter(Boolean);
+      if (parts.length === 0) return null;
+
+      const mediaType = parts.shift()!.toLowerCase();
+      if (mediaType !== 'multipart/form-data') return null;
+
+      for (const param of parts) {
+        const idx = param.indexOf('=');
+        if (idx === -1) continue;
+        const name = param.slice(0, idx).trim().toLowerCase();
+        let value = param.slice(idx + 1).trim();
+        if (name === 'boundary') {
+          // strip optional quotes
+          if (value.startsWith('"') && value.endsWith('"')) {
+            value = value.slice(1, -1);
+          }
+          return value === '' ? null : value;
+        }
+      }
+
+      return null;
+    }
+
+    const boundary = getMultipartBoundary(contentType);
+    // Export helper for regression testing (CommonJS/ESM import depends on test harness)
+    try {
+      // @ts-ignore - attach to global for simple test import if needed
+      (global as any).__getMultipartBoundary = getMultipartBoundary;
+    } catch (e) {
+      // ignore in environments where global cannot be written
+    }
+    if (!boundary) {
+      const response = NextResponse.json(
+        {
+          success: false,
+          error: "Missing or invalid multipart boundary",
+          message: "Content-Type must be multipart/form-data and include a non-empty boundary parameter.",
+          contentType,
+        },
+        { status: 400 }
+      );
+      return addCORSHeaders(response);
+    }
+
     // 2. Parse form data
     let formData: FormData;
     try {
       formData = await req.formData();
     } catch (error) {
-      console.error("[UPLOAD_ERROR] Failed to parse form data.", error);
+      console.error("[UPLOAD_ERROR] Failed to parse form data.", { error, contentType });
       const response = NextResponse.json(
         {
           success: false,
           error: "Invalid multipart/form-data request.",
           message: "Request body must be multipart/form-data with a valid boundary. Use browser FormData or curl -F.",
+          contentType,
         },
         { status: 400 }
       );
@@ -284,8 +334,6 @@ export async function POST(req: NextRequest) {
           billingCost: deductionResult.success ? deductionResult.cost : null,
           billingStatus: deductionResult.success ? "SUCCESS" : "FAILED",
           folder: (metadata as any).folder,
-          tags: (metadata as any).tags,
-          description: (metadata as any).description,
         },
       },
     });
