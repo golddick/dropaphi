@@ -278,10 +278,13 @@ const categories: CategoryDoc[] = [
         title: 'Upload file',
         summary: 'Upload a file as multipart form data and store it with metadata.',
         auth: true,
-        requestBody: `curl -X POST "${baseUrl}/v1/files/upload" \
+        requestBody: `# Multipart form upload\ncurl -X POST "${baseUrl}/v1/files/upload" \
   -H "DROP-API-Key: da_live_your_key" \
   -F "file=@invoice.pdf" \
-  -F 'metadata={"visibility":"PUBLIC","folder":"invoices"}'`,
+  -F 'metadata={"visibility":"PUBLIC","folder":"invoices"}'\n\n# JSON/base64 upload\ncurl -X POST "${baseUrl}/v1/files/upload" \
+  -H "DROP-API-Key: da_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"invoice.pdf","type":"application/pdf","data":"<BASE64_FILE_CONTENT>","metadata":{"visibility":"PUBLIC","folder":"invoices"}}'`,
         responseExample: {
           success: true,
           data: {
@@ -296,7 +299,8 @@ const categories: CategoryDoc[] = [
           'The upload route accepts a file field named file.',
           'Metadata can include folder, visibility, and filename.',
           'Video uploads are allowed, but video files are limited to 2MB each.',
-          'Use multipart/form-data with a valid boundary. Do not set Content-Type manually when using curl -F; curl will add the boundary automatically.'
+          'Use multipart/form-data with a valid boundary. Do not set Content-Type manually when using curl -F; curl will add the boundary automatically.',
+          'If you prefer JSON uploads, send base64 file data with name, type, and optional metadata.',
         ]
       },
       {

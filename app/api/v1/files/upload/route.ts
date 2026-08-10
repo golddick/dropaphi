@@ -6,7 +6,6 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { validateApiKey } from "@/lib/api-key/validate";
 import { z } from "zod";
 import { handleCORS, addCORSHeaders } from "@/lib/cors";
-import { getMultipartBoundary } from "@/lib/utils/multipart";
 import { checkWorkspaceStorageLimit, deductWorkspaceStorage } from "@/lib/v1-api/workspace/sender";
 import { checkServiceStatus } from "@/lib/services/service-status";
 import { Services } from "@/lib/generated/prisma";
@@ -98,48 +97,58 @@ export async function POST(req: NextRequest) {
       return addCORSHeaders(response);
     }
 
-    const contentType = req.headers.get("content-type");
+    const contentType = req.headers.get("content-type") ?? "";
     console.log("[UPLOAD_INFO] Content-Type header:", contentType);
 
-    // Use shared helper to parse media type and extract boundary
-    const boundary = getMultipartBoundary(contentType);
-    if (!boundary) {
-      const response = NextResponse.json(
-        {
-          success: false,
-          error: "Missing or invalid multipart boundary",
-          message: "Content-Type must be multipart/form-data and include a non-empty boundary parameter.",
-          contentType,
-        },
-        { status: 400 }
-      );
-      return addCORSHeaders(response);
-    }
+    let formData: FormData | null = null;
+    let file: File | null = null;
+    let metadataStr: string | null = null;
 
-    // 2. Parse form data
-    let formData: FormData;
     try {
       formData = await req.formData();
     } catch (error) {
-      console.error("[UPLOAD_ERROR] Failed to parse form data.", { error, contentType });
-      const response = NextResponse.json(
-        {
-          success: false,
-          error: "Invalid multipart/form-data request.",
-          message: "Request body must be multipart/form-data with a valid boundary. Use browser FormData or curl -F.",
-          contentType,
-        },
-        { status: 400 }
-      );
-      return addCORSHeaders(response);
+      console.warn("[UPLOAD_INFO] Failed to parse multipart form data", {
+        error,
+        contentType,
+      });
     }
 
-    const file = formData.get("file") as File;
-    const metadataStr = formData.get("metadata") as string | null;
+    if (formData) {
+      file = formData.get("file") as File | null;
+      metadataStr = (formData.get("metadata") as string | null) ?? null;
+    }
+
+    if (!file) {
+      const body = await req.json().catch(() => null);
+      if (
+        body &&
+        typeof body === "object" &&
+        typeof (body as any).name === "string" &&
+        typeof (body as any).type === "string" &&
+        typeof (body as any).data === "string"
+      ) {
+        const buffer = Buffer.from((body as any).data, "base64");
+        try {
+          file = new File([buffer], (body as any).name, {
+            type: (body as any).type,
+          });
+        } catch {
+          const blob = new Blob([buffer], { type: (body as any).type });
+          file = Object.assign(blob, { name: (body as any).name }) as File;
+        }
+
+        metadataStr = typeof (body as any).metadata === "string"
+          ? (body as any).metadata
+          : JSON.stringify((body as any).metadata ?? { visibility: "PUBLIC" });
+      }
+    }
 
     if (!file) {
       const response = NextResponse.json(
-        { success: false, error: "No file uploaded. Please provide a file in the 'file' field." },
+        {
+          success: false,
+          error: "No file uploaded. Please provide a file in the 'file' field or send JSON with base64 file data.",
+        },
         { status: 400 }
       );
       return addCORSHeaders(response);
