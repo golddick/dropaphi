@@ -97,28 +97,31 @@ export async function POST(req: NextRequest) {
       return addCORSHeaders(response);
     }
 
-    const contentType = req.headers.get("content-type") ?? "";
+    const contentType = req.headers.get("content-type")?.toLowerCase() ?? "";
     console.log("[UPLOAD_INFO] Content-Type header:", contentType);
 
     let formData: FormData | null = null;
     let file: File | null = null;
     let metadataStr: string | null = null;
 
-    try {
-      formData = await req.formData();
-    } catch (error) {
-      console.warn("[UPLOAD_INFO] Failed to parse multipart form data", {
-        error,
-        contentType,
-      });
-    }
+    const isMultipart = contentType.startsWith("multipart/form-data");
+    const isJson = contentType.includes("application/json");
 
-    if (formData) {
-      file = formData.get("file") as File | null;
-      metadataStr = (formData.get("metadata") as string | null) ?? null;
-    }
+    if (isMultipart) {
+      try {
+        formData = await req.formData();
+      } catch (error) {
+        console.warn("[UPLOAD_INFO] Failed to parse multipart form data", {
+          error,
+          contentType,
+        });
+      }
 
-    if (!file) {
+      if (formData) {
+        file = formData.get("file") as File | null;
+        metadataStr = (formData.get("metadata") as string | null) ?? null;
+      }
+    } else if (isJson) {
       const body = await req.json().catch(() => null);
       if (
         body &&
@@ -147,7 +150,7 @@ export async function POST(req: NextRequest) {
       const response = NextResponse.json(
         {
           success: false,
-          error: "No file uploaded. Please provide a file in the 'file' field or send JSON with base64 file data.",
+          error: "No file uploaded. Please provide a file in the 'file' field for multipart/form-data requests or send application/json with base64 file data.",
         },
         { status: 400 }
       );

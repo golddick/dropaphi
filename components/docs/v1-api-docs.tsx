@@ -296,11 +296,11 @@ const categories: CategoryDoc[] = [
           }
         },
         notes: [
-          'The upload route accepts a file field named file.',
+          'The upload route accepts a file field named file for multipart/form-data uploads.',
+          'For JSON uploads, send application/json with name, type, data (base64), and optional metadata.',
           'Metadata can include folder, visibility, and filename.',
           'Video uploads are allowed, but video files are limited to 2MB each.',
-          'Use multipart/form-data with a valid boundary. Do not set Content-Type manually when using curl -F; curl will add the boundary automatically.',
-          'If you prefer JSON uploads, send base64 file data with name, type, and optional metadata.',
+          'Do not set Content-Type manually when using curl -F; curl will add the boundary automatically.',
         ]
       },
       {
