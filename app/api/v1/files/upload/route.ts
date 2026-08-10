@@ -100,57 +100,38 @@ export async function POST(req: NextRequest) {
     const contentType = req.headers.get("content-type")?.toLowerCase() ?? "";
     console.log("[UPLOAD_INFO] Content-Type header:", contentType);
 
-    let formData: FormData | null = null;
     let file: File | null = null;
     let metadataStr: string | null = null;
 
-    const isMultipart = contentType.startsWith("multipart/form-data");
-    const isJson = contentType.includes("application/json");
+    const body = await req.json().catch(() => null);
 
-    if (isMultipart) {
+    if (
+      body &&
+      typeof body === "object" &&
+      typeof (body as any).name === "string" &&
+      typeof (body as any).type === "string" &&
+      typeof (body as any).data === "string"
+    ) {
+      const buffer = Buffer.from((body as any).data, "base64");
       try {
-        formData = await req.formData();
-      } catch (error) {
-        console.warn("[UPLOAD_INFO] Failed to parse multipart form data", {
-          error,
-          contentType,
+        file = new File([buffer], (body as any).name, {
+          type: (body as any).type,
         });
+      } catch {
+        const blob = new Blob([buffer], { type: (body as any).type });
+        file = Object.assign(blob, { name: (body as any).name }) as File;
       }
 
-      if (formData) {
-        file = formData.get("file") as File | null;
-        metadataStr = (formData.get("metadata") as string | null) ?? null;
-      }
-    } else if (isJson) {
-      const body = await req.json().catch(() => null);
-      if (
-        body &&
-        typeof body === "object" &&
-        typeof (body as any).name === "string" &&
-        typeof (body as any).type === "string" &&
-        typeof (body as any).data === "string"
-      ) {
-        const buffer = Buffer.from((body as any).data, "base64");
-        try {
-          file = new File([buffer], (body as any).name, {
-            type: (body as any).type,
-          });
-        } catch {
-          const blob = new Blob([buffer], { type: (body as any).type });
-          file = Object.assign(blob, { name: (body as any).name }) as File;
-        }
-
-        metadataStr = typeof (body as any).metadata === "string"
-          ? (body as any).metadata
-          : JSON.stringify((body as any).metadata ?? { visibility: "PUBLIC" });
-      }
+      metadataStr = typeof (body as any).metadata === "string"
+        ? (body as any).metadata
+        : JSON.stringify((body as any).metadata ?? { visibility: "PUBLIC" });
     }
 
     if (!file) {
       const response = NextResponse.json(
         {
           success: false,
-          error: "No file uploaded. Please provide a file in the 'file' field for multipart/form-data requests or send application/json with base64 file data.",
+          error: "No file uploaded. Please send application/json with name, type, and base64 data.",
         },
         { status: 400 }
       );

@@ -276,7 +276,7 @@ const categories: CategoryDoc[] = [
         method: 'POST',
         path: '/v1/files/upload',
         title: 'Upload file',
-        summary: 'Upload a file as multipart form data and store it with metadata.',
+        summary: 'Upload a file using JSON/base64 encoded file data and optional metadata.',
         auth: true,
         requestBody: `# Multipart form upload\ncurl -X POST "${baseUrl}/v1/files/upload" \
   -H "DROP-API-Key: da_live_your_key" \
@@ -296,11 +296,10 @@ const categories: CategoryDoc[] = [
           }
         },
         notes: [
-          'The upload route accepts a file field named file for multipart/form-data uploads.',
-          'For JSON uploads, send application/json with name, type, data (base64), and optional metadata.',
-          'Metadata can include folder, visibility, and filename.',
+          'This endpoint accepts JSON uploads only.',
+          'Send application/json with name, type, and data (base64) fields.',
+          'Optional metadata may include folder, visibility, and filename.',
           'Video uploads are allowed, but video files are limited to 2MB each.',
-          'Do not set Content-Type manually when using curl -F; curl will add the boundary automatically.',
         ]
       },
       {
