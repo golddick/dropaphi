@@ -1,7 +1,6 @@
 const assert = require('assert');
 
-// The route sets a global helper __getMultipartBoundary for regression checks.
-const getMultipartBoundary = global.__getMultipartBoundary || require('../app/api/v1/files/upload/route').getMultipartBoundary;
+const { getMultipartBoundary } = require('../lib/utils/multipart');
 
 function run() {
   const cases = [
@@ -14,7 +13,7 @@ function run() {
   ];
 
   for (const c of cases) {
-    const out = typeof getMultipartBoundary === 'function' ? getMultipartBoundary(c.h) : null;
+    const out = getMultipartBoundary(c.h);
     assert.strictEqual(out, c.e, `header=${String(c.h)} expected=${String(c.e)} got=${String(out)}`);
   }
 
