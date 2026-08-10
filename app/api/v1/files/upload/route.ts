@@ -100,25 +100,47 @@ export async function POST(req: NextRequest) {
     const contentType = req.headers.get("content-type");
     console.log("[UPLOAD_INFO] Content-Type header:", contentType);
 
-    if (!contentType || !contentType.includes("multipart/form-data")) {
-      const response = NextResponse.json(
-        {
-          success: false,
-          error: "Invalid Content-Type header",
-          message: "Content-Type must be multipart/form-data with a valid boundary.",
-          contentType,
-        },
-        { status: 400 }
-      );
-      return addCORSHeaders(response);
+    // Parse media type and parameters case-insensitively and extract boundary
+    function getMultipartBoundary(header: string | null): string | null {
+      if (!header) return null;
+      // Split into media type and params, trimming whitespace
+      const parts = header.split(';').map((p) => p.trim()).filter(Boolean);
+      if (parts.length === 0) return null;
+
+      const mediaType = parts.shift()!.toLowerCase();
+      if (mediaType !== 'multipart/form-data') return null;
+
+      for (const param of parts) {
+        const idx = param.indexOf('=');
+        if (idx === -1) continue;
+        const name = param.slice(0, idx).trim().toLowerCase();
+        let value = param.slice(idx + 1).trim();
+        if (name === 'boundary') {
+          // strip optional quotes
+          if (value.startsWith('"') && value.endsWith('"')) {
+            value = value.slice(1, -1);
+          }
+          return value === '' ? null : value;
+        }
+      }
+
+      return null;
     }
 
-    if (!/boundary=/.test(contentType)) {
+    const boundary = getMultipartBoundary(contentType);
+    // Export helper for regression testing (CommonJS/ESM import depends on test harness)
+    try {
+      // @ts-ignore - attach to global for simple test import if needed
+      (global as any).__getMultipartBoundary = getMultipartBoundary;
+    } catch (e) {
+      // ignore in environments where global cannot be written
+    }
+    if (!boundary) {
       const response = NextResponse.json(
         {
           success: false,
-          error: "Missing multipart boundary",
-          message: "Content-Type must include a boundary parameter, e.g. multipart/form-data; boundary=----WebKitFormBoundary...",
+          error: "Missing or invalid multipart boundary",
+          message: "Content-Type must be multipart/form-data and include a non-empty boundary parameter.",
           contentType,
         },
         { status: 400 }
