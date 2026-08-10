@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { validateApiKey } from "@/lib/api-key/validate";
 import { z } from "zod";
 import { handleCORS, addCORSHeaders } from "@/lib/cors";
+import { getMultipartBoundary } from "@/lib/utils/multipart";
 import { checkWorkspaceStorageLimit, deductWorkspaceStorage } from "@/lib/v1-api/workspace/sender";
 import { checkServiceStatus } from "@/lib/services/service-status";
 import { Services } from "@/lib/generated/prisma";
@@ -100,41 +101,8 @@ export async function POST(req: NextRequest) {
     const contentType = req.headers.get("content-type");
     console.log("[UPLOAD_INFO] Content-Type header:", contentType);
 
-    // Parse media type and parameters case-insensitively and extract boundary
-    function getMultipartBoundary(header: string | null): string | null {
-      if (!header) return null;
-      // Split into media type and params, trimming whitespace
-      const parts = header.split(';').map((p) => p.trim()).filter(Boolean);
-      if (parts.length === 0) return null;
-
-      const mediaType = parts.shift()!.toLowerCase();
-      if (mediaType !== 'multipart/form-data') return null;
-
-      for (const param of parts) {
-        const idx = param.indexOf('=');
-        if (idx === -1) continue;
-        const name = param.slice(0, idx).trim().toLowerCase();
-        let value = param.slice(idx + 1).trim();
-        if (name === 'boundary') {
-          // strip optional quotes
-          if (value.startsWith('"') && value.endsWith('"')) {
-            value = value.slice(1, -1);
-          }
-          return value === '' ? null : value;
-        }
-      }
-
-      return null;
-    }
-
+    // Use shared helper to parse media type and extract boundary
     const boundary = getMultipartBoundary(contentType);
-    // Export helper for regression testing (CommonJS/ESM import depends on test harness)
-    try {
-      // @ts-ignore - attach to global for simple test import if needed
-      (global as any).__getMultipartBoundary = getMultipartBoundary;
-    } catch (e) {
-      // ignore in environments where global cannot be written
-    }
     if (!boundary) {
       const response = NextResponse.json(
         {
