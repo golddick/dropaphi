@@ -20,6 +20,16 @@ export async function GET(req: NextRequest) {
     }
 
     const { keyInfo } = validation;
+
+    if (!keyInfo) {
+      return addCORSHeaders(
+        NextResponse.json(
+          { success: false, error: "Invalid API key information" },
+          { status: 401 }
+        )
+      );
+    }
+
     const { searchParams } = new URL(req.url);
 
     const pageParam = searchParams.get("page");
@@ -35,7 +45,7 @@ export async function GET(req: NextRequest) {
     const rawPage = parseIntegerParam(pageParam);
     const rawLimit = parseIntegerParam(limitParam);
 
-    if (pageParam !== null && rawPage === null) {
+    if (rawPage === null) {
       return addCORSHeaders(
         NextResponse.json(
           { success: false, error: "Invalid page value" },
@@ -44,7 +54,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    if (limitParam !== null && rawLimit === null) {
+    if (rawLimit === null) {
       return addCORSHeaders(
         NextResponse.json(
           { success: false, error: "Invalid limit value" },
@@ -53,8 +63,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const page = rawPage !== undefined ? Math.max(1, rawPage) : 1;
-    const limit = rawLimit !== undefined ? Math.min(Math.max(rawLimit, 1), 50) : 10;
+    const page = rawPage != null ? Math.max(1, rawPage) : 1;
+    const limit = rawLimit != null ? Math.min(Math.max(rawLimit, 1), 50) : 10;
     const skip = (page - 1) * limit;
     const tag = searchParams.get("tag");
     const isFeatured = searchParams.get("isFeatured");

@@ -7,7 +7,7 @@ import { validateApiKey } from "@/lib/api-key/validate";
 import { defaultTemplates, htmlToText, processTemplate } from "@/lib/v1-api/email/template";
 import { mailSender } from "@/lib/email/service/transporter";
 import { handleCORS, addCORSHeaders } from "@/lib/cors";
-import { checkWorkspaceEmailLimit, deductWorkspaceEmail, getWorkspaceEmailSender } from "@/lib/v1-api/workspace/sender";
+import { checkWorkspaceServiceLimit, deductWorkspaceEmail, getWorkspaceEmailSender } from "@/lib/v1-api/workspace/sender";
 import { checkServiceStatus } from "@/lib/services/service-status";
 import { Services } from "@/lib/generated/prisma";
 
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
     emailUnits = totalRecipients;
 
     // 4. CHECK email limit (but DON'T deduct yet)
-    const limitCheck = await checkWorkspaceEmailLimit(keyInfo.workspaceId, emailUnits);
+    const limitCheck = await checkWorkspaceServiceLimit(keyInfo.workspaceId, Services.EMAIL, emailUnits);
     
     if (!limitCheck.allowed) {
       const response = NextResponse.json(

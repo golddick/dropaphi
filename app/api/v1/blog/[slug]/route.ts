@@ -40,7 +40,26 @@ export async function GET(
         workspaceId: keyInfo.workspaceId,
         status: "PUBLISHED",
       },
-      include: {
+      select: {
+        id: true,
+        workspaceId: true,
+        authorId: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        content: true,
+        coverImage: true,
+        tags: true,
+        seoTitle: true,
+        seoDesc: true,
+        isFeatured: true,
+        isApproved: true,
+        status: true,
+        publishedAt: true,
+        scheduledAt: true,
+        viewCount: true,
+        createdAt: true,
+        updatedAt: true,
         author: {
           select: {
             fullName: true,

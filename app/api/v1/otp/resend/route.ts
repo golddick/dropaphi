@@ -4,10 +4,12 @@ import { db } from "@/lib/db";
 import { dropid } from "dropid";
 import { z } from "zod";
 import { validateApiKey } from "@/lib/api-key/validate";
-import { checkWorkspaceOTPLimit, getWorkspaceEmailSender } from "@/lib/v1-api/workspace/sender";
+import { checkWorkspaceServiceLimit, deductWorkspaceOTP, getWorkspaceEmailSender } from "@/lib/v1-api/workspace/sender";
 import { generateOTP, encryptOTP, getDefaultOTPTemplate, getDefaultTextTemplate } from "@/lib/v1-api/otp/utils";
 import { handleCORS, addCORSHeaders } from "@/lib/cors";
 import { emailSender } from "@/lib/v1-api/email/OtpTransporter";
+import { checkServiceStatus } from "@/lib/services/service-status";
+import { Services } from "@/lib/generated/prisma";
 // import { emailSender } from "@/lib/v1-api/email/OtpTransporter";
 
 // Helper function to get start of day
@@ -38,7 +40,15 @@ export async function OPTIONS(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  let otpUnits = 1;
+
   try {
+    // 0. Check if OTP service is active
+    const serviceStatusError = await checkServiceStatus(Services.OTP);
+    if (serviceStatusError) {
+      return addCORSHeaders(serviceStatusError);
+    }
+
     // 1. Validate API key
     const validation = await validateApiKey(req);
     if (!validation.valid) {
@@ -119,16 +129,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Check workspace OTP limit
-    const limitCheck = await checkWorkspaceOTPLimit(keyInfo.workspaceId);
+    // 4. Check workspace OTP limit before the requested regeneration can be used
+    const limitCheck = await checkWorkspaceServiceLimit(keyInfo.workspaceId, Services.OTP, otpUnits);
     if (!limitCheck.allowed) {
       const response = NextResponse.json(
         {
           success: false,
           error: "OTP limit exceeded",
-          limit: limitCheck.limit,
-          current: limitCheck.current,
-          remaining: limitCheck.remaining,
+          details: {
+            limit: limitCheck.limit,
+            current: limitCheck.current,
+            remaining: limitCheck.remaining,
+            requested: otpUnits,
+          }
         },
         { status: 429 }
       );
@@ -288,13 +301,41 @@ export async function POST(req: NextRequest) {
       return addCORSHeaders(response);
     }
 
-    // 12. Update workspace OTP count
-    await db.workspace.update({
-      where: { id: keyInfo.workspaceId },
-      data: {
-        currentOtpSent: { increment: 1 },
-      },
-    });
+    // 12. OTP sent successfully - now deduct OTP credits
+    const deductionResult = await deductWorkspaceOTP(keyInfo.workspaceId, otpUnits);
+
+    if (!deductionResult.success) {
+      console.error("[CRITICAL] OTP resend sent but deduction failed:", {
+        otpId: otpRecord.id,
+        workspaceId: keyInfo.workspaceId,
+        email,
+        units: otpUnits,
+        error: deductionResult.error
+      });
+
+      await db.otpRequest.update({
+        where: { id: otpRecord.id },
+        data: {
+          metadata: {
+            ...(otpRecord.metadata as Record<string, any>),
+            billingError: deductionResult.error,
+            billingStatus: "FAILED",
+          },
+        },
+      });
+    } else {
+      await db.otpRequest.update({
+        where: { id: otpRecord.id },
+        data: {
+          metadata: {
+            ...(otpRecord.metadata as Record<string, any>),
+            billingMethod: deductionResult.method,
+            billingCost: deductionResult.cost,
+            billingStatus: "SUCCESS",
+          },
+        },
+      });
+    }
 
     // 13. Track API usage
     const today = getStartOfDay();
@@ -331,6 +372,21 @@ export async function POST(req: NextRequest) {
           message: `New verification code sent to ${email}`,
           expiresAt: expiresAt.toISOString(),
           regenerated: true,
+          billing: deductionResult.success ? {
+            method: deductionResult.method,
+            unitsUsed: otpUnits,
+            cost: deductionResult.cost,
+            message: deductionResult.message,
+            ...(deductionResult.method === "BALANCE" && {
+              remainingBalance: deductionResult.remainingBalance
+            }),
+            ...(deductionResult.method === "SERVICE_CREDITS" && {
+              remainingCredits: deductionResult.remainingCredits
+            }),
+          } : {
+            deducted: false,
+            warning: "OTP regenerated but billing failed. Our team has been notified.",
+          },
           ...(process.env.NODE_ENV === "development" && { debug: { otp } }),
         },
       },

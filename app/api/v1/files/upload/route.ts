@@ -6,7 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { validateApiKey } from "@/lib/api-key/validate";
 import { z } from "zod";
 import { handleCORS, addCORSHeaders } from "@/lib/cors";
-import { checkWorkspaceStorageLimit, deductWorkspaceStorage } from "@/lib/v1-api/workspace/sender";
+import { checkWorkspaceServiceLimit, deductWorkspaceStorage } from "@/lib/v1-api/workspace/sender";
 import { checkServiceStatus } from "@/lib/services/service-status";
 import { Services } from "@/lib/generated/prisma";
 
@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
     storageUnits = calculateStorageUnits(fileSizeMB);
     
     // 7. CHECK storage limit (but DON'T deduct yet)
-    const limitCheck = await checkWorkspaceStorageLimit(keyInfo.workspaceId, storageUnits);
+    const limitCheck = await checkWorkspaceServiceLimit(keyInfo.workspaceId, Services.STORAGE, storageUnits);
     
     if (!limitCheck.allowed) {
       const response = NextResponse.json(

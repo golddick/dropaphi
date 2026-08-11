@@ -36,11 +36,10 @@ export async function POST(
   try {
     const { workspaceId } = await params;
 
-    const blogActive = await checkServiceStatus(Services.BLOG);
-    if (!blogActive) {
-      return err("Blog service is not available", 403, "SERVICE_UNAVAILABLE");
+    const serviceStatusError = await checkServiceStatus(Services.BLOG);
+    if (serviceStatusError) {
+      return serviceStatusError;
     }
-
 
     const auth = await requireAuth();
     if (auth instanceof Response) return auth;
@@ -109,6 +108,12 @@ export async function GET(
 ) {
   try {
     const { workspaceId } = await params;
+
+    const serviceStatusError = await checkServiceStatus(Services.BLOG);
+    if (serviceStatusError) {
+      return serviceStatusError;
+    }
+
     const { searchParams } = new URL(req.url);
     
     const page = parseInt(searchParams.get("page") || "1");
