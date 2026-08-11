@@ -6,7 +6,7 @@ import { validateApiKey } from "@/lib/api-key/validate";
 import { handleCORS, addCORSHeaders } from "@/lib/cors";
 import { dropid } from "dropid";
 import { welcomeEmail } from "@/lib/email/service/newsletter-welcome-email.service";
-import { checkWorkspaceSubscriberLimit, deductWorkspaceSubscriber } from "@/lib/v1-api/workspace/sender";
+import { checkWorkspaceServiceLimit, deductWorkspaceSubscriber } from "@/lib/v1-api/workspace/sender";
 import { checkServiceStatus } from "@/lib/services/service-status";
 import { Services } from "@/lib/generated/prisma";
 
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
     const { email, name, source, templateId } = parsed.data;
 
     // 3. CHECK subscriber limit (but DON'T deduct yet)
-    const limitCheck = await checkWorkspaceSubscriberLimit(workspaceId, subscriberUnits);
+    const limitCheck = await checkWorkspaceServiceLimit(workspaceId, Services.SUBSCRIBERS, subscriberUnits);
     
     if (!limitCheck.allowed) {
       return addCORSHeaders(NextResponse.json(

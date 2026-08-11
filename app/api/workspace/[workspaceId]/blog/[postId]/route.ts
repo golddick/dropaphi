@@ -13,6 +13,7 @@ import {
 } from "@/lib/respond/response";
 import { BillingService } from "@/lib/billing/billing-service";
 import { Services } from "@/lib/generated/prisma";
+import { checkServiceStatus } from "@/lib/services/service-status";
 import { blogNotification } from "@/lib/email/service/blog-notification.service";
 
 const updateBlogPostSchema = z.object({
@@ -32,6 +33,11 @@ export async function PUT(
 ) {
   try {
     const { workspaceId, postId } = await params;
+
+    const serviceStatusError = await checkServiceStatus(Services.BLOG);
+    if (serviceStatusError) {
+      return serviceStatusError;
+    }
 
     const auth = await requireAuth();
     if (auth instanceof Response) return auth;

@@ -118,14 +118,14 @@ class EmailSenderService {
         enhancedHTML = enhancedHTML.replace(
           /href="([^"]+)"/g,
           (_, url) =>
-            `href="${appDomain}/api/track/click?emailId=${emailId}&email=${encodeURIComponent(
+            `href="${appDomain}/api/email/track/click?emailId=${emailId}&email=${encodeURIComponent(
               recipients
             )}&url=${encodeURIComponent(url)}"`
         );
       }
 
       if (emailId) {
-        enhancedHTML += `<img src="${appDomain}/api/track/open?emailId=${emailId}&email=${encodeURIComponent(
+        enhancedHTML += `<img src="${appDomain}/email/api/track/open?emailId=${emailId}&email=${encodeURIComponent(
           recipients
         )}" width="1" height="1" style="display:none;" />`;
       }

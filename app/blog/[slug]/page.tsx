@@ -101,7 +101,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
       </div>
 
       {/* Content */}
-      <div className="container max-w-4xl py-12 px-6">
+      <div className="container max-w-4xl mx-auto py-12 px-6">
         {post.coverImage && (
           <div className="mb-12 rounded-xl overflow-hidden border border-border shadow-lg">
             <img 
@@ -142,7 +142,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           <div className="space-y-2">
             <h3 className="text-xl font-bold">{post.author.fullName}</h3>
             <p className="text-muted-foreground text-sm leading-relaxed max-w-xl">
-              {post.author.bio || `Author at ${post.workspace.name}. Sharing insights and updates about our journey.`}
+              {post.author.bio || `Writer at ${post.workspace.name}. Sharing insights and updates about our journey.`}
             </p>
           </div>
         </div>

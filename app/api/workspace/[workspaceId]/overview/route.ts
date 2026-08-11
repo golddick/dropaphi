@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth/auth-server";
-import { ok, unauthorized, notFound, serverError, err } from "@/lib/respond/response";
+import { ok, unauthorized, forbidden, serverError, err } from "@/lib/respond/response";
 
 export async function GET(
   req: NextRequest,
@@ -37,7 +37,7 @@ export async function GET(
     });
 
     if (!membership) {
-      return notFound("Workspace not found or access denied");
+      return forbidden("Workspace not found or access denied");
     }
 
     const workspace = membership.workspace;

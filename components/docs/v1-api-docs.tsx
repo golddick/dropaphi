@@ -46,6 +46,7 @@ const categories: CategoryDoc[] = [
                 title: 'Why communication matters',
                 slug: 'why-communication-matters',
                 excerpt: 'A short summary',
+                coverImage: 'https://dropaphi.xyz/images/communication-cover.jpg',
                 publishedAt: '2026-08-01T00:00:00.000Z'
               }
             ],
@@ -64,10 +65,34 @@ const categories: CategoryDoc[] = [
           success: true,
           data: {
             id: 'post_123',
+            workspaceId: 'workspace_123',
+            authorId: 'user_123',
             title: 'Why communication matters',
             slug: 'why-communication-matters',
+            excerpt: 'A short summary',
             content: '<p>Full blog content</p>',
-            author: { fullName: 'Jane Doe' }
+            coverImage: 'https://dropaphi.xyz/images/communication-cover.jpg',
+            tags: ['communication', 'productivity', 'business'],
+            seoTitle: 'Why Communication Matters',
+            seoDesc: 'Learn why effective communication matters.',
+            isFeatured: true,
+            isApproved: true,
+            status: 'PUBLISHED',
+            publishedAt: '2026-08-01T00:00:00.000Z',
+            scheduledAt: null,
+            viewCount: 42,
+            createdAt: '2026-07-25T10:00:00.000Z',
+            updatedAt: '2026-08-01T00:00:00.000Z',
+            author: {
+              fullName: 'Jane Doe',
+              avatarUrl: 'https://dropaphi.xyz/images/jane-doe.jpg',
+              bio: 'Writer and communications specialist'
+            },
+            workspace: {
+              name: 'Acme',
+              slug: 'acme',
+              logoUrl: 'https://dropaphi.xyz/images/acme-logo.png'
+            }
           }
         }
       }

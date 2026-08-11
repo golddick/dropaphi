@@ -10,7 +10,8 @@ import {
   Bold, Italic, List, ListOrdered, Link as LinkIcon, 
   Image as ImageIcon, AlignLeft, AlignCenter, AlignRight, 
   Heading1, Heading2, Heading3, Quote, Undo, Redo,
-  Upload, X, Save, Eye, Send, Settings, Globe, Loader2, PenTool
+  Upload, X, Save, Eye, Send, Settings, Globe, Loader2, PenTool, HelpCircle,
+  Pilcrow
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { useFileStore } from '@/lib/stores/file/file-store';
 import { useParams, useRouter } from 'next/navigation';
@@ -32,16 +46,64 @@ interface BlogEditorProps {
 const MenuBar = ({ editor, onImageUpload }: { editor: any; onImageUpload: () => void }) => {
   if (!editor) return null;
 
-  const addLink = useCallback(() => {
-    const previousUrl = editor.getAttributes('link').href;
-    const url = window.prompt('URL', previousUrl);
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [isHeadingDialogOpen, setIsHeadingDialogOpen] = useState(false);
+  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false);
+  const [imageSettings, setImageSettings] = useState({
+    width: 'auto',
+    height: 'auto',
+    borderRadius: '12px',
+    textAlign: 'center'
+  });
 
-    if (url === null) return;
-    if (url === '') {
+  const openLinkDialog = useCallback(() => {
+    const previousUrl = editor.getAttributes('link').href || '';
+    setLinkUrl(previousUrl);
+    setIsLinkDialogOpen(true);
+  }, [editor]);
+
+  const applyLink = useCallback(() => {
+    const normalizedLink = linkUrl.trim();
+    if (!normalizedLink) {
       editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      return;
+    } else {
+      editor.chain().focus().extendMarkRange('link').setLink({ href: normalizedLink }).run();
     }
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+    setIsLinkDialogOpen(false);
+  }, [editor, linkUrl]);
+
+  const openImageSettings = useCallback(() => {
+    const imageAttrs = editor.getAttributes('image') || {};
+    setImageSettings({
+      width: imageAttrs.width || 'auto',
+      height: imageAttrs.height || 'auto',
+      borderRadius: imageAttrs.borderRadius || '12px',
+      textAlign: imageAttrs.textAlign || 'center'
+    });
+    setIsImageDialogOpen(true);
+  }, [editor]);
+
+  const saveImageSettings = useCallback(() => {
+    editor.chain().focus().updateAttributes('image', {
+      width: imageSettings.width || 'auto',
+      height: imageSettings.height || 'auto',
+      borderRadius: imageSettings.borderRadius || '12px',
+      textAlign: imageSettings.textAlign || 'center'
+    }).run();
+    setIsImageDialogOpen(false);
+  }, [editor, imageSettings]);
+
+  const applyParagraph = useCallback(() => {
+    editor.chain().focus().setNode('paragraph').run();
+  }, [editor]);
+
+  const applyHeading = useCallback((level: 1 | 2 | 3) => {
+    editor.chain().focus().setNode('heading', { level }).run();
+  }, [editor]);
+
+  const applyQuote = useCallback(() => {
+    editor.chain().focus().toggleBlockquote().run();
   }, [editor]);
 
   return (
@@ -68,7 +130,25 @@ const MenuBar = ({ editor, onImageUpload }: { editor: any; onImageUpload: () => 
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+        onClick={applyParagraph}
+        className={editor.isActive('paragraph') ? 'bg-muted' : ''}
+        title="Paragraph"
+      >
+        <Pilcrow size={16} />
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setIsHeadingDialogOpen(true)}
+        className={editor.isActive('heading') ? 'bg-muted' : ''}
+        title="Heading"
+      >
+        <Heading1 size={16} />
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => applyHeading(1)}
         className={editor.isActive('heading', { level: 1 }) ? 'bg-muted' : ''}
         title="H1"
       >
@@ -77,7 +157,7 @@ const MenuBar = ({ editor, onImageUpload }: { editor: any; onImageUpload: () => 
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        onClick={() => applyHeading(2)}
         className={editor.isActive('heading', { level: 2 }) ? 'bg-muted' : ''}
         title="H2"
       >
@@ -86,7 +166,7 @@ const MenuBar = ({ editor, onImageUpload }: { editor: any; onImageUpload: () => 
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+        onClick={() => applyHeading(3)}
         className={editor.isActive('heading', { level: 3 }) ? 'bg-muted' : ''}
         title="H3"
       >
@@ -143,7 +223,7 @@ const MenuBar = ({ editor, onImageUpload }: { editor: any; onImageUpload: () => 
       <Button
         variant="ghost"
         size="sm"
-        onClick={addLink}
+        onClick={openLinkDialog}
         className={editor.isActive('link') ? 'bg-muted' : ''}
         title="Add Link"
       >
@@ -161,7 +241,7 @@ const MenuBar = ({ editor, onImageUpload }: { editor: any; onImageUpload: () => 
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        onClick={applyQuote}
         className={editor.isActive('blockquote') ? 'bg-muted' : ''}
         title="Blockquote"
       >
@@ -193,17 +273,8 @@ const MenuBar = ({ editor, onImageUpload }: { editor: any; onImageUpload: () => 
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              const width = window.prompt('Width (e.g. 100%, 500px, 300)', editor.getAttributes('image').width);
-              const height = window.prompt('Height (e.g. auto, 300px, 200)', editor.getAttributes('image').height);
-              if (width !== null || height !== null) {
-                editor.chain().focus().updateAttributes('image', { 
-                  ...(width !== null && { width }),
-                  ...(height !== null && { height })
-                }).run();
-              }
-            }}
-            title="Resize Image"
+            onClick={openImageSettings}
+            title="Image Settings"
           >
             <Settings size={16} />
           </Button>
@@ -236,6 +307,76 @@ const MenuBar = ({ editor, onImageUpload }: { editor: any; onImageUpload: () => 
           </Button>
         </>
       )}
+
+      <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+        <DialogContent className="sm:max-w-md fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <DialogHeader>
+            <DialogTitle>Add link</DialogTitle>
+            <DialogDescription>Choose the destination URL for the selected text.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="blog_link_url">URL</Label>
+              <Input id="blog_link_url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="https://example.com" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsLinkDialogOpen(false)}>Cancel</Button>
+            <Button onClick={applyLink}>Apply Link</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isHeadingDialogOpen} onOpenChange={setIsHeadingDialogOpen}>
+        <DialogContent className="sm:max-w-sm fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <DialogHeader>
+            <DialogTitle>Choose heading</DialogTitle>
+            <DialogDescription>Highlight content and select the heading level.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-3 gap-2">
+            <Button variant="outline" onClick={() => { applyHeading(1); setIsHeadingDialogOpen(false); }}>H1</Button>
+            <Button variant="outline" onClick={() => { applyHeading(2); setIsHeadingDialogOpen(false); }}>H2</Button>
+            <Button variant="outline" onClick={() => { applyHeading(3); setIsHeadingDialogOpen(false); }}>H3</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
+        <DialogContent className="sm:max-w-md fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <DialogHeader>
+            <DialogTitle>Image settings</DialogTitle>
+            <DialogDescription>Update the selected image styling.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="image_width">Width</Label>
+                <Input id="image_width" value={imageSettings.width} onChange={(e) => setImageSettings(curr => ({ ...curr, width: e.target.value }))} placeholder="auto or 500px" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="image_height">Height</Label>
+                <Input id="image_height" value={imageSettings.height} onChange={(e) => setImageSettings(curr => ({ ...curr, height: e.target.value }))} placeholder="auto or 300px" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="image_radius">Border radius</Label>
+              <Input id="image_radius" value={imageSettings.borderRadius} onChange={(e) => setImageSettings(curr => ({ ...curr, borderRadius: e.target.value }))} placeholder="12px" />
+            </div>
+            <div className="space-y-2">
+              <Label>Alignment</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button variant={imageSettings.textAlign === 'left' ? 'secondary' : 'outline'} onClick={() => setImageSettings(curr => ({ ...curr, textAlign: 'left' }))}><AlignLeft size={14} className="mr-2" />Left</Button>
+                <Button variant={imageSettings.textAlign === 'center' ? 'secondary' : 'outline'} onClick={() => setImageSettings(curr => ({ ...curr, textAlign: 'center' }))}><AlignCenter size={14} className="mr-2" />Center</Button>
+                <Button variant={imageSettings.textAlign === 'right' ? 'secondary' : 'outline'} onClick={() => setImageSettings(curr => ({ ...curr, textAlign: 'right' }))}><AlignRight size={14} className="mr-2" />Right</Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsImageDialogOpen(false)}>Cancel</Button>
+            <Button onClick={saveImageSettings}>Apply</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -284,6 +425,22 @@ export function BlogEditor({ initialData, onSave, isSubmitting }: BlogEditorProp
               renderHTML: attributes => {
                 if (!attributes.height || attributes.height === 'auto') return {};
                 return { height: attributes.height };
+              },
+            },
+            borderRadius: {
+              default: '12px',
+              renderHTML: attributes => {
+                if (!attributes.borderRadius) return {};
+                return { style: `border-radius: ${attributes.borderRadius};` };
+              },
+            },
+            textAlign: {
+              default: 'center',
+              renderHTML: attributes => {
+                if (!attributes.textAlign || attributes.textAlign === 'center') return {};
+                if (attributes.textAlign === 'left') return { style: 'float: left; margin-right: 1rem;' };
+                if (attributes.textAlign === 'right') return { style: 'float: right; margin-left: 1rem;' };
+                return {};
               },
             },
           };
@@ -379,8 +536,7 @@ export function BlogEditor({ initialData, onSave, isSubmitting }: BlogEditorProp
     }
 
     const content = editor?.getHTML() || '';
-    
-    await onSave({
+    const payload = {
       title,
       slug,
       excerpt,
@@ -388,12 +544,14 @@ export function BlogEditor({ initialData, onSave, isSubmitting }: BlogEditorProp
       coverImage,
       status,
       tags,
-      isFeatured
-    });
+      isFeatured,
+    };
+
+    await onSave(payload);
   };
 
   const ReadingPreview = () => (
-    <div className="bg-card rounded-lg border border-border p-8 max-w-4xl mx-auto space-y-8">
+    <div className="bg-card rounded-lg border border-border p-8 w-full space-y-8">
       {coverImage && (
         <img src={coverImage} alt={title} className="w-full aspect-video object-cover rounded-xl shadow-sm" />
       )}
@@ -447,6 +605,23 @@ export function BlogEditor({ initialData, onSave, isSubmitting }: BlogEditorProp
           </Tabs>
         </div>
         <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label="Blog editor tips">
+                <HelpCircle size={16} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-sm">
+              <div className="space-y-2">
+                <p className="font-semibold">How to use the blog editor</p>
+                <ul className="text-xs space-y-1 list-disc pl-4">
+                  <li>Select text, then use Heading, Bold, Italic, Bullet List, and Link buttons.</li>
+                  <li>Use the image button to insert media, then set width, height, radius, and alignment.</li>
+                  <li>Save your article as a draft or publish it from the status panel.</li>
+                </ul>
+              </div>
+            </TooltipContent>
+          </Tooltip>
           <Button variant="outline" onClick={() => router.back()} disabled={isSubmitting || isUploading}>Cancel</Button>
           <Button 
             onClick={handleSave} 

@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { dropid } from "dropid";
 import { z } from "zod";
 import { validateApiKey } from "@/lib/api-key/validate";
-import { checkWorkspaceOTPLimit, deductWorkspaceOTP, getWorkspaceEmailSender } from "@/lib/v1-api/workspace/sender";
+import { checkWorkspaceServiceLimit, deductWorkspaceOTP, getWorkspaceEmailSender } from "@/lib/v1-api/workspace/sender";
 import { generateOTP, encryptOTP, getDefaultOTPTemplate, getDefaultTextTemplate } from "@/lib/v1-api/otp/utils";
 import { handleCORS, addCORSHeaders } from "@/lib/cors";
 import { checkServiceStatus } from "@/lib/services/service-status";
@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. CHECK OTP limit (but DON'T deduct yet)
-    const limitCheck = await checkWorkspaceOTPLimit(keyInfo.workspaceId, otpUnits);
+    const limitCheck = await checkWorkspaceServiceLimit(keyInfo.workspaceId, Services.OTP, otpUnits);
     
     if (!limitCheck.allowed) {
       const response = NextResponse.json(

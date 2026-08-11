@@ -79,6 +79,42 @@ export async function getWorkspaceEmailSender(workspaceId: string): Promise<Send
 // ==================== CHECK FUNCTIONS ====================
 
 /**
+ * Unified V1 service availability checker.
+ * All API routes that need a service limit should call this before attempting the operation.
+ */
+export async function checkWorkspaceServiceLimit(workspaceId: string, service: Services, units: number = 1): Promise<{
+  allowed: boolean;
+  current: number;
+  limit: number;
+  remaining: number;
+  serviceCreditsAvailable: number;
+  balanceAvailable: number;
+}> {
+  try {
+    const result = await BillingService.checkLimit(workspaceId, service, units);
+
+    return {
+      allowed: result.success,
+      current: result.used,
+      limit: result.limit,
+      remaining: result.remaining,
+      serviceCreditsAvailable: result.serviceCreditsAvailable,
+      balanceAvailable: result.balanceAvailable,
+    };
+  } catch (error) {
+    console.error(`[WORKSPACE_${String(service)}_LIMIT_ERROR]`, error);
+    return {
+      allowed: false,
+      current: 0,
+      limit: 0,
+      remaining: 0,
+      serviceCreditsAvailable: 0,
+      balanceAvailable: 0,
+    };
+  }
+}
+
+/**
  * Check workspace OTP limit using BillingService
  */
 export async function checkWorkspaceOTPLimit(workspaceId: string, units: number = 1): Promise<{
@@ -89,28 +125,7 @@ export async function checkWorkspaceOTPLimit(workspaceId: string, units: number 
   serviceCreditsAvailable: number;
   balanceAvailable: number;
 }> {
-  try {
-    const result = await BillingService.checkLimit(workspaceId, Services.OTP, units);
-    
-    return {
-      allowed: result.success,
-      current: result.used,
-      limit: result.limit,
-      remaining: result.remaining,
-      serviceCreditsAvailable: result.serviceCreditsAvailable,
-      balanceAvailable: result.balanceAvailable,
-    };
-  } catch (error) {
-    console.error("[WORKSPACE_OTP_LIMIT_ERROR]", error);
-    return {
-      allowed: false,
-      current: 0,
-      limit: 0,
-      remaining: 0,
-      serviceCreditsAvailable: 0,
-      balanceAvailable: 0,
-    };
-  }
+  return checkWorkspaceServiceLimit(workspaceId, Services.OTP, units);
 }
 
 /**
