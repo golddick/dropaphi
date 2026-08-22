@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Check, Copy, ChevronDown, ChevronRight, FileText, Mail, ShieldCheck, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
 type EndpointDoc = {
   id: string;
@@ -303,10 +304,7 @@ const categories: CategoryDoc[] = [
         title: 'Upload file',
         summary: 'Upload a file using JSON/base64 encoded file data and optional metadata.',
         auth: true,
-        requestBody: `# Multipart form upload\ncurl -X POST "${baseUrl}/v1/files/upload" \
-  -H "DROP-API-Key: da_live_your_key" \
-  -F "file=@invoice.pdf" \
-  -F 'metadata={"visibility":"PUBLIC","folder":"invoices"}'\n\n# JSON/base64 upload\ncurl -X POST "${baseUrl}/v1/files/upload" \
+        requestBody: `# JSON/base64 upload\ncurl -X POST "${baseUrl}/v1/files/upload" \
   -H "DROP-API-Key: da_live_your_key" \
   -H "Content-Type: application/json" \
   -d '{"name":"invoice.pdf","type":"application/pdf","data":"<BASE64_FILE_CONTENT>","metadata":{"visibility":"PUBLIC","folder":"invoices"}}'`,
@@ -422,12 +420,20 @@ export function V1ApiDocs() {
       <section className="rounded-2xl border border-border/70 bg-background/70 p-6 shadow-sm backdrop-blur">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
+            <Link href="/" >
             <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted-foreground">DropAphi v1 API</p>
+            </Link>
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Developer reference for email, newsletter, OTP, and files</h1>
-            <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
+            {/* <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
               These endpoints are documented from the live route implementations in the app. Each card includes an example request, a response shape, and a one-click copy action for the snippet.
-            </p>
+            </p> */}
           </div>
+          <Link href={"/docs/email-builder"}>
+          <div className="rounded-xl border border-border/70 bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+            <div className="font-medium text-foreground">Email Builder</div>
+            <div>Doc For DropAphi Email Builder.</div>
+          </div>
+          </Link>
           <div className="rounded-xl border border-border/70 bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
             <div className="font-medium text-foreground">Authentication</div>
             <div>Include your API key in the DROP-API-Key header.</div>
