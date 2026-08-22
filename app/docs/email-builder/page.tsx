@@ -18,6 +18,7 @@ import {
   Send
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth';
+import Logo from '@/components/logo/logo';
 
 export default function EmailBuilderDocsPage() {
   const { user } = useAuthStore();
@@ -58,9 +59,7 @@ export default function EmailBuilderDocsPage() {
       {/* Navigation - simplified version of your site nav */}
       <nav className="border-b border-gray-100 py-4 px-6 flex justify-between items-center sticky top-0 bg-white/80 backdrop-blur-md z-50">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-[#DC143C] rounded-lg flex items-center justify-center">
-            <Send size={18} className="text-white" />
-          </div>
+          <Logo/>
           <span className="font-bold text-xl tracking-tight docs-title hidden md:inline">DropAPHI</span>
         </Link>
         <div className="flex gap-4">
