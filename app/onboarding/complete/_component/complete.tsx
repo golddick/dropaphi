@@ -43,7 +43,6 @@ export default function CompletePage() {
         >
           <h1
             className="text-3xl sm:text-4xl font-bold mb-3"
-            style={{ color: '#1A1A1A' }}
           >
             Welcome to Drop APHI!
           </h1>
@@ -64,7 +63,7 @@ export default function CompletePage() {
               <div className="p-2 bg-red-100 rounded-lg">
                 <Zap size={18} style={{ color: '#DC143C' }} />
               </div>
-              <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>API Keys Ready when you are</h3>
+              <h3 className="font-semibold" >API Keys Ready when you are</h3>
             </div>
             <p className="text-xs" style={{ color: '#666666' }}>
               Generate your API credentials on your dashboard 
@@ -76,7 +75,7 @@ export default function CompletePage() {
               <div className="p-2 bg-red-100 rounded-lg">
                 <Users size={18} style={{ color: '#DC143C' }} />
               </div>
-              <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>Team Ready</h3>
+              <h3 className="font-semibold" >Team Ready</h3>
             </div>
             <p className="text-xs" style={{ color: '#666666' }}>
               {workspaceId === 'workspace' ? 'Invite team members anytime' : 'Your team invitations are sent'}
@@ -88,7 +87,7 @@ export default function CompletePage() {
               <div className="p-2 bg-red-100 rounded-lg">
                 <Mail size={18} style={{ color: '#DC143C' }} />
               </div>
-              <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>Email Ready</h3>
+              <h3 className="font-semibold" >Email Ready</h3>
             </div>
             <p className="text-xs" style={{ color: '#666666' }}>
               Start sending emails immediately
@@ -100,7 +99,7 @@ export default function CompletePage() {
               <div className="p-2 bg-red-100 rounded-lg">
                 <FileText size={18} style={{ color: '#DC143C' }} />
               </div>
-              <h3 className="font-semibold" style={{ color: '#1A1A1A' }}>Documentation</h3>
+              <h3 className="font-semibold" >Documentation</h3>
             </div>
             <p className="text-xs" style={{ color: '#666666' }}>
               Access comprehensive API docs and examples

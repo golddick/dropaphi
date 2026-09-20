@@ -18,7 +18,7 @@ const RETRY_DELAY = 2000; // 2 seconds
 async function sendViaNodemailerWithRetry(opts: SendEmailOptions, retryCount = 0): Promise<any> {
   try {
     const mailOptions = {
-      from: `${process.env.AUTH_NAME_FROM ?? 'DropAPHI'} <${process.env.AUTH_MAIL_FROM ?? 'noreply@dropaphi.xyz'}>`,
+      from: `${process.env.AUTH_NAME_FROM ?? 'DropAPHI'} <${process.env.AUTH_MAIL_FROM ?? 'dropaphi.hq@gmail.com'}>`,
       to: opts.to,
       subject: opts.subject,
       text: opts.text,
@@ -27,7 +27,6 @@ async function sendViaNodemailerWithRetry(opts: SendEmailOptions, retryCount = 0
       headers: {
         "X-Mailer": "DropAPHI",
         "X-Priority": "3",
-        "List-Unsubscribe": `<mailto:unsubscribe@dropaphi.xyz>`,
       }
     };
 
