@@ -26,7 +26,7 @@ export default function OnboardingLayout({
             <div className="flex items-center gap-3">
               <div
                 className="flex h-10 w-10 items-center justify-center rounded font-bold text-white text-sm"
-                style={{ backgroundColor: '#DC143C' }}
+              
               >
                 <Image
                 src="/image/drop-logo.png"

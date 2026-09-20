@@ -192,7 +192,6 @@ export default function Step2Page() {
         <div>
           <h2
             className="text-2xl font-bold mb-2"
-            style={{ color: '#1A1A1A' }}
           >
             Invite your team
           </h2>
@@ -211,7 +210,7 @@ export default function Step2Page() {
               {currentWorkspace.name.charAt(0)}
             </div>
             <div>
-              <p className="font-medium" style={{ color: '#1A1A1A' }}>{currentWorkspace.name}</p>
+              <p className="font-medium" >{currentWorkspace.name}</p>
               <p className="text-xs" style={{ color: '#666666' }}>
                 Team size: {currentWorkspace.teamSize || 'Not specified'} • 
                 Your role: {currentWorkspace.role || 'OWNER'}
@@ -224,7 +223,7 @@ export default function Step2Page() {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Users size={18} style={{ color: '#DC143C' }} />
-            <h3 className="font-medium" style={{ color: '#1A1A1A' }}>Team Members</h3>
+            <h3 className="font-medium" >Team Members</h3>
           </div>
 
           <div className="space-y-3">
@@ -282,7 +281,7 @@ export default function Step2Page() {
 
         {/* Role Descriptions */}
         <div className="bg-gray-50 rounded-lg p-4">
-          <h4 className="text-sm font-medium mb-3" style={{ color: '#1A1A1A' }}>
+          <h4 className="text-sm font-medium mb-3" >
             Role descriptions
           </h4>
           <div className="space-y-2">
@@ -290,7 +289,7 @@ export default function Step2Page() {
               <div key={role.value} className="flex items-start gap-2">
                 <div className="w-2 h-2 rounded-full mt-1.5" style={{ backgroundColor: '#DC143C' }} />
                 <div>
-                  <p className="text-xs font-medium" style={{ color: '#1A1A1A' }}>
+                  <p className="text-xs font-medium" >
                     {role.label}
                   </p>
                   <p className="text-xs" style={{ color: '#666666' }}>

@@ -195,7 +195,6 @@ const handleSubmit = async (e: React.FormEvent) => {
         <div>
           <h2
             className="text-2xl font-bold mb-2"
-            style={{ color: '#1A1A1A' }}
           >
             Let's set up your workspace
           </h2>
@@ -205,7 +204,6 @@ const handleSubmit = async (e: React.FormEvent) => {
         <div>
           <label
             className="block text-sm font-medium mb-2"
-            style={{ color: '#1A1A1A' }}
           >
             Workspace Name *
           </label>
@@ -234,7 +232,6 @@ const handleSubmit = async (e: React.FormEvent) => {
         <div>
           <label
             className="block text-sm font-medium mb-2"
-            style={{ color: '#1A1A1A' }}
           >
             Website (Optional)
           </label>
@@ -261,7 +258,6 @@ const handleSubmit = async (e: React.FormEvent) => {
         <div>
           <label
             className="block text-sm font-medium mb-3"
-            style={{ color: '#1A1A1A' }}
           >
             Industry *
           </label>
@@ -279,7 +275,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                     formData.industry === industry
                       ? 'rgba(220, 20, 60, 0.1)'
                       : 'transparent',
-                  color: '#1A1A1A',
                   fontWeight: formData.industry === industry ? '600' : '400',
                 }}
                 disabled={isLoading}
@@ -299,7 +294,6 @@ const handleSubmit = async (e: React.FormEvent) => {
         <div>
           <label
             className="block text-sm font-medium mb-3"
-            style={{ color: '#1A1A1A' }}
           >
             Team Size *
           </label>
@@ -317,7 +311,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                     formData.teamSize === size
                       ? 'rgba(220, 20, 60, 0.1)'
                       : 'transparent',
-                  color: '#1A1A1A',
+                
                   fontWeight: formData.teamSize === size ? '600' : '400',
                 }}
                 disabled={isLoading}
@@ -337,7 +331,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         <div>
           <label
             className="block text-sm font-medium mb-2"
-            style={{ color: '#1A1A1A' }}
+            
           >
             Description (Optional)
           </label>
@@ -357,7 +351,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         <div>
           <label
             className="block text-sm font-medium mb-2"
-            style={{ color: '#1A1A1A' }}
+          
           >
             Workspace Logo (Optional)
           </label>
@@ -375,14 +369,14 @@ const handleSubmit = async (e: React.FormEvent) => {
                   alt="Logo preview"
                   className="h-16 w-16 mx-auto mb-2 rounded-lg object-cover"
                 />
-                <p className="text-xs" style={{ color: '#666666' }}>
+                <p className="text-xs" >
                   Click to change
                 </p>
               </div>
             ) : (
               <div className="text-center">
                 <Upload size={24} style={{ color: '#999999' }} className="mx-auto mb-2" />
-                <p className="text-sm font-medium" style={{ color: '#1A1A1A' }}>
+                <p className="text-sm font-medium" >
                   Click to upload or drag and drop
                 </p>
                 <p className="text-xs mt-1" style={{ color: '#999999' }}>
